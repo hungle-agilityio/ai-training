@@ -10,7 +10,7 @@ ALLOWED_HOSTS: list[str] = []
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
-    "tasks",
+    "reviews",
 ]
 
 MIDDLEWARE = [
@@ -18,7 +18,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
 ]
 
-ROOT_URLCONF = "taskpilot.urls"
+ROOT_URLCONF = "reviewradar.urls"
 
 DATABASES = {
     "default": {

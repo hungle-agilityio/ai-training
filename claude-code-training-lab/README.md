@@ -2,6 +2,12 @@
 
 ## Goals
 
+Learn Claude Code by building **ReviewRadar**: collect and respond to customer reviews for a multi-branch business.
+
+- **Business:** online reputation management.
+- **MVP:** import reviews (CSV / mock API), classify sentiment with the Claude API, suggest replies, score dashboard per branch.
+- **Learning focus:** real LLM integration, caching, multi-branch business modeling.
+
 ## How to run
 
 ```bash
