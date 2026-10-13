@@ -13,9 +13,20 @@ Learn Claude Code by building **ReviewRadar**: collect and respond to customer r
 ```bash
 uv venv
 uv pip install -r requirements.txt
+uv run python manage.py migrate
+uv run python manage.py seed_demo_data
 uv run python manage.py runserver
 uv run pytest
 ```
+
+Open http://127.0.0.1:8000/dashboard/ for the branch scores.
+
+`seed_demo_data` wipes the local DB tables and creates demo data. Options:
+`--branches N` (extra branches) and `--with-new-branch` (a branch with no reviews).
+
+## Bug tickets
+
+Tickets live in `docs/bugs/`. Copy `_template.md` structure when writing a repro-ready report.
 
 ## 15-Day Progress
 

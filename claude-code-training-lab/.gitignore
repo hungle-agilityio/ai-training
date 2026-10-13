@@ -15,3 +15,5 @@ htmlcov/
 # Claude Code local-only files
 .claude/settings.local.json
 CLAUDE.local.md
+
+uv.lock

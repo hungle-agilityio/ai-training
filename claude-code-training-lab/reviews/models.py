@@ -1,30 +1,26 @@
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
-class Review(models.Model):
-    """A customer review collected from an external source. Data only."""
-
-    external_id = models.CharField(max_length=255, blank=True, default="")
-    source = models.CharField(max_length=50, default="manual")
-    author_name = models.CharField(max_length=255, blank=True, default="")
-    rating = models.PositiveSmallIntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(5)],
-    )
-    text = models.TextField()
-    language = models.CharField(max_length=10, blank=True, default="")
-    posted_at = models.DateTimeField()
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-posted_at"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["source", "external_id"],
-                condition=~models.Q(external_id=""),
-                name="unique_review_per_source_external_id",
-            ),
-        ]
+class Business(models.Model):
+    name = models.CharField(max_length=120)
 
     def __str__(self) -> str:
-        return f"Review({self.rating}★ by {self.author_name or 'anonymous'})"
+        return self.name
+
+
+class Branch(models.Model):
+    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="branches")
+    name = models.CharField(max_length=120)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Review(models.Model):
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name="reviews")
+    rating = models.PositiveSmallIntegerField()
+    text = models.TextField()
+    created_at = models.DateTimeField()
+
+    def __str__(self) -> str:
+        return f"{self.branch_id}: {self.rating}"

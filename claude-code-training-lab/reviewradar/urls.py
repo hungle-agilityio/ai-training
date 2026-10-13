@@ -1,3 +1,7 @@
-from django.urls import URLPattern, URLResolver
+from django.urls import URLPattern, URLResolver, path
 
-urlpatterns: list[URLPattern | URLResolver] = []
+from reviews import views
+
+urlpatterns: list[URLPattern | URLResolver] = [
+    path("dashboard/", views.dashboard, name="dashboard"),
+]
