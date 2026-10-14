@@ -15,6 +15,7 @@
   - Feature: `feat/<id>-...`, for example `feat/FEAT-004-filter-reviews`
   - Task: `task/<id>-...`, for example `task/TASK-006-cleanup-demo-data`
 - One branch per ticket. Never commit directly to `main`.
+- Use the skill `git` to create branches, commits and pull requests that follow these rules.
 
 ## Commits
 
