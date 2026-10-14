@@ -1,6 +1,6 @@
 # [BUG] Dashboard numbers look wrong
 
-- **ID:** BUG-001
+- **ID:** 1
 - **Reporter:** Maria, operations manager
 - **Reported on:** 2026-10-12
 - **Status:** New

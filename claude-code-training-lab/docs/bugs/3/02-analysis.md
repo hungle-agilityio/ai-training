@@ -1,6 +1,6 @@
 # [BUG] New location breaks the dashboard: analysis and questions
 
-- **ID:** BUG-003
+- **ID:** 3
 - **Reviewed on:** 2026-10-14
 - **Status:** Waiting for reporter
 - **Type:** Bug

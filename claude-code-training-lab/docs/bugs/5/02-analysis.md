@@ -1,6 +1,6 @@
 # [BUG] Reply drafts come out in the wrong language: analysis and questions
 
-- **ID:** BUG-005
+- **ID:** 5
 - **Reviewed on:** 2026-10-14
 - **Status:** Waiting for reporter
 - **Type:** Bug

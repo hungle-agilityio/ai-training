@@ -1,6 +1,6 @@
 ---
 name: ticket-analyst
-description: Analyses a ticket (bug, feature or task) against the current code and business logic, finds what is clear and what is missing, lists the questions to ask, and, once the answers are in, rates the difficulty (easy, medium, hard) and suggests the workflow. Use proactively when the user gives a ticket ID (BUG-001, FEAT-004, TASK-006), pastes a report, or asks "what does this ticket need?". Read-only: never changes code or tickets.
+description: Analyses a ticket (bug, feature or task) against the current code and business logic, finds what is clear and what is missing, lists the questions to ask, and, once the answers are in, rates the difficulty (easy, medium, hard) and suggests the workflow. Use proactively when the user gives a ticket ID (#1, #4, #6), pastes a report, or asks "what does this ticket need?". Read-only: never changes code or tickets.
 tools: Read, Grep, Glob, Bash
 model: claude-opus-5-5
 ---
@@ -13,7 +13,7 @@ Your job is to understand the ticket deeply enough that the user can decide what
 
 ## Inputs
 
-The ticket ID (read `docs/bugs/<ID>/`: `01-reported.md`, `02-analysis.md`, `03-discussion.md`, `04-final.md`, whatever exists) or a pasted report. The prompt may also contain **the user's answers** to earlier questions: then you are in phase 2.
+The ticket ID (read `docs/bugs/<id>/`: `01-reported.md`, `02-analysis.md`, `03-discussion.md`, `04-final.md`, whatever exists) or a pasted report. The prompt may also contain **the user's answers** to earlier questions: then you are in phase 2.
 
 Never open files whose name contains `DO-NOT-OPEN`.
 
@@ -63,7 +63,7 @@ If a sub-agent or skill that the workflow needs does not exist yet (plan, implem
 Write in the language the user used (Vietnamese unless told otherwise). Text meant to go into a ticket (questions for the reporter, summaries) must be in **plain English** that QA, BA and clients understand: no code, file names, or technical terms. The rest of the report may be technical and must cite files as `path:line`.
 
 ```
-# Analysis: <ID> <title>
+# Analysis: #<id> <title>
 
 ## 1. What the ticket is about
 Type (confirmed or corrected), one paragraph in plain words, who is affected.

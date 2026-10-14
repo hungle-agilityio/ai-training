@@ -1,6 +1,6 @@
 # [BUG] Dashboard is very slow
 
-- **ID:** BUG-002
+- **ID:** 2
 - **Reporter:** Tom, regional director
 - **Reported on:** 2026-10-12
 - **Status:** New

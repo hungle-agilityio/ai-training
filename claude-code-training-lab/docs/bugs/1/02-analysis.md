@@ -1,6 +1,6 @@
 # [BUG] Dashboard numbers look wrong: analysis and questions
 
-- **ID:** BUG-001
+- **ID:** 1
 - **Reviewed on:** 2026-10-14
 - **Status:** Waiting for reporter
 - **Type:** Bug

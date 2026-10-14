@@ -2,18 +2,19 @@
 
 ## Tickets
 
-- Each ticket is a folder `docs/bugs/<ID>/` (`BUG-001/`, `FEAT-004/`, `TASK-006/`). The skill `write-ticket` creates **one** file in it: `04-final.md`, the complete standalone ticket built from `docs/templates/04-final-bug.md`, `04-final-feature.md` or `04-final-task.md`. It is posted as a GitHub issue, so it must not refer to any other file.
+- **Ticket ID:** a plain number (`1`, `4`, `6`), shared by bugs, features and tasks, in the order the tickets are created (the same number the issue gets on GitHub, written `#6` in text). The type is shown by the title (`[BUG]`) and by the branch prefix, never by the ID.
+- Each ticket is a folder `docs/bugs/<id>/` (`1/`, `4/`, `6/`). The skill `write-ticket` creates **one** file in it: `04-final.md`, the complete standalone ticket built from `docs/templates/04-final-bug.md`, `04-final-feature.md` or `04-final-task.md`. It is posted as a GitHub issue, so it must not refer to any other file.
 - `01-reported.md`, `02-analysis.md` and `03-discussion.md` (templates in `docs/templates/`) are learning material for the training: the report as received, our analysis and questions, and the conversation with the reporter. The skill does not create or change them.
 - **Title format:** `[type] title`, where type is `BUG`, `FEAT` or `TASK`. Example: `[BUG] dashboard show wrong score number`.
-- The ticket ID (`BUG-001`) is a separate field in the ticket, not part of the title.
+- The ticket number is the folder name and is not part of the title.
 - Tickets are written in plain language for QA, BA and clients: no code, commits, branches or technical terms. Use the skill `write-ticket` (bug, feature or task).
 
 ## Branches
 
-- **Format:** `<kind>/<id>-<short-description>`, with the ticket ID and a short lowercase description separated by dashes.
-  - Bug: `bug/<id>-...`, for example `bug/BUG-001-dashboard-wrong-score`
-  - Feature: `feat/<id>-...`, for example `feat/FEAT-004-filter-reviews`
-  - Task: `task/<id>-...`, for example `task/TASK-006-cleanup-demo-data`
+- **Format:** `<kind>/<id>-<short-description>`, with the ticket number and a short lowercase description separated by dashes.
+  - Bug: `bug/<id>-...`, for example `bug/1-dashboard-wrong-score`
+  - Feature: `feat/<id>-...`, for example `feat/4-filter-reviews`
+  - Task: `task/<id>-...`, for example `task/6-cleanup-demo-data`
 - One branch per ticket. Never commit directly to `main`.
 - Use the skill `git` to create branches, commits and pull requests that follow these rules.
 
@@ -31,7 +32,7 @@ Part of <id>
 
 - **title:** short, imperative, says what changed (no ticket ID needed in the title).
 - **detail:** what changed and why. Wrap lines at about 72 characters.
-- **Part of `<id>`:** the ticket ID, for example `Part of BUG-001`. If a commit touches several tickets, add one `Part of` line per ticket.
+- **Part of `<id>`:** the ticket ID, for example `Part of #1`. If a commit touches several tickets, add one `Part of` line per ticket.
 
 Example:
 
@@ -41,7 +42,7 @@ Fix average score rounding on dashboard
 The average was calculated with whole-number division, so 11 / 3
 showed as 3. It now keeps the decimals (3.67).
 
-Part of BUG-001
+Part of #1
 ```
 
 ## Pull requests

@@ -76,7 +76,7 @@ def _branch_with_ratings(business: Business, name: str, ratings: list[int]) -> N
 
 @pytest.mark.django_db
 def test_overview_bar_follows_the_exact_average() -> None:
-    # BUG-001: Riverside (4, 5, 2) is 3.7, so its bar is 74%, not 60%
+    # Bug #1: Riverside (4, 5, 2) is 3.7, so its bar is 74%, not 60%
     business = Business.objects.create(name="Demo")
     _branch_with_ratings(business, "Riverside", [4, 5, 2])
 

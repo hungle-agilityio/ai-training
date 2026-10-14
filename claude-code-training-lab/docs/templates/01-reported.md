@@ -1,6 +1,6 @@
 # [<TYPE>] <title as the reporter described it>
 
-- **ID:** <BUG | FEAT | TASK>-<number>
+- **ID:** <number>
 - **Reporter:** <name, role>
 - **Reported on:** <YYYY-MM-DD>
 - **Status:** New

@@ -1,6 +1,6 @@
 # [<TYPE>] <title>: discussion
 
-- **ID:** <BUG | FEAT | TASK>-<number>
+- **ID:** <number>
 - **Reporter:** <name, role>
 - **Assignee:** <name, or "not assigned yet">
 

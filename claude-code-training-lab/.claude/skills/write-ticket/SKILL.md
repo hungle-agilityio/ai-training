@@ -1,6 +1,6 @@
 ---
 name: write-ticket
-description: Write one complete, standalone ticket (bug, feature or task) from a description, following the project templates, and save it as docs/bugs/<ID>/04-final.md. Use when the user gives a bug report, a feature request ("can we add X") or a piece of work, when new information arrives for an existing ticket, or when asked to analyse, reproduce, clarify or fill in a BUG, FEAT or TASK ticket.
+description: Write one complete, standalone ticket (bug, feature or task) from a description, following the project templates, and save it as docs/bugs/<id>/04-final.md. Use when the user gives a bug report, a feature request ("can we add X") or a piece of work, when new information arrives for an existing ticket, or when asked to analyse, reproduce, clarify or fill in a BUG, FEAT or TASK ticket.
 ---
 
 # Write a ticket
@@ -9,18 +9,18 @@ The ticket is read by QA, BA, clients and devs, so anyone must understand it and
 
 ## 1. Output: one file
 
-Write **one** file: `docs/bugs/<ID>/04-final.md`, the complete ticket, built from the template of its type:
+Write **one** file: `docs/bugs/<id>/04-final.md`, the complete ticket, built from the template of its type:
 
-| Type | Use when | Template | ID / folder | Branch |
+| Type | Use when | Template | Folder | Branch |
 |---|---|---|---|---|
-| `BUG` | Something that worked, or should work, is wrong: error, wrong value, slow, wrong text | `docs/templates/04-final-bug.md` | `BUG-<number>` | `bug/<id>-...` |
-| `FEAT` | Users get a new ability, or an existing page changes what users see | `docs/templates/04-final-feature.md` | `FEAT-<number>` | `feat/<id>-...` |
-| `TASK` | Work with no new user-facing behaviour: cleanup, data update, configuration, document, investigation | `docs/templates/04-final-task.md` | `TASK-<number>` | `task/<id>-...` |
+| `BUG` | Something that worked, or should work, is wrong: error, wrong value, slow, wrong text | `docs/templates/04-final-bug.md` | `<id>` | `bug/<id>-...` |
+| `FEAT` | Users get a new ability, or an existing page changes what users see | `docs/templates/04-final-feature.md` | `<id>` | `feat/<id>-...` |
+| `TASK` | Work with no new user-facing behaviour: cleanup, data update, configuration, document, investigation | `docs/templates/04-final-task.md` | `<id>` | `task/<id>-...` |
 
 - Follow the template's sections, in order, with nothing added or removed.
 - If the type is unclear, decide from the table and say which you chose and why. If the user names a type, use it.
-- Use the next free number across all types (look at the folder names in `docs/bugs/`), or the existing folder if the ticket already exists (then update its `04-final.md`).
-- Title format `[type] title`, for example `[BUG] dashboard show wrong score number`. The ID is the folder name and is not part of the title.
+- The ticket ID is a plain number shared by all types (`1`, `4`, `6`): use the next free number (the highest folder name in `docs/bugs/` plus one), or the existing folder if the ticket already exists (then update its `04-final.md`). The type is never part of the ID or the folder name.
+- Title format `[type] title`, for example `[BUG] dashboard show wrong score number`. The number is the folder name and is not part of the title.
 - Do **not** create or edit `01-reported.md`, `02-analysis.md` or `03-discussion.md`. Those files, and the templates for them, are the user's own learning material. If they exist for this ticket, read them as input (the reporter's words, the answers) and leave them unchanged.
 
 ## 2. Steps
@@ -40,7 +40,7 @@ Write **one** file: `docs/bugs/<ID>/04-final.md`, the complete ticket, built fro
 5. **Exact results.** Give the real values or texts ("shows 3, should show 3.67") and the calculation if there is one.
 6. **Labels (same set everywhere):** type (`bug`, `feature`, `task`); area (`dashboard`, `reviews-list`, ...); for bugs the kind (`crash`, `wrong-data`, `performance`, `ui`, `wrong-output`, optionally `intermittent`) and the reproduction result (`reproduced`, `partly-reproduced`, `cannot-reproduce`); `high-priority` only if urgent; `needs-info` while something is unconfirmed; `env: dev`, `env: staging`, `env: production` or `env: to confirm` (never guess; use `env: dev` for what you reproduced yourself locally, which is the dev environment); `deadline: <date>` only if one was given. Type line is just `Bug`, `New feature` or `Task`.
 7. **Attachments:** list what exists and what is still to be added, never a file link.
-8. **The ticket stands alone.** It never refers to another file, to the learning files, or to "above" or "below". It may mention other ticket IDs when they are related.
+8. **The ticket stands alone.** It never refers to another file, to the learning files, or to "above" or "below". It may mention other tickets by number (`#4`) when they are related.
 
 ## 4. Rules per type
 

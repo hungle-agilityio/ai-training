@@ -1,6 +1,6 @@
 # [BUG] New location breaks the dashboard
 
-- **ID:** BUG-003
+- **ID:** 3
 - **Reporter:** Linh, branch coordinator
 - **Reported on:** 2026-10-13
 - **Status:** New

@@ -7,7 +7,7 @@
 
 ## Summary
 
-Users need a new **Reviews** page that shows every review in a table, split into pages, with tooltips (small text boxes shown on hover) where they help. This is a completely new page. Today no page lists all reviews: the Dashboard only shows the 6 most recent ones, and the "Reviews" item in the left menu is greyed out with the tag "Soon". Filters (good or bad, by week) are not part of this ticket; FEAT-004 adds them on top of this page.
+Users need a new **Reviews** page that shows every review in a table, split into pages, with tooltips (small text boxes shown on hover) where they help. This is a completely new page. Today no page lists all reviews: the Dashboard only shows the 6 most recent ones, and the "Reviews" item in the left menu is greyed out with the tag "Soon". Filters (good or bad, by week) are not part of this ticket; ticket #4 adds them on top of this page.
 
 ## Acceptance criteria
 

@@ -1,6 +1,6 @@
 # [FEAT] Filter reviews by good or bad: discussion
 
-- **ID:** FEAT-004
+- **ID:** 4
 - **Reporter:** Marcus, product owner
 - **Assignee:** not assigned yet
 - **Note:** Simulated conversation for the Day 02 exercise. The replies were not written by the real reporter.

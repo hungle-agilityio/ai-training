@@ -1,6 +1,6 @@
 # [FEAT] Filter reviews by good or bad
 
-- **ID:** FEAT-004
+- **ID:** 4
 - **Reporter:** Marcus, product owner
 - **Reported on:** 2026-10-13
 - **Status:** New

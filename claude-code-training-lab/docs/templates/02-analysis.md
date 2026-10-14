@@ -1,6 +1,6 @@
 # [<TYPE>] <title>: analysis and questions
 
-- **ID:** <BUG | FEAT | TASK>-<number>
+- **ID:** <number>
 - **Reviewed on:** <YYYY-MM-DD>
 - **Status:** Waiting for reporter
 - **Type:** <Bug | New feature | Task>

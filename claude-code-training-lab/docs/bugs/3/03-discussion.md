@@ -1,6 +1,6 @@
 # [BUG] New location breaks the dashboard: discussion
 
-- **ID:** BUG-003
+- **ID:** 3
 - **Reporter:** Linh, branch coordinator
 - **Assignee:** not assigned yet
 - **Note:** Simulated conversation for the Day 02 exercise. The replies were not written by the real reporter.

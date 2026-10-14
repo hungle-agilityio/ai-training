@@ -18,7 +18,7 @@ The rules live in `CLAUDE.md` (Branches, Commits, Pull requests). This skill is 
 
 ## 1. Find the ticket ID
 
-Take it from the branch name (`feat/FEAT-006-reviews-page` gives `FEAT-006`), or from the user, or from the folder name in `docs/bugs/`. If the work has no ticket, do not invent an ID: leave out the `Part of` line, say so, and suggest creating a ticket with the `write-ticket` skill.
+Take it from the branch name (`feat/6-reviews-page` gives `#6`), or from the user, or from the folder name in `docs/bugs/`. If the work has no ticket, do not invent an ID: leave out the `Part of` line, say so, and suggest creating a ticket with the `write-ticket` skill.
 
 ## 2. Branch
 
@@ -26,9 +26,9 @@ Format `<kind>/<id>-<short-description>`, lowercase short description with dashe
 
 | Ticket type | Branch |
 |---|---|
-| BUG | `bug/BUG-001-dashboard-wrong-score` |
-| FEAT | `feat/FEAT-006-reviews-page` |
-| TASK | `task/TASK-010-cleanup-demo-data` |
+| BUG | `bug/1-dashboard-wrong-score` |
+| FEAT | `feat/6-reviews-page` |
+| TASK | `task/10-cleanup-demo-data` |
 
 Create it from the branch the user names, or from the current branch if they do not say, with `git checkout -b`. Uncommitted changes come along; tell the user if there are any.
 
@@ -49,7 +49,7 @@ Part of <id>
 
 - **Title:** imperative, specific, at most about 70 characters, no ticket ID, no trailing period. Say what changed ("Add reviews page with table and pagination"), not "update code".
 - **Detail:** short bullets (or a short paragraph) with the important points only: what changed and why. Do not list every file.
-- **Part of:** one line per ticket, for example `Part of BUG-001`. A commit that touches several tickets has several lines.
+- **Part of:** one line per ticket, for example `Part of #1`. A commit that touches several tickets has several lines.
 
 5. Tests: if the user did not say otherwise, run `uv run ruff check .` and `uv run pytest -q --no-cov` before committing, and report the result. Failing tests that belong to open bug tickets are expected: tell the user, do not hide them and do not skip the commit because of them. Fix or ask about any other failure.
 6. After committing, show `git log --oneline` for the new commits and confirm that the working tree is clean (or say what is left).

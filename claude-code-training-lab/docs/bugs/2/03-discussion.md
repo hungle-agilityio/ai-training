@@ -1,6 +1,6 @@
 # [BUG] Dashboard is very slow: discussion
 
-- **ID:** BUG-002
+- **ID:** 2
 - **Reporter:** Tom, regional director
 - **Assignee:** not assigned yet
 - **Note:** Simulated conversation for the Day 02 exercise. The replies were not written by the real reporter.

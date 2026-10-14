@@ -17,7 +17,7 @@ def test_average_of_single_review() -> None:
 
 
 def test_average_of_mixed_ratings_keeps_one_decimal() -> None:
-    # BUG-001: 4, 5, 2 must give 3.7 (11 / 3 = 3.67 rounded to one decimal), not 3
+    # Bug #1: 4, 5, 2 must give 3.7 (11 / 3 = 3.67 rounded to one decimal), not 3
     assert average_rating(_reviews(4, 5, 2)) == 3.7
 
 

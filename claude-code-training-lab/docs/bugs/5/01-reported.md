@@ -1,6 +1,6 @@
 # [BUG] Reply drafts come out in the wrong language
 
-- **ID:** BUG-005
+- **ID:** 5
 - **Reporter:** Hana, QA
 - **Reported on:** 2026-10-13
 - **Status:** New

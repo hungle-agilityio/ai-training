@@ -1,6 +1,6 @@
 # [BUG] Dashboard numbers look wrong: discussion
 
-- **ID:** BUG-001
+- **ID:** 1
 - **Reporter:** Maria, operations manager
 - **Assignee:** not assigned yet
 - **Note:** Simulated conversation for the Day 02 exercise. The replies were not written by the real reporter.

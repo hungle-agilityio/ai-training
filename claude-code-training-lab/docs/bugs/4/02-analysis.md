@@ -1,6 +1,6 @@
 # [FEAT] Filter reviews by good or bad: analysis and questions
 
-- **ID:** FEAT-004
+- **ID:** 4
 - **Reviewed on:** 2026-10-14
 - **Status:** Waiting for reporter
 - **Type:** New feature

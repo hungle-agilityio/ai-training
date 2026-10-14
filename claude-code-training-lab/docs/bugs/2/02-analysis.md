@@ -1,6 +1,6 @@
 # [BUG] Dashboard is very slow: analysis and questions
 
-- **ID:** BUG-002
+- **ID:** 2
 - **Reviewed on:** 2026-10-14
 - **Status:** Waiting for reporter
 - **Type:** Bug

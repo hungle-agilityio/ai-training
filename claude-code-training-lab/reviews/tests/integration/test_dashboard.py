@@ -64,7 +64,7 @@ def _add_branch(business: Business, name: str, ratings: tuple[int, ...]) -> Bran
 
 @pytest.mark.django_db
 def test_dashboard_shows_average_with_one_decimal() -> None:
-    # BUG-001: Riverside has ratings 4, 5, 2 and must show 3.7, not 3
+    # Bug #1: Riverside has ratings 4, 5, 2 and must show 3.7, not 3
     business = Business.objects.create(name="Demo")
     _add_branch(business, "Airport", (2, 2, 3, 1))
     _add_branch(business, "Riverside", (4, 5, 2))
@@ -79,7 +79,7 @@ def test_dashboard_shows_average_with_one_decimal() -> None:
 def test_dashboard_query_count_does_not_grow_with_branches(
     django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
-    # BUG-002: 20 branches with 3 reviews each must not need one lookup per branch
+    # Bug #2: 20 branches with 3 reviews each must not need one lookup per branch
     business = Business.objects.create(name="Demo")
     for index in range(20):
         _add_branch(business, f"Branch {index}", (4, 5, 3))
@@ -93,7 +93,7 @@ def test_dashboard_query_count_does_not_grow_with_branches(
 
 @pytest.mark.django_db
 def test_dashboard_lists_branch_without_reviews() -> None:
-    # BUG-003: a new branch with no reviews must not break the whole dashboard
+    # Bug #3: a new branch with no reviews must not break the whole dashboard
     business = Business.objects.create(name="Demo")
     _add_branch(business, "Downtown", (4, 4))
     _add_branch(business, "Newtown", ())
@@ -110,7 +110,7 @@ def test_dashboard_lists_branch_without_reviews() -> None:
 
 @pytest.mark.django_db
 def test_dashboard_page_shows_riverside_average_of_3_7() -> None:
-    # BUG-001: the Location scores table must show 3.7 for Riverside, not 3.0
+    # Bug #1: the Location scores table must show 3.7 for Riverside, not 3.0
     business = Business.objects.create(name="Demo")
     _add_branch(business, "Riverside", (4, 5, 2))
 

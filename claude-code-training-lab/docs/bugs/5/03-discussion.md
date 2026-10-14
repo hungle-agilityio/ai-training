@@ -1,6 +1,6 @@
 # [BUG] Reply drafts come out in the wrong language: discussion
 
-- **ID:** BUG-005
+- **ID:** 5
 - **Reporter:** Hana, QA
 - **Assignee:** not assigned yet
 - **Note:** Simulated conversation for the Day 02 exercise. The replies were not written by the real reporter.
