@@ -62,3 +62,10 @@ Hard:    ✅ Analyse → 🟩 Plan (detailed, maybe split) → 🟩 Implement �
 Legend: ✅ done · 🟩 do · 🟨 optional · ⬜ skip · 🚧 not built yet
 
 Full workflow: analyse ticket (`ticket-analyst`) -> plan -> implement -> verify and review (can include a test skill) -> commit -> learn. The implement, verify and review, commit and learn steps are added in later days.
+
+## Lessons learned
+
+- **Rounding:** Python `round()` rounds half to even (2.25 gives 2.2) but Excel and the business round half up. Use `rounded_average` in `reviews/services.py` (Decimal with `ROUND_HALF_UP`). A `-> float` annotation does not stop `//` from returning an `int`, and mypy does not catch it, so test the type.
+- **Pagination:** order by a unique tiebreaker (`-created_at`, `-id`), because seed data has many reviews with the same timestamp. `Paginator.get_page(0)` returns the last page, so validate the page number with a form first.
+- **Time zone:** `TIME_ZONE` is `Asia/Ho_Chi_Minh`; without it Django used America/Chicago and dates were shown a day early for Vietnam.
+- **N+1:** the dev SQLite database hides it (each query is nearly free). Assert the query count in tests (`django_assert_max_num_queries`).
