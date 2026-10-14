@@ -64,3 +64,36 @@ def test_overview_summarises_branches_and_reviews() -> None:
     assert [review.text for review in overview.recent_reviews] == ["r5", "r4"]
     assert overview.recent_reviews[0].branch_name == "Downtown"
     assert overview.recent_reviews[0].sentiment == "positive"
+
+
+def _branch_with_ratings(business: Business, name: str, ratings: list[int]) -> None:
+    branch = Branch.objects.create(business=business, name=name)
+    now = datetime(2026, 10, 14, tzinfo=UTC)
+    Review.objects.bulk_create(
+        Review(branch=branch, rating=rating, text="ok", created_at=now) for rating in ratings
+    )
+
+
+@pytest.mark.django_db
+def test_overview_bar_follows_the_exact_average() -> None:
+    # BUG-001: Riverside (4, 5, 2) is 3.7, so its bar is 74%, not 60%
+    business = Business.objects.create(name="Demo")
+    _branch_with_ratings(business, "Riverside", [4, 5, 2])
+
+    row = dashboard_overview().branches[0]
+
+    assert row.average_rating == 3.7
+    assert row.bar_percent == 74
+
+
+@pytest.mark.django_db
+def test_overview_status_follows_the_rounded_score() -> None:
+    # 74 / 25 = 2.96 shows as 3.0, so it must not be labelled "Needs attention"
+    business = Business.objects.create(name="Demo")
+    _branch_with_ratings(business, "Edge", [3] * 24 + [2])
+
+    overview = dashboard_overview()
+
+    assert overview.branches[0].average_rating == 3.0
+    assert overview.branches[0].status == "watch"
+    assert overview.attention_count == 0

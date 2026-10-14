@@ -106,3 +106,15 @@ def test_dashboard_lists_branch_without_reviews() -> None:
     assert branches["Newtown"]["review_count"] == 0
     assert branches["Newtown"]["average_rating"] is None
     assert branches["Downtown"]["average_rating"] == 4.0
+
+
+@pytest.mark.django_db
+def test_dashboard_page_shows_riverside_average_of_3_7() -> None:
+    # BUG-001: the Location scores table must show 3.7 for Riverside, not 3.0
+    business = Business.objects.create(name="Demo")
+    _add_branch(business, "Riverside", (4, 5, 2))
+
+    content = Client().get("/dashboard/").content.decode()
+
+    assert "<strong>3.7</strong>" in content
+    assert "<strong>3.0</strong>" not in content

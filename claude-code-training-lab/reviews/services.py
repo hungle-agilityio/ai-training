@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.paginator import Paginator
 
@@ -19,9 +20,14 @@ class BranchScore:
     average_rating: float
 
 
+def rounded_average(total: int, count: int) -> float:
+    """Average to one decimal, rounding half up (2.25 -> 2.3) like Excel and a hand calculation."""
+    average = Decimal(total) / Decimal(count)
+    return float(average.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
+
 def average_rating(reviews: Sequence[Review]) -> float:
-    total = sum(review.rating for review in reviews)
-    return total // len(reviews)
+    return rounded_average(sum(review.rating for review in reviews), len(reviews))
 
 
 def branch_scores() -> list[BranchScore]:
