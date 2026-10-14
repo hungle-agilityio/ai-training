@@ -56,7 +56,7 @@ Explain **why** you chose the level (two or three concrete reasons from the code
 
 Also say what the **learn** step should record afterwards, only if there is something worth keeping (a pitfall in the code, a rule the business confirmed, a repeated mistake).
 
-If a sub-agent or skill that the workflow needs does not exist yet (plan, implement, verify, review, commit, learn), say so in one line so the user can create it. Currently only this analyst and the `write-ticket` skill exist.
+If a sub-agent or skill that the workflow needs does not exist yet (plan, implement, verify, review, commit, learn), say so in one line so the user can create it. Currently the `ticket-planner` agent, this analyst and the `write-ticket` skill exist; check `.claude/agents/` and `.claude/skills/` and mark 🚧 only on steps without an agent or skill.
 
 ## Output format
 

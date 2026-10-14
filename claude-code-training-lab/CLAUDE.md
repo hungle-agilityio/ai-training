@@ -2,12 +2,8 @@
 
 ## Tickets
 
-- Each ticket is a folder `docs/bugs/<ID>/` (`BUG-001/`, `FEAT-004/`, `TASK-006/`) with four files, one per stage:
-  1. `01-reported.md`: the ticket as reported, not enough information yet. Never edited afterwards.
-  2. `02-analysis.md`: our review: Analysis (3 sentences), what we found, numbered Questions for the reporter.
-  3. `03-discussion.md`: the conversation between the reporter and the assignee: answers to our questions and any new information.
-  4. `04-final.md`: the complete issue, built from the discussion. It is posted as a standalone GitHub issue, so it must not refer to any other file.
-- Templates are in `docs/templates/` (`01-reported.md`, `02-analysis.md`, `03-discussion.md`, `04-final-bug.md`, `04-final-feature.md`, `04-final-task.md`).
+- Each ticket is a folder `docs/bugs/<ID>/` (`BUG-001/`, `FEAT-004/`, `TASK-006/`). The skill `write-ticket` creates **one** file in it: `04-final.md`, the complete standalone ticket built from `docs/templates/04-final-bug.md`, `04-final-feature.md` or `04-final-task.md`. It is posted as a GitHub issue, so it must not refer to any other file.
+- `01-reported.md`, `02-analysis.md` and `03-discussion.md` (templates in `docs/templates/`) are learning material for the training: the report as received, our analysis and questions, and the conversation with the reporter. The skill does not create or change them.
 - **Title format:** `[type] title`, where type is `BUG`, `FEAT` or `TASK`. Example: `[BUG] dashboard show wrong score number`.
 - The ticket ID (`BUG-001`) is a separate field in the ticket, not part of the title.
 - Tickets are written in plain language for QA, BA and clients: no code, commits, branches or technical terms. Use the skill `write-ticket` (bug, feature or task).
@@ -54,7 +50,7 @@ Part of BUG-001
 
 ## Workflow for a ticket
 
-Start with `ticket-analyst` (sub-agent in `.claude/agents/`): it analyses the ticket against the code and business logic, lists the questions, and after the answers rates the difficulty and suggests the workflow.
+Start with `ticket-analyst` (sub-agent in `.claude/agents/`): it analyses the ticket against the code and business logic, lists the questions, and after the answers rates the difficulty and suggests the workflow. For Medium and Hard tickets, `ticket-planner` then turns the analysis into a test-first, step-by-step plan for the implementer (Easy tickets need no plan).
 
 ```
 Easy:    ✅ Analyse → ⬜ Plan → 🟩 Code → 🟩 Verify → 🟩 Commit → ⬜ Learn
@@ -64,4 +60,4 @@ Hard:    ✅ Analyse → 🟩 Plan (detailed, maybe split) → 🟩 Implement �
 
 Legend: ✅ done · 🟩 do · 🟨 optional · ⬜ skip · 🚧 not built yet
 
-Full workflow: analyse ticket (`ticket-analyst`) -> plan -> implement -> verify and review (can include a test skill) -> commit -> learn. The plan, implement, review and learn steps are added in later days.
+Full workflow: analyse ticket (`ticket-analyst`) -> plan -> implement -> verify and review (can include a test skill) -> commit -> learn. The implement, verify and review, commit and learn steps are added in later days.
