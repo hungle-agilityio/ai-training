@@ -26,7 +26,7 @@ Open http://127.0.0.1:8000/dashboard/ for the branch scores.
 
 ## Bug tickets
 
-Tickets live in `docs/bugs/`. Copy `_template.md` structure when writing a repro-ready report.
+Each ticket is a folder in `docs/bugs/` with `01-reported.md`, `02-analysis.md`, `03-discussion.md` and `04-final.md`. Templates live in `docs/templates/`. Use the skill `write-ticket` to create bug, feature or task tickets.
 
 ## 15-Day Progress
 
