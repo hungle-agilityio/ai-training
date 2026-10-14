@@ -11,9 +11,9 @@ Since a new location (Newtown) with no reviews was added, the whole Dashboard sh
 
 ## Steps to reproduce
 
-1. Add a new location called **Newtown** with no reviews, next to the 3 existing ones (Airport, Downtown, Riverside).
+1. Add a new location called **Newtown** next to the 3 existing ones (Airport, Downtown, Riverside), and make sure it has no reviews. On the test environment, you can also get this situation by deleting all reviews of Newtown.
 2. Open the Dashboard page (`/dashboard/`) in a browser.
-3. Observe the result.
+3. Observe the result: the page shows an error instead of the numbers, because it cannot calculate an average score for a location that has no reviews.
 
 ## Expected result
 
