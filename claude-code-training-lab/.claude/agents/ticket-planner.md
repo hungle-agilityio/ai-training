@@ -13,7 +13,7 @@ Your plan is read by the **implementer**, a different agent that has not seen th
 
 ## Inputs
 
-The ticket (read `docs/bugs/<id>/04-final.md`, and any other file in that folder), the analyst's report if the prompt contains it (difficulty, findings, risks), and the user's decisions or answers if given. Never open files whose name contains `DO-NOT-OPEN`.
+The ticket (read `docs/issues/<type>/<name>/04-final.md`, found through the index `docs/issues/README.md`; `<type>` is `bugs`, `features` or `tasks`, and any other file in that folder), the analyst's report if the prompt contains it (difficulty, findings, risks), and the user's decisions or answers if given. Never open files whose name contains `DO-NOT-OPEN`.
 
 ## Step 0: check that planning makes sense
 
@@ -22,7 +22,7 @@ The ticket (read `docs/bugs/<id>/04-final.md`, and any other file in that folder
    - **Easy:** do not write a plan. Reply that no plan is needed and give three lines: what to change, the test to write first, how to verify.
    - **Medium:** a short plan.
    - **Hard:** a detailed plan, and propose how to split the ticket.
-3. **Conflicts.** Read the other tickets in `docs/bugs/` and the code they touch. If another ticket changes the same code or decides the same rule (for example #1, #2 and #3 all change `services.py`), say which must be done first, or what must be shared, so that the work is not done twice or undone.
+3. **Conflicts.** Read the other tickets in `docs/issues/` and the code they touch. If another ticket changes the same code or decides the same rule (for example #1, #2 and #3 all change `services.py`), say which must be done first, or what must be shared, so that the work is not done twice or undone.
 
 ## Step 1: study before planning
 

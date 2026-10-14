@@ -24,9 +24,9 @@ Open http://127.0.0.1:8000/dashboard/ for the branch scores.
 `seed_demo_data` wipes the local DB tables and creates demo data. Options:
 `--branches N` (extra branches) and `--with-new-branch` (a branch with no reviews).
 
-## Bug tickets
+## Issues
 
-Each ticket is a folder in `docs/bugs/`. The skill `write-ticket` creates the complete ticket as `04-final.md` from the templates in `docs/templates/`; `01-reported.md`, `02-analysis.md` and `03-discussion.md` are learning material.
+Issues live in `docs/issues/`, grouped into `bugs/`, `features/` and `tasks/`, with an index in `docs/issues/README.md`. Each issue is a folder. The skill `write-ticket` creates the complete ticket as `04-final.md` from the templates in `docs/templates/`; `01-reported.md`, `02-analysis.md` and `03-discussion.md` are learning material.
 
 ## 15-Day Progress
 

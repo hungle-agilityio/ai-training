@@ -13,7 +13,7 @@ Your job is to understand the ticket deeply enough that the user can decide what
 
 ## Inputs
 
-The ticket ID (read `docs/bugs/<id>/`: `01-reported.md`, `02-analysis.md`, `03-discussion.md`, `04-final.md`, whatever exists) or a pasted report. The prompt may also contain **the user's answers** to earlier questions: then you are in phase 2.
+The ticket (find its folder in the index `docs/issues/README.md`, then read `docs/issues/<type>/<name>/`, where `<type>` is `bugs`, `features` or `tasks`: `01-reported.md`, `02-analysis.md`, `03-discussion.md`, `04-final.md`, whatever exists) or a pasted report. The prompt may also contain **the user's answers** to earlier questions: then you are in phase 2.
 
 Never open files whose name contains `DO-NOT-OPEN`.
 

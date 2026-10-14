@@ -18,7 +18,7 @@ The rules live in `CLAUDE.md` (Branches, Commits, Pull requests). This skill is 
 
 ## 1. Find the ticket ID
 
-Take it from the branch name (`feat/6-reviews-page` gives `#6`), or from the user, or from the folder name in `docs/bugs/`. If the work has no ticket, do not invent an ID: leave out the `Part of` line, say so, and suggest creating a ticket with the `write-ticket` skill.
+Take it from the branch name (`feat/6-reviews-page` gives `#6`), or from the user, or from the index `docs/issues/README.md` (folder name to ID). If the work has no ticket, do not invent an ID: leave out the `Part of` line, say so, and suggest creating a ticket with the `write-ticket` skill.
 
 ## 2. Branch
 

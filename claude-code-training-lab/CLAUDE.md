@@ -3,10 +3,10 @@
 ## Tickets
 
 - **Ticket ID:** a plain number (`1`, `4`, `6`), shared by bugs, features and tasks, in the order the tickets are created (the same number the issue gets on GitHub, written `#6` in text). The type is shown by the title (`[BUG]`) and by the branch prefix, never by the ID.
-- Each ticket is a folder `docs/bugs/<id>/` (`1/`, `4/`, `6/`). The skill `write-ticket` creates **one** file in it: `04-final.md`, the complete standalone ticket built from `docs/templates/04-final-bug.md`, `04-final-feature.md` or `04-final-task.md`. It is posted as a GitHub issue, so it must not refer to any other file.
+- Issues live in `docs/issues/`, grouped by type: `bugs/`, `features/` and `tasks/`. Each issue is a folder named after it, for example `docs/issues/bugs/dashboard-wrong-score/` or `docs/issues/features/reviews-page/`, where the name is the short lowercase description also used in the branch name (`bug/1-dashboard-wrong-score`). `docs/issues/README.md` is the index of ID, type, folder and title; add a row for every new issue. The skill `write-ticket` creates **one** file in it: `04-final.md`, the complete standalone ticket built from `docs/templates/04-final-bug.md`, `04-final-feature.md` or `04-final-task.md`. It is posted as a GitHub issue, so it must not refer to any other file.
 - `01-reported.md`, `02-analysis.md` and `03-discussion.md` (templates in `docs/templates/`) are learning material for the training: the report as received, our analysis and questions, and the conversation with the reporter. The skill does not create or change them.
 - **Title format:** `[type] title`, where type is `BUG`, `FEAT` or `TASK`. Example: `[BUG] dashboard show wrong score number`.
-- The ticket number is the folder name and is not part of the title.
+- The ticket number is not part of the title or the folder name; it is in the index.
 - Tickets are written in plain language for QA, BA and clients: no code, commits, branches or technical terms. Use the skill `write-ticket` (bug, feature or task).
 
 ## Branches

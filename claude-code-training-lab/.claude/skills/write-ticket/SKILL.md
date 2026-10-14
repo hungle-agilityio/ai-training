@@ -1,6 +1,6 @@
 ---
 name: write-ticket
-description: Write one complete, standalone ticket (bug, feature or task) from a description, following the project templates, and save it as docs/bugs/<id>/04-final.md. Use when the user gives a bug report, a feature request ("can we add X") or a piece of work, when new information arrives for an existing ticket, or when asked to analyse, reproduce, clarify or fill in a BUG, FEAT or TASK ticket.
+description: Write one complete, standalone ticket (bug, feature or task) from a description, following the project templates, and save it as docs/issues/<type>/<name>/04-final.md. Use when the user gives a bug report, a feature request ("can we add X") or a piece of work, when new information arrives for an existing ticket, or when asked to analyse, reproduce, clarify or fill in a BUG, FEAT or TASK ticket.
 ---
 
 # Write a ticket
@@ -9,18 +9,18 @@ The ticket is read by QA, BA, clients and devs, so anyone must understand it and
 
 ## 1. Output: one file
 
-Write **one** file: `docs/bugs/<id>/04-final.md`, the complete ticket, built from the template of its type:
+Write **one** file: `docs/issues/<type>/<name>/04-final.md`, the complete ticket, built from the template of its type:
 
 | Type | Use when | Template | Folder | Branch |
 |---|---|---|---|---|
-| `BUG` | Something that worked, or should work, is wrong: error, wrong value, slow, wrong text | `docs/templates/04-final-bug.md` | `<id>` | `bug/<id>-...` |
-| `FEAT` | Users get a new ability, or an existing page changes what users see | `docs/templates/04-final-feature.md` | `<id>` | `feat/<id>-...` |
-| `TASK` | Work with no new user-facing behaviour: cleanup, data update, configuration, document, investigation | `docs/templates/04-final-task.md` | `<id>` | `task/<id>-...` |
+| `BUG` | Something that worked, or should work, is wrong: error, wrong value, slow, wrong text | `docs/templates/04-final-bug.md` | `bugs/<name>` | `bug/<id>-...` |
+| `FEAT` | Users get a new ability, or an existing page changes what users see | `docs/templates/04-final-feature.md` | `features/<name>` | `feat/<id>-...` |
+| `TASK` | Work with no new user-facing behaviour: cleanup, data update, configuration, document, investigation | `docs/templates/04-final-task.md` | `tasks/<name>` | `task/<id>-...` |
 
 - Follow the template's sections, in order, with nothing added or removed.
 - If the type is unclear, decide from the table and say which you chose and why. If the user names a type, use it.
-- The ticket ID is a plain number shared by all types (`1`, `4`, `6`): use the next free number (the highest folder name in `docs/bugs/` plus one), or the existing folder if the ticket already exists (then update its `04-final.md`). The type is never part of the ID or the folder name.
-- Title format `[type] title`, for example `[BUG] dashboard show wrong score number`. The number is the folder name and is not part of the title.
+- The ticket ID is a plain number shared by all types (`1`, `4`, `6`) and is not part of the folder name. The folder is `docs/issues/<type>/<name>/`, where `<type>` is `bugs`, `features` or `tasks` (matching the ticket type) and `<name>` is a short lowercase description with dashes, the same words used in the branch name (`bug/1-dashboard-wrong-score` goes with `docs/issues/bugs/dashboard-wrong-score/`). Read `docs/issues/README.md`: use the highest ID plus one for a new ticket, or the existing folder if the ticket is already listed (then update its `04-final.md`). Add a row (ID, type, folder, title) to that index for every new ticket.
+- Title format `[type] title`, for example `[BUG] dashboard show wrong score number`. The number is not part of the title.
 - Do **not** create or edit `01-reported.md`, `02-analysis.md` or `03-discussion.md`. Those files, and the templates for them, are the user's own learning material. If they exist for this ticket, read them as input (the reporter's words, the answers) and leave them unchanged.
 
 ## 2. Steps
