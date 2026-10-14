@@ -10,6 +10,7 @@ ALLOWED_HOSTS: list[str] = []
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
+    "django.contrib.humanize",
     "django.contrib.staticfiles",
     "reviews",
 ]
@@ -40,4 +41,5 @@ DATABASES = {
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+TIME_ZONE = "Asia/Ho_Chi_Minh"
 USE_TZ = True

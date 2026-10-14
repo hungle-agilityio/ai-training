@@ -99,7 +99,7 @@
           <li class="review">
             <div class="review-top">
               <strong>{{ review.branch_name }}</strong>
-              <span class="stars" role="img" aria-label="{{ review.rating }} out of 5"><span style="--pct: {% widthratio review.rating 5 100 %}%"></span></span>
+              <span class="stars" role="img" aria-label="{{ review.rating }} out of 5"><span style="--pct: {{ review.rating_percent }}%"></span></span>
               <span class="badge badge-{{ review.sentiment }}">{{ review.sentiment_label }}</span>
               <time datetime="{{ review.created_at|date:'c' }}">{{ review.created_at|date:"M j, Y" }}</time>
             </div>

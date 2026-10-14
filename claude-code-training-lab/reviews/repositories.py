@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from django.db.models import Count
+from django.db.models import Count, QuerySet
 
 from reviews.models import Branch, Review
 
@@ -20,3 +20,7 @@ def rating_counts() -> dict[int, int]:
 
 def list_recent_reviews(limit: int) -> Sequence[Review]:
     return list(Review.objects.select_related("branch").order_by("-created_at")[:limit])
+
+
+def reviews_newest_first() -> QuerySet[Review]:
+    return Review.objects.select_related("branch").order_by("-created_at", "-id")

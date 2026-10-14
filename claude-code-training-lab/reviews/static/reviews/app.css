@@ -192,6 +192,41 @@ h1, h2, p { margin: 0; }
 .review-top time { margin-left: auto; color: var(--muted); font-size: 13px; }
 .review p { color: var(--text); }
 
+/* Reviews table and pagination */
+.reviews-table th, .reviews-table td { vertical-align: top; }
+.reviews-table .review-text { min-width: 260px; max-width: 520px; }
+.nowrap { white-space: nowrap; }
+.reviews-table .review-text { overflow-wrap: anywhere; }
+.expandable { cursor: help; border-bottom: 1px dotted var(--muted); }
+.expandable .text-full {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+.expandable:hover .text-short, .expandable:focus .text-short { display: none; }
+.expandable:hover .text-full, .expandable:focus .text-full {
+  position: static; width: auto; height: auto; overflow: visible;
+  clip: auto; white-space: normal;
+}
+.expandable:focus-visible, .pager-link:focus-visible, .nav-item:focus-visible, .button:focus-visible {
+  outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px;
+}
+.pager {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);
+}
+.pager-summary { color: var(--muted); font-size: 14px; }
+.pager-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pager-link {
+  display: inline-block; min-width: 36px; padding: 6px 12px; text-align: center;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+  color: var(--text); text-decoration: none; font-size: 14px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+a.pager-link:hover { border-color: var(--brand); color: var(--brand); }
+.pager-link.is-current { background: var(--brand); border-color: var(--brand); color: #fff; }
+.pager-link.is-disabled { opacity: .45; cursor: not-allowed; }
+.pager-gap { padding: 0 4px; color: var(--muted); }
+
 /* Responsive */
 @media (max-width: 1000px) {
   .kpis { grid-template-columns: repeat(2, 1fr); }
