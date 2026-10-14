@@ -10,6 +10,7 @@ ALLOWED_HOSTS: list[str] = []
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
+    "django.contrib.staticfiles",
     "reviews",
 ]
 
@@ -19,6 +20,17 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "reviewradar.urls"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {"context_processors": ["django.template.context_processors.request"]},
+    }
+]
+
+STATIC_URL = "static/"
 
 DATABASES = {
     "default": {

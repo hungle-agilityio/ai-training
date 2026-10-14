@@ -1,0 +1,115 @@
+{% extends "reviews/base.html" %}
+
+{% block title %}Dashboard · ReviewRadar{% endblock %}
+{% block heading %}Reputation dashboard{% endblock %}
+{% block subtitle %}How customers rate each of your locations.{% endblock %}
+
+{% block content %}
+{% if overview.branch_count == 0 %}
+  <section class="panel empty">
+    <h2>No locations yet</h2>
+    <p>Add your first location and import its reviews to see scores here.</p>
+  </section>
+{% else %}
+  <section class="kpis" aria-label="Key numbers">
+    <article class="kpi">
+      <p class="kpi-label">Locations</p>
+      <p class="kpi-value">{{ overview.branch_count }}</p>
+    </article>
+    <article class="kpi">
+      <p class="kpi-label">Total reviews</p>
+      <p class="kpi-value">{{ overview.review_count }}</p>
+    </article>
+    <article class="kpi">
+      <p class="kpi-label">Average rating</p>
+      {% if overview.overall_average is None %}
+        <p class="kpi-value">&ndash;</p>
+      {% else %}
+        <p class="kpi-value">{{ overview.overall_average|floatformat:1 }} <span class="kpi-unit">/ 5</span></p>
+        <span class="stars" role="img" aria-label="{{ overview.overall_average|floatformat:1 }} out of 5"><span style="--pct: {{ overview.overall_percent }}%"></span></span>
+      {% endif %}
+    </article>
+    <article class="kpi {% if overview.attention_count %}kpi-alert{% endif %}">
+      <p class="kpi-label">Need attention</p>
+      <p class="kpi-value">{{ overview.attention_count }}</p>
+      <p class="kpi-hint">{% if overview.attention_count %}Rated below 3.0{% else %}All locations are healthy{% endif %}</p>
+    </article>
+  </section>
+
+  <div class="grid">
+    <section class="panel">
+      <header class="panel-head">
+        <h2>Location scores</h2>
+        <p>Average rating and review volume per location</p>
+      </header>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">Location</th>
+              <th scope="col" class="num">Reviews</th>
+              <th scope="col">Rating</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in overview.branches %}
+              <tr>
+                <th scope="row">{{ row.name }}</th>
+                <td class="num">{{ row.review_count }}</td>
+                <td>
+                  <div class="rating-cell">
+                    <strong>{{ row.average_rating|floatformat:1 }}</strong>
+                    <span class="stars" role="img" aria-label="{{ row.average_rating|floatformat:1 }} out of 5"><span style="--pct: {{ row.bar_percent }}%"></span></span>
+                  </div>
+                </td>
+                <td><span class="badge badge-{{ row.status }}">{{ row.status_label }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head">
+        <h2>Rating breakdown</h2>
+        <p>Share of reviews by star rating</p>
+      </header>
+      <ul class="bars">
+        {% for bar in overview.rating_bars %}
+          <li>
+            <span class="bar-label">{{ bar.stars }} <span aria-hidden="true">★</span></span>
+            <span class="bar-track" role="presentation"><span class="bar-fill bar-{{ bar.stars }}" style="width: {{ bar.percent }}%"></span></span>
+            <span class="bar-count">{{ bar.count }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <section class="panel">
+    <header class="panel-head">
+      <h2>Latest reviews</h2>
+      <p>The most recent feedback across all locations</p>
+    </header>
+    {% if overview.recent_reviews %}
+      <ul class="reviews">
+        {% for review in overview.recent_reviews %}
+          <li class="review">
+            <div class="review-top">
+              <strong>{{ review.branch_name }}</strong>
+              <span class="stars" role="img" aria-label="{{ review.rating }} out of 5"><span style="--pct: {% widthratio review.rating 5 100 %}%"></span></span>
+              <span class="badge badge-{{ review.sentiment }}">{{ review.sentiment_label }}</span>
+              <time datetime="{{ review.created_at|date:'c' }}">{{ review.created_at|date:"M j, Y" }}</time>
+            </div>
+            <p>{{ review.text }}</p>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No reviews yet.</p>
+    {% endif %}
+  </section>
+{% endif %}
+{% endblock %}

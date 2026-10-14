@@ -8,6 +8,35 @@ from reviews.models import Branch, Business, Review
 
 
 @pytest.mark.django_db
+def test_dashboard_page_renders_html_for_branches() -> None:
+    business = Business.objects.create(name="Demo")
+    _add_branch(business, "Downtown", (5, 4))
+
+    response = Client().get("/dashboard/")
+
+    assert response.status_code == 200
+    assert "text/html" in response["Content-Type"]
+    content = response.content.decode()
+    assert "ReviewRadar" in content
+    assert "Downtown" in content
+
+
+@pytest.mark.django_db
+def test_dashboard_page_shows_empty_state_without_branches() -> None:
+    response = Client().get("/dashboard/")
+
+    assert response.status_code == 200
+    assert "No locations yet" in response.content.decode()
+
+
+def test_home_redirects_to_dashboard() -> None:
+    response = Client().get("/")
+
+    assert response.status_code == 302
+    assert response["Location"] == "/dashboard/"
+
+
+@pytest.mark.django_db
 def test_dashboard_lists_branch_with_reviews() -> None:
     business = Business.objects.create(name="Demo")
     branch = Branch.objects.create(business=business, name="Downtown")
@@ -16,7 +45,7 @@ def test_dashboard_lists_branch_with_reviews() -> None:
             branch=branch, rating=rating, text="ok", created_at=datetime(2026, 10, 1, tzinfo=UTC)
         )
 
-    response = Client().get("/dashboard/")
+    response = Client().get("/api/dashboard/")
 
     assert response.status_code == 200
     assert response.json()["branches"][0]["name"] == "Downtown"
@@ -40,7 +69,7 @@ def test_dashboard_shows_average_with_one_decimal() -> None:
     _add_branch(business, "Airport", (2, 2, 3, 1))
     _add_branch(business, "Riverside", (4, 5, 2))
 
-    branches = {item["name"]: item for item in Client().get("/dashboard/").json()["branches"]}
+    branches = {item["name"]: item for item in Client().get("/api/dashboard/").json()["branches"]}
 
     assert branches["Riverside"]["average_rating"] == 3.7
     assert branches["Riverside"]["review_count"] == 3
@@ -56,7 +85,7 @@ def test_dashboard_query_count_does_not_grow_with_branches(
         _add_branch(business, f"Branch {index}", (4, 5, 3))
 
     with django_assert_max_num_queries(3):
-        response = Client().get("/dashboard/")
+        response = Client().get("/api/dashboard/")
 
     assert response.status_code == 200
     assert len(response.json()["branches"]) == 20
@@ -69,7 +98,7 @@ def test_dashboard_lists_branch_without_reviews() -> None:
     _add_branch(business, "Downtown", (4, 4))
     _add_branch(business, "Newtown", ())
 
-    response = Client().get("/dashboard/")
+    response = Client().get("/api/dashboard/")
 
     assert response.status_code == 200
     branches = {item["name"]: item for item in response.json()["branches"]}
