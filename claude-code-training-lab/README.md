@@ -6,7 +6,7 @@ Learn Claude Code by building **ReviewRadar**: collect and respond to customer r
 
 - **Business:** online reputation management.
 - **MVP:** import reviews (CSV / mock API), classify sentiment with the Claude API, suggest replies, score dashboard per branch.
-- **Learning focus:** real LLM integration, response caching, multi-branch business modeling.
+- **Learning focus:** real LLM integration, response caching, retries and rate limits, multi-branch business modeling.
 
 ## How to run
 
