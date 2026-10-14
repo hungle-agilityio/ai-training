@@ -5,7 +5,7 @@ description: Write one complete, standalone ticket (bug, feature or task) from a
 
 # Write a ticket
 
-The ticket is read by QA, BA, clients and devs, so anyone must understand it and follow it without asking questions. It is posted as a standalone GitHub issue.
+The ticket is read by QA, BA, clients and devs, so anyone must understand it and follow it without asking questions. It is posted as a standalone GitLab issue (with the `gitlab` skill, after the user approves it).
 
 ## 1. Output: one file
 
@@ -19,7 +19,7 @@ Write **one** file: `docs/issues/<type>/<name>/04-final.md`, the complete ticket
 
 - Follow the template's sections, in order, with nothing added or removed.
 - If the type is unclear, decide from the table and say which you chose and why. If the user names a type, use it.
-- The ticket ID is a plain number shared by all types (`1`, `4`, `6`) and is not part of the folder name. The folder is `docs/issues/<type>/<name>/`, where `<type>` is `bugs`, `features` or `tasks` (matching the ticket type) and `<name>` is a short lowercase description with dashes, the same words used in the branch name (`bug/1-dashboard-wrong-score` goes with `docs/issues/bugs/dashboard-wrong-score/`). Read `docs/issues/README.md`: use the highest ID plus one for a new ticket, or the existing folder if the ticket is already listed (then update its `04-final.md`). Add a row (ID, type, folder, title) to that index for every new ticket.
+- The ticket ID is the GitLab issue number (IID), assigned when the issue is published with the `gitlab` skill. A draft has no ID yet, and the folder name does not contain one. Never invent a number. The folder is `docs/issues/<type>/<name>/`, where `<type>` is `bugs`, `features` or `tasks` (matching the ticket type) and `<name>` is a short lowercase description with dashes, the same words used in the branch name (`bug/1-dashboard-wrong-score` goes with `docs/issues/bugs/dashboard-wrong-score/`). Read `docs/issues/README.md`: reuse the existing folder if the ticket is already listed (then update its `04-final.md`). Add a row (type, folder, title) to that index for every new ticket, with the GitLab column set to `draft`; the `gitlab` skill fills in the IID when the issue is published.
 - Title format `[type] title`, for example `[BUG] dashboard show wrong score number`. The number is not part of the title.
 - Do **not** create or edit `01-reported.md`, `02-analysis.md` or `03-discussion.md`. Those files, and the templates for them, are the user's own learning material. If they exist for this ticket, read them as input (the reporter's words, the answers) and leave them unchanged.
 

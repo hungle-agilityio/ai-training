@@ -1,3 +1,8 @@
 {
-  "mcpServers": {}
+  "mcpServers": {
+    "GitLab": {
+      "type": "http",
+      "url": "https://gitlab.asoft-python.com/api/v4/mcp"
+    }
+  }
 }

@@ -29,7 +29,7 @@ The project is also the vehicle of a 15-day Claude Code training lab (see [Train
 - Python 3.11+, Django 5.2, SQLite
 - `uv` for the environment and dependencies
 - `pytest` (with `pytest-django`, `pytest-mock`, `pytest-cov`), `ruff`, `mypy` (strict) with `django-stubs`
-- GitHub Actions for CI
+- GitLab CI (`.gitlab-ci.yml`)
 
 ## Getting started
 
@@ -94,7 +94,7 @@ docs/
   templates/            Issue and README templates
   journal/, courses/    Training notes
 .claude/                Claude Code skills and agents shared by the team
-.github/                CI workflow and pull request template
+.gitlab/                Issue and merge request templates (CI is `.gitlab-ci.yml`)
 ```
 
 ## Architecture
@@ -118,14 +118,14 @@ uv run mypy .          # types (strict)
 uv run pytest          # tests with coverage
 ```
 
-Target: 90% coverage on the service layer. Mock external APIs; tests never use the network. CI runs lint and tests on every push and pull request.
+Target: 90% coverage on the service layer. Mock external APIs; tests never use the network. GitLab CI runs lint and tests on every push.
 
 ### Workflow
 
-- Work is tracked as issues in `docs/issues/` (a plain number shared by bugs, features and tasks).
+- Work is tracked as GitLab issues; the drafts and the index are in `docs/issues/`. The ticket ID is the GitLab issue number (`#6`).
 - Branch: `<kind>/<number>-<description>`, for example `bug/1-dashboard-wrong-score`.
 - Commit: title, blank line, detail, blank line, `Part of #<number>`.
-- Pull request title: `[type] title`, for example `[FEAT] Reviews page to show all reviews`.
+- Merge request into `main`: title `[type] title`, for example `[FEAT] Reviews page to show all reviews`, description ends with `Closes #<number>`. A human reviews and merges it.
 - The full rules, and the Claude Code skills and agents that apply them, are in [`CLAUDE.md`](CLAUDE.md).
 
 ## Known issues and roadmap
@@ -175,10 +175,10 @@ ReviewRadar is built as part of a **15-day Claude Code training lab**: each day 
 <details>
 <summary>What the lab has produced so far</summary>
 
-- **Skills** (`.claude/skills/`): `write-ticket` (one complete ticket per issue) and `git` (branches, commits and pull requests that follow the project rules).
+- **Skills** (`.claude/skills/`): `write-ticket` (one complete ticket per issue) and `git` (branches, commits and merge request preparation that follow the project rules), and `gitlab` (publish issues and create merge requests through the GitLab MCP server).
 - **Sub-agents** (`.claude/agents/`): `ticket-analyst` (analyses a ticket against the code) and `ticket-planner` (turns the analysis into a step-by-step plan).
 - **Templates** (`docs/templates/`): issue templates and the README template.
 - **Issues** (`docs/issues/`): five seeded tickets analysed and reproduced, and the reviews page (#6), built and tested.
-- **Rules** (`CLAUDE.md`): ticket, branch, commit and pull request formats, the workflow by difficulty (easy, medium, hard) and lessons learned.
+- **Rules** (`CLAUDE.md`): ticket, branch, commit and merge request formats, the workflow by difficulty (easy, medium, hard) and lessons learned.
 
 </details>
