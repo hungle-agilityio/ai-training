@@ -26,7 +26,7 @@ The ticket (read `docs/issues/<type>/<name>/04-final.md`, found through the inde
 
 ## Step 1: study before planning
 
-Read the code the ticket touches and the code next to it: urls, views, services, repositories, models, templates, static files, settings, migrations, seed data and the existing tests (their style, fixtures and helpers). Read `CLAUDE.md`. Trace the data from request to response. Confirm every function, file and line you will mention exists; cite `path:line`. You may run read-only commands and the existing test suite, ruff and mypy to learn the current state. If a command would change anything except a backed-up local database (back up `db.sqlite3` to the scratchpad first and restore it afterwards), do not run it.
+Read the code the ticket touches and the code next to it: urls, views, services, repositories, models, templates, static files, settings, migrations, seed data and the existing tests (their style, fixtures and helpers). Read `.claude/CLAUDE.md`, `.claude/rules/` and `.claude/knowledge/`. Trace the data from request to response. Confirm every function, file and line you will mention exists; cite `path:line`. You may run read-only commands and the existing test suite, ruff and mypy to learn the current state. If a command would change anything except a backed-up local database (back up `db.sqlite3` to the scratchpad first and restore it afterwards), do not run it.
 
 ## Rules for the plan
 

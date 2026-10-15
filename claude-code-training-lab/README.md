@@ -126,7 +126,7 @@ Target: 90% coverage on the service layer. Mock external APIs; tests never use t
 - Branch: `<kind>/<number>-<description>`, for example `bug/1-dashboard-wrong-score`.
 - Commit: title, blank line, detail, blank line, `Part of #<number>`.
 - Merge request into `main`: title `[type] title`, for example `[FEAT] Reviews page to show all reviews`, description ends with `Closes #<number>`. A human reviews and merges it.
-- The full rules, and the Claude Code skills and agents that apply them, are in [`CLAUDE.md`](CLAUDE.md).
+- The rules are in [`.claude/CLAUDE.md`](.claude/CLAUDE.md) and [`.claude/rules/`](.claude/rules); the skills and agents that apply them are in `.claude/`.
 
 ## Known issues and roadmap
 
@@ -179,6 +179,6 @@ ReviewRadar is built as part of a **15-day Claude Code training lab**: each day 
 - **Sub-agents** (`.claude/agents/`): `ticket-analyst` (analyses a ticket against the code) and `ticket-planner` (turns the analysis into a step-by-step plan).
 - **Templates** (`docs/templates/`): issue templates and the README template.
 - **Issues** (`docs/issues/`): five seeded tickets analysed and reproduced, and the reviews page (#6), built and tested.
-- **Rules** (`CLAUDE.md`): ticket, branch, commit and merge request formats, the workflow by difficulty (easy, medium, hard) and lessons learned.
+- **Rules** (`.claude/CLAUDE.md` and `.claude/rules/`): ticket, branch, commit and merge request formats, the workflow by difficulty (easy, medium, hard) and lessons learned.
 
 </details>

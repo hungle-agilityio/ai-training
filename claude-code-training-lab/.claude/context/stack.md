@@ -1,0 +1,23 @@
+# Stack
+
+| Part | Choice |
+|---|---|
+| Language | Python 3.11 |
+| Framework | Django 5 (`>=5.0,<6.0`) |
+| Database | SQLite in dev (hides N+1; assert query counts in tests) |
+| Time zone | `Asia/Ho_Chi_Minh` |
+| Tooling | `uv`, `ruff`, `mypy` (strict, `django-stubs`) |
+| Tests | `pytest`, `pytest-django`, `pytest-mock`, `pytest-cov` (tests in `reviews/tests`) |
+| CI | GitLab pipeline `.gitlab-ci.yml`: `ruff check` and `pytest` |
+| Tracker | GitLab `hung.le/ai-training` through the MCP server in `.mcp.json` |
+
+Versions and settings come from `requirements.txt` and `pyproject.toml`; check them before relying on a version-specific feature.
+
+## Commands
+
+```
+uv run ruff check .          # lint
+uv run mypy .                # types (strict)
+uv run pytest -q --no-cov    # tests (drop --no-cov for the coverage report)
+uv run python manage.py runserver
+```

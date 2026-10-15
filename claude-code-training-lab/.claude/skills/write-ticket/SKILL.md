@@ -50,7 +50,7 @@ Write **one** file: `docs/issues/<type>/<name>/04-final.md`, the complete ticket
 
 ## 5. Git naming (only when asked to create a branch or commit)
 
-Follow CLAUDE.md: branch as in the table above, commit message `title`, blank line, `detail`, blank line, `Part of <id>`.
+Follow `.claude/rules/git.md`: branch as in the table above, commit message `title`, blank line, `detail`, blank line, `Part of <id>`.
 
 ## 6. Before you finish
 

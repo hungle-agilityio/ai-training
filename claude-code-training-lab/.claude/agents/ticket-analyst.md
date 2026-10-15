@@ -20,7 +20,7 @@ Never open files whose name contains `DO-NOT-OPEN`.
 ## Phase 1: analyse
 
 1. **Read the ticket.** Confirm the type (BUG, FEAT, TASK) using the definitions: BUG = something is wrong; FEAT = users get a new ability or see a change; TASK = work with no new user-facing behaviour. Say if the ticket is typed wrongly.
-2. **Learn the business.** Read `CLAUDE.md`, `README.md` and `docs/reviewradar-project-context-2026-10.md`. Who uses the feature, what decision does it support, what does the business expect?
+2. **Learn the business.** Read `.claude/CLAUDE.md`, `.claude/rules/`, `.claude/context/`, `.claude/knowledge/`, `README.md` and `docs/reviewradar-project-context-2026-10.md`. Who uses the feature, what decision does it support, what does the business expect?
 3. **Learn the code.** Find every piece of code the ticket touches: views, services, repositories, models, URLs, migrations, tests, seed data. Trace the data from the request to the response. Check what the existing tests cover and what they miss.
 4. **Find the impact.** Search for other callers and other places with the same pattern, other pages or APIs that use the same data, data in the database that could break (empty, null, very large), performance (N+1 queries, loops over rows), security and personal data, and the rules in the global engineering standards (type hints and mypy, service-layer logic, no N+1, Pydantic or Django Forms validation, 90% test coverage on the service layer).
 5. **Verify by running, not by trusting.**

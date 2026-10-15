@@ -5,12 +5,12 @@ description: Review a merge request or a branch and write one review in a fixed 
 
 # PR review
 
-The rules live in `CLAUDE.md` (Branches, GitLab and merge requests, Lessons learned). This skill is the procedure and the output format. The result is **one document, in English**, that the user pastes into the merge request by hand.
+The rules live in `.claude/rules/`, `.claude/knowledge/` and `.claude/CLAUDE.md`. This skill is the procedure and the output format. The result is **one document, in English**, that the user pastes into the merge request by hand.
 
 ## Safety rules
 
 - Read-only. Never change code, tickets or branches, never switch the user's branch, never touch `db.sqlite3`. To run the checks on another branch, use a temporary `git worktree` in the scratchpad and remove it afterwards.
-- Never post a comment, approve or merge on GitLab. The user posts the review. This follows `CLAUDE.md`: Claude never merges or approves.
+- Never post a comment, approve or merge on GitLab. The user posts the review. This follows `.claude/CLAUDE.md`: Claude never merges or approves.
 - Never open files named `*DO-NOT-OPEN*`.
 - Report only what you verified. A claim you did not check (production timing, a browser, a test you did not run) is written as "not verified", never as a fact. Do not invent strengths to fill a category.
 
@@ -30,7 +30,7 @@ Go through the checklist in this order, and stop adding findings once the three 
 4. **Security basics:** input validated with forms, output escaped, no secrets or personal data in logs, no raw SQL.
 5. **Scope:** only what the ticket asks; unrelated changes; overlap and expected conflicts with other open branches.
 
-Project rules to check (from `CLAUDE.md` and the global standards): logic in the service layer and a thin view; type hints and `mypy`; N+1 is a blocker and the query count is asserted; the rounding rule (half up through `rounded_average`, test the type); pagination order has a unique tiebreaker; the time zone is `Asia/Ho_Chi_Minh`; 90% coverage on services; the commit format and `Part of #<id>`.
+Project rules to check (from `.claude/CLAUDE.md`, `.claude/rules/`, `.claude/knowledge/KNOWN_PITFALLS.md` and the global standards): logic in the service layer and a thin view; type hints and `mypy`; N+1 is a blocker and the query count is asserted; the rounding rule (half up through `rounded_average`, test the type); pagination order has a unique tiebreaker; the time zone is `Asia/Ho_Chi_Minh`; 90% coverage on services; the commit format and `Part of #<id>`.
 
 Run `uv run ruff check .`, `uv run mypy .` and `uv run pytest -q` on the branch (in a worktree if it is not checked out) and report the real result. Failing tests that belong to other open tickets are named, not hidden.
 

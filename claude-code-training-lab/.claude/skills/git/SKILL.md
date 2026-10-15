@@ -5,7 +5,7 @@ description: Create branches and commits that follow the project rules (branch <
 
 # Git
 
-The rules live in `CLAUDE.md` (Branches, Commits, Merge requests). This skill is the procedure. Never push, force, or touch the remote unless the user asks.
+The format rules live in `.claude/rules/git.md`. This skill is the procedure. Never push, force, or touch the remote unless the user asks.
 
 ## Safety rules
 
