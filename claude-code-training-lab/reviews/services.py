@@ -215,6 +215,7 @@ class ReviewsPage:
     previous_href: str
     next_href: str
     branches: list[BranchOption]
+    branch_id: int | None
     rating: str
     week_value: str
     week_label: str | None
@@ -299,6 +300,7 @@ def reviews_page(
         previous_href=page_href(params, previous_number),
         next_href=page_href(params, next_number),
         branches=[BranchOption(pk, name, pk == branch_id) for pk, name in choices],
+        branch_id=branch_id,
         rating=filters.rating if ratings is not None and filters.rating else "",
         week_value=filters.day.isoformat() if filters.day else "",
         week_label=week.label if week else None,

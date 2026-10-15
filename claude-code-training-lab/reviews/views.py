@@ -4,7 +4,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 
 from reviews import services
-from reviews.forms import PageForm
+from reviews.forms import PageForm, ReviewFilterForm
 
 
 def dashboard(request: HttpRequest) -> HttpResponse:
@@ -12,7 +12,10 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 
 
 def reviews(request: HttpRequest) -> HttpResponse:
-    page = services.reviews_page(PageForm(request.GET).page_number())
+    page = services.reviews_page(
+        PageForm(request.GET).page_number(),
+        filters=ReviewFilterForm(request.GET).filters(),
+    )
     return render(request, "reviews/reviews.html", {"page": page})
 
 
