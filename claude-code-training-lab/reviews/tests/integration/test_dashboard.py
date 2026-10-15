@@ -118,3 +118,21 @@ def test_dashboard_page_shows_riverside_average_of_3_7() -> None:
 
     assert "<strong>3.7</strong>" in content
     assert "<strong>3.0</strong>" not in content
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("branch_count", [20, 200])
+def test_dashboard_page_query_count_does_not_grow_with_branches(
+    branch_count: int,
+    django_assert_num_queries: DjangoAssertNumQueries,
+) -> None:
+    # Bug #1: the page needs 3 queries (scores, rating counts, latest reviews) for any number
+    business = Business.objects.create(name="Demo")
+    for index in range(branch_count):
+        _add_branch(business, f"Branch {index}", (4, 5, 3))
+
+    with django_assert_num_queries(3):
+        response = Client().get("/dashboard/")
+
+    assert response.status_code == 200
+    assert f"Branch {branch_count - 1}" in response.content.decode()

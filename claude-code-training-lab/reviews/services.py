@@ -17,7 +17,7 @@ class BranchScore:
     branch_id: int
     name: str
     review_count: int
-    average_rating: float
+    average_rating: float | None
 
 
 def rounded_average(total: int, count: int) -> float:
@@ -31,25 +31,26 @@ def average_rating(reviews: Sequence[Review]) -> float:
 
 
 def branch_scores() -> list[BranchScore]:
-    scores: list[BranchScore] = []
-    for branch in repositories.list_branches():
-        reviews = repositories.list_reviews_for_branch(branch.id)
-        scores.append(
-            BranchScore(
-                branch_id=branch.id,
-                name=branch.name,
-                review_count=len(reviews),
-                average_rating=average_rating(reviews),
-            )
+    return [
+        BranchScore(
+            branch_id=totals.branch_id,
+            name=totals.name,
+            review_count=totals.review_count,
+            average_rating=(
+                rounded_average(totals.rating_total, totals.review_count)
+                if totals.review_count
+                else None
+            ),
         )
-    return scores
+        for totals in repositories.branch_rating_totals()
+    ]
 
 
 @dataclass(frozen=True)
 class BranchRow:
     name: str
     review_count: int
-    average_rating: float
+    average_rating: float | None
     bar_percent: int
     status: str
     status_label: str
@@ -128,6 +129,19 @@ def to_review_row(review: Review) -> ReviewRow:
 def dashboard_overview(recent_limit: int = 6) -> DashboardOverview:
     rows = []
     for score in branch_scores():
+        if score.average_rating is None:
+            # No reviews yet: no score, no bar and no status ("No reviews yet" is ticket #3)
+            rows.append(
+                BranchRow(
+                    name=score.name,
+                    review_count=score.review_count,
+                    average_rating=None,
+                    bar_percent=0,
+                    status="",
+                    status_label="",
+                )
+            )
+            continue
         status, label = branch_status(score.average_rating)
         rows.append(
             BranchRow(
