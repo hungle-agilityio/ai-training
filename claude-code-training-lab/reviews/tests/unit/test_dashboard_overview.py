@@ -112,4 +112,6 @@ def test_overview_branch_without_reviews_is_not_flagged_for_attention() -> None:
     assert rows["Newtown"].review_count == 0
     assert rows["Newtown"].average_rating is None
     assert rows["Newtown"].bar_percent == 0
+    assert rows["Newtown"].status == ""
     assert overview.attention_count == 0
+    assert rows["Downtown"].average_rating == 4.0

@@ -158,6 +158,17 @@ def test_dashboard_page_shows_no_reviews_yet_for_a_new_branch() -> None:
 
 
 @pytest.mark.django_db
+def test_dashboard_page_counts_all_branches_including_the_new_one() -> None:
+    business = Business.objects.create(name="Demo")
+    _add_branch(business, "Downtown", (4, 4))
+    _add_branch(business, "Newtown", ())
+
+    content = Client().get("/dashboard/").content.decode()
+
+    assert '<p class="kpi-value">2</p>' in content
+
+
+@pytest.mark.django_db
 def test_dashboard_api_gives_null_average_for_a_branch_without_reviews() -> None:
     # Contract: "average_rating" is null (not a number) for a location without reviews
     business = Business.objects.create(name="Demo")
