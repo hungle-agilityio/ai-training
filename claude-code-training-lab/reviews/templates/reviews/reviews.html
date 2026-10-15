@@ -8,7 +8,39 @@
 
 {% block content %}
 <section class="panel">
-  {% if page.total == 0 %}
+  <form class="filters" method="get" action="{% url 'reviews' %}" aria-label="Filter reviews">
+    <div class="field">
+      <label for="filter-location">Location</label>
+      <select id="filter-location" name="location">
+        <option value=""{% if page.branch_id is None %} selected{% endif %}>All locations</option>
+        {% for branch in page.branches %}
+          <option value="{{ branch.id }}"{% if branch.is_selected %} selected{% endif %}>{{ branch.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="filter-rating">Rating</label>
+      <select id="filter-rating" name="rating">
+        <option value=""{% if not page.rating %} selected{% endif %}>All ratings</option>
+        <option value="good"{% if page.rating == "good" %} selected{% endif %}>Good (4-5 stars)</option>
+        <option value="bad"{% if page.rating == "bad" %} selected{% endif %}>Bad (1-2 stars)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="filter-week">Week of</label>
+      <input id="filter-week" type="date" name="week" value="{{ page.week_value }}" placeholder="YYYY-MM-DD">
+    </div>
+    <button class="button" type="submit">Apply</button>
+    {% if page.is_filtered %}<a class="button" href="{% url 'reviews' %}">Clear</a>{% endif %}
+  </form>
+  {% if page.week_label %}<p class="filter-week-label">Week: {{ page.week_label }}</p>{% endif %}
+
+  {% if page.total == 0 and page.is_filtered %}
+    <div class="empty">
+      <h2>No reviews found</h2>
+      <p>No review matches these filters. Try another location, rating or week.</p>
+    </div>
+  {% elif page.total == 0 %}
     <div class="empty">
       <h2>No reviews yet</h2>
       <p>Reviews will appear here as soon as they are imported.</p>
@@ -52,7 +84,7 @@
       <ul class="pager-list">
         <li>
           {% if page.has_previous %}
-            <a class="pager-link" href="?page={{ page.previous_number }}" rel="prev">Previous</a>
+            <a class="pager-link" href="{{ page.previous_href }}" rel="prev">Previous</a>
           {% else %}
             <span class="pager-link is-disabled" aria-disabled="true">Previous</span>
           {% endif %}
@@ -64,13 +96,13 @@
             {% elif link.is_current %}
               <span class="pager-link is-current" aria-current="page">{{ link.number }}</span>
             {% else %}
-              <a class="pager-link" href="?page={{ link.number }}">{{ link.number }}</a>
+              <a class="pager-link" href="{{ link.href }}">{{ link.number }}</a>
             {% endif %}
           </li>
         {% endfor %}
         <li>
           {% if page.has_next %}
-            <a class="pager-link" href="?page={{ page.next_number }}" rel="next">Next</a>
+            <a class="pager-link" href="{{ page.next_href }}" rel="next">Next</a>
           {% else %}
             <span class="pager-link is-disabled" aria-disabled="true">Next</span>
           {% endif %}

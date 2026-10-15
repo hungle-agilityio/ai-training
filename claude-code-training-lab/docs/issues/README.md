@@ -9,6 +9,6 @@ The issue number (ID) is the **GitLab issue number**, given when the issue is pu
 | 1 | draft | Bug | `bugs/dashboard-wrong-score/` | Dashboard numbers look wrong |
 | 2 | #1 | Bug | `bugs/dashboard-slow/` | Dashboard is very slow |
 | 3 | #2 | Bug | `bugs/new-location-breaks-dashboard/` | New location breaks the dashboard |
-| 4 | draft | Feature | `features/filter-reviews/` | Filter reviews by good or bad |
+| 4 | #4 | Feature | `features/filter-reviews/` | Filter reviews by good or bad |
 | 5 | draft | Bug | `bugs/reply-wrong-language/` | Reply drafts come out in the wrong language |
 | 6 | draft | Feature | `features/reviews-page/` | Reviews page to show all reviews |

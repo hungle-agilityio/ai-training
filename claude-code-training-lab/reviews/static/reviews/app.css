@@ -243,3 +243,10 @@ a.pager-link:hover { border-color: var(--brand); color: var(--brand); }
   .kpis { grid-template-columns: 1fr 1fr; gap: 12px; }
   .kpi-value { font-size: 26px; }
 }
+
+.filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.filters .field { display: flex; flex-direction: column; gap: 4px; }
+.filters label { color: var(--muted); font-size: 13px; font-weight: 600; }
+.filters select, .filters input { font: inherit; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+.filter-week-label { margin: 0; padding: 10px 20px 0; color: var(--muted); font-size: 13.5px; }
+@media (max-width: 760px) { .filters .field, .filters select, .filters input { width: 100%; } }

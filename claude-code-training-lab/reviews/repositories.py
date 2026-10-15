@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 
 from django.db.models import Count, QuerySet, Sum
 from django.db.models.functions import Coalesce
@@ -45,5 +46,24 @@ def list_recent_reviews(limit: int) -> Sequence[Review]:
     return list(Review.objects.select_related("branch").order_by("-created_at")[:limit])
 
 
-def reviews_newest_first() -> QuerySet[Review]:
-    return Review.objects.select_related("branch").order_by("-created_at", "-id")
+def reviews_newest_first(
+    *,
+    branch_id: int | None = None,
+    ratings: tuple[int, int] | None = None,
+    created_range: tuple[datetime, datetime] | None = None,
+) -> QuerySet[Review]:
+    """Newest first. `ratings` is (lowest, highest) stars; `created_range` is [start, end)."""
+    reviews = Review.objects.select_related("branch").order_by("-created_at", "-id")
+    if branch_id is not None:
+        reviews = reviews.filter(branch_id=branch_id)
+    if ratings is not None:
+        reviews = reviews.filter(rating__range=ratings)
+    if created_range is not None:
+        reviews = reviews.filter(created_at__gte=created_range[0], created_at__lt=created_range[1])
+    return reviews
+
+
+def branch_choices() -> list[tuple[int, str]]:
+    return [
+        (pk, name) for pk, name in Branch.objects.order_by("name", "id").values_list("id", "name")
+    ]
