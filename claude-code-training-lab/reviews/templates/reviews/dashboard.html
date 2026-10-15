@@ -57,13 +57,18 @@
               <tr>
                 <th scope="row">{{ row.name }}</th>
                 <td class="num">{{ row.review_count }}</td>
-                <td>
-                  <div class="rating-cell">
-                    <strong>{{ row.average_rating|floatformat:1 }}</strong>
-                    <span class="stars" role="img" aria-label="{{ row.average_rating|floatformat:1 }} out of 5"><span style="--pct: {{ row.bar_percent }}%"></span></span>
-                  </div>
-                </td>
-                <td><span class="badge badge-{{ row.status }}">{{ row.status_label }}</span></td>
+                {% if row.average_rating is None %}
+                  <td><span class="muted">No reviews yet</span></td>
+                  <td></td>
+                {% else %}
+                  <td>
+                    <div class="rating-cell">
+                      <strong>{{ row.average_rating|floatformat:1 }}</strong>
+                      <span class="stars" role="img" aria-label="{{ row.average_rating|floatformat:1 }} out of 5"><span style="--pct: {{ row.bar_percent }}%"></span></span>
+                    </div>
+                  </td>
+                  <td><span class="badge badge-{{ row.status }}">{{ row.status_label }}</span></td>
+                {% endif %}
               </tr>
             {% endfor %}
           </tbody>

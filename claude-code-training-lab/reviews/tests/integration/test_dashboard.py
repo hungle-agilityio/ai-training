@@ -118,3 +118,63 @@ def test_dashboard_page_shows_riverside_average_of_3_7() -> None:
 
     assert "<strong>3.7</strong>" in content
     assert "<strong>3.0</strong>" not in content
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("branch_count", [20, 200])
+def test_dashboard_page_query_count_does_not_grow_with_branches(
+    branch_count: int,
+    django_assert_num_queries: DjangoAssertNumQueries,
+) -> None:
+    # Bug #1: the page needs 3 queries (scores, rating counts, latest reviews) for any number
+    business = Business.objects.create(name="Demo")
+    for index in range(branch_count):
+        _add_branch(business, f"Branch {index}", (4, 5, 3))
+
+    with django_assert_num_queries(3):
+        response = Client().get("/dashboard/")
+
+    assert response.status_code == 200
+    assert f"Branch {branch_count - 1}" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_dashboard_page_shows_no_reviews_yet_for_a_new_branch() -> None:
+    # A location without reviews is listed with "No reviews yet" instead of an empty score
+    business = Business.objects.create(name="Demo")
+    _add_branch(business, "Downtown", (4, 4))
+    _add_branch(business, "Newtown", ())
+
+    response = Client().get("/dashboard/")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Newtown" in content
+    assert content.count("No reviews yet") == 1
+    assert "<strong>4.0</strong>" in content
+    assert "<strong></strong>" not in content
+    assert 'aria-label=" out of 5"' not in content
+    assert 'class="badge badge-"' not in content
+
+
+@pytest.mark.django_db
+def test_dashboard_page_counts_all_branches_including_the_new_one() -> None:
+    business = Business.objects.create(name="Demo")
+    _add_branch(business, "Downtown", (4, 4))
+    _add_branch(business, "Newtown", ())
+
+    content = Client().get("/dashboard/").content.decode()
+
+    assert '<p class="kpi-value">2</p>' in content
+
+
+@pytest.mark.django_db
+def test_dashboard_api_gives_null_average_for_a_branch_without_reviews() -> None:
+    # Contract: "average_rating" is null (not a number) for a location without reviews
+    business = Business.objects.create(name="Demo")
+    _add_branch(business, "Newtown", ())
+
+    branch = Client().get("/api/dashboard/").json()["branches"][0]
+
+    assert branch["review_count"] == 0
+    assert branch["average_rating"] is None

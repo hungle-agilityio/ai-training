@@ -22,7 +22,7 @@ class BranchScore:
     branch_id: int
     name: str
     review_count: int
-    average_rating: float
+    average_rating: float | None
 
 
 def rounded_average(total: int, count: int) -> float:
@@ -31,30 +31,34 @@ def rounded_average(total: int, count: int) -> float:
     return float(average.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
-def average_rating(reviews: Sequence[Review]) -> float:
-    return rounded_average(sum(review.rating for review in reviews), len(reviews))
+def average_from_totals(total: int, count: int) -> float | None:
+    """The one rule for a location's score: None when it has no reviews yet."""
+    if count == 0:
+        return None
+    return rounded_average(total, count)
+
+
+def average_rating(reviews: Sequence[Review]) -> float | None:
+    return average_from_totals(sum(review.rating for review in reviews), len(reviews))
 
 
 def branch_scores() -> list[BranchScore]:
-    scores: list[BranchScore] = []
-    for branch in repositories.list_branches():
-        reviews = repositories.list_reviews_for_branch(branch.id)
-        scores.append(
-            BranchScore(
-                branch_id=branch.id,
-                name=branch.name,
-                review_count=len(reviews),
-                average_rating=average_rating(reviews),
-            )
+    return [
+        BranchScore(
+            branch_id=totals.branch_id,
+            name=totals.name,
+            review_count=totals.review_count,
+            average_rating=average_from_totals(totals.rating_total, totals.review_count),
         )
-    return scores
+        for totals in repositories.branch_rating_totals()
+    ]
 
 
 @dataclass(frozen=True)
 class BranchRow:
     name: str
     review_count: int
-    average_rating: float
+    average_rating: float | None
     bar_percent: int
     status: str
     status_label: str
@@ -133,6 +137,19 @@ def to_review_row(review: Review) -> ReviewRow:
 def dashboard_overview(recent_limit: int = 6) -> DashboardOverview:
     rows = []
     for score in branch_scores():
+        if score.average_rating is None:
+            # No reviews yet: no score, no bar, no status, and not "needs attention"
+            rows.append(
+                BranchRow(
+                    name=score.name,
+                    review_count=score.review_count,
+                    average_rating=None,
+                    bar_percent=0,
+                    status="",
+                    status_label="",
+                )
+            )
+            continue
         status, label = branch_status(score.average_rating)
         rows.append(
             BranchRow(

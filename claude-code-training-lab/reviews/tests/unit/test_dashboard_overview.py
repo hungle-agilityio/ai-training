@@ -97,3 +97,21 @@ def test_overview_status_follows_the_rounded_score() -> None:
     assert overview.branches[0].average_rating == 3.0
     assert overview.branches[0].status == "watch"
     assert overview.attention_count == 0
+
+
+@pytest.mark.django_db
+def test_overview_branch_without_reviews_is_not_flagged_for_attention() -> None:
+    # A location without reviews has no score: no bar, no status, not "needs attention"
+    business = Business.objects.create(name="Demo")
+    _branch_with_ratings(business, "Downtown", [4, 4])
+    _branch_with_ratings(business, "Newtown", [])
+
+    overview = dashboard_overview()
+    rows = {row.name: row for row in overview.branches}
+
+    assert rows["Newtown"].review_count == 0
+    assert rows["Newtown"].average_rating is None
+    assert rows["Newtown"].bar_percent == 0
+    assert rows["Newtown"].status == ""
+    assert overview.attention_count == 0
+    assert rows["Downtown"].average_rating == 4.0
