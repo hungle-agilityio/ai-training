@@ -43,3 +43,8 @@ def test_average_rounds_half_up_to_one_decimal(ratings: tuple[int, ...], expecte
 def test_rounded_average_rounds_half_up() -> None:
     assert rounded_average(9, 4) == 2.3
     assert rounded_average(59, 20) == 3.0
+
+
+def test_average_of_no_reviews_is_none() -> None:
+    # Bug #3: a location without reviews has no score, and must not raise
+    assert average_rating([]) is None

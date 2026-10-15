@@ -17,7 +17,7 @@ class BranchScore:
     branch_id: int
     name: str
     review_count: int
-    average_rating: float
+    average_rating: float | None
 
 
 def rounded_average(total: int, count: int) -> float:
@@ -26,7 +26,10 @@ def rounded_average(total: int, count: int) -> float:
     return float(average.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
-def average_rating(reviews: Sequence[Review]) -> float:
+def average_rating(reviews: Sequence[Review]) -> float | None:
+    """Average of the ratings, or None for a location that has no reviews yet."""
+    if not reviews:
+        return None
     return rounded_average(sum(review.rating for review in reviews), len(reviews))
 
 
@@ -49,7 +52,7 @@ def branch_scores() -> list[BranchScore]:
 class BranchRow:
     name: str
     review_count: int
-    average_rating: float
+    average_rating: float | None
     bar_percent: int
     status: str
     status_label: str
@@ -128,6 +131,19 @@ def to_review_row(review: Review) -> ReviewRow:
 def dashboard_overview(recent_limit: int = 6) -> DashboardOverview:
     rows = []
     for score in branch_scores():
+        if score.average_rating is None:
+            # No reviews yet: no score, no bar, no status, and not "needs attention"
+            rows.append(
+                BranchRow(
+                    name=score.name,
+                    review_count=score.review_count,
+                    average_rating=None,
+                    bar_percent=0,
+                    status="",
+                    status_label="",
+                )
+            )
+            continue
         status, label = branch_status(score.average_rating)
         rows.append(
             BranchRow(

@@ -118,3 +118,33 @@ def test_dashboard_page_shows_riverside_average_of_3_7() -> None:
 
     assert "<strong>3.7</strong>" in content
     assert "<strong>3.0</strong>" not in content
+
+
+@pytest.mark.django_db
+def test_dashboard_page_shows_no_reviews_yet_for_a_new_branch() -> None:
+    # Bug #3: all locations are listed; the new one shows "No reviews yet" instead of a score
+    business = Business.objects.create(name="Demo")
+    _add_branch(business, "Downtown", (4, 4))
+    _add_branch(business, "Newtown", ())
+
+    response = Client().get("/dashboard/")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Newtown" in content
+    assert content.count("No reviews yet") == 1
+    assert "<strong>4.0</strong>" in content
+    assert "<strong></strong>" not in content
+    assert 'aria-label=" out of 5"' not in content
+    assert 'class="badge badge-"' not in content
+
+
+@pytest.mark.django_db
+def test_dashboard_page_counts_all_branches_including_the_new_one() -> None:
+    business = Business.objects.create(name="Demo")
+    _add_branch(business, "Downtown", (4, 4))
+    _add_branch(business, "Newtown", ())
+
+    content = Client().get("/dashboard/").content.decode()
+
+    assert '<p class="kpi-value">2</p>' in content
