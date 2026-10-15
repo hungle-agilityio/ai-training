@@ -8,4 +8,4 @@
 
 ## Screenshot
 
-Closes #<IID>
+Closes #\<IID>

@@ -45,7 +45,7 @@ Tools of the GitLab MCP server used here (names come from the GitLab documentati
 
 | Title | GitLab |
 |---|---|
-| [BUG] Dashboard numbers look wrong | https://gitlab.asoft-python.com/hung.le/ai-training/-/issues/<IID> |
+| [BUG] Dashboard numbers look wrong | https://gitlab.asoft-python.com/hung.le/ai-training/-/issues/\<IID> |
 
 ### Label mapping
 

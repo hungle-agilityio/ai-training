@@ -1,18 +1,18 @@
-# [<TYPE>] <title>: discussion
+# [\<TYPE>] \<title>: discussion
 
-- **ID:** <number>
-- **Reporter:** <name, role>
-- **Assignee:** <name, or "not assigned yet">
+- **ID:** \<number>
+- **Reporter:** \<name, role>
+- **Assignee:** \<name, or "not assigned yet">
 
 ## Conversation
 
 The conversation between the reporter and the assignee, in order and in their own words. Add the date and who wrote each message. Write down every new piece of information: answers, decisions, screenshots or recordings (say what they show), exact error texts. Never write a reply the reporter did not give.
 
-### <YYYY-MM-DD> · Assignee
-<message, for example the questions from `02-analysis.md`>
+### \<YYYY-MM-DD> · Assignee
+\<message, for example the questions from `02-analysis.md`>
 
-### <YYYY-MM-DD> · Reporter (<name>)
-<reply>
+### \<YYYY-MM-DD> · Reporter (\<name>)
+\<reply>
 
 ## Answers so far
 
@@ -20,7 +20,7 @@ Update after every reply. `04-final.md` is built from this table and the convers
 
 | # | Question | Answer | Answered? |
 |---|---|---|---|
-| 1 | <question from `02-analysis.md`> | <answer, or "Waiting"> | Yes / No |
+| 1 | \<question from `02-analysis.md`> | \<answer, or "Waiting"> | Yes / No |
 
 ## Ready for the final issue?
 
