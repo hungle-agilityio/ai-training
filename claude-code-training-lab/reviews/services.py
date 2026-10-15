@@ -26,8 +26,15 @@ def rounded_average(total: int, count: int) -> float:
     return float(average.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
-def average_rating(reviews: Sequence[Review]) -> float:
-    return rounded_average(sum(review.rating for review in reviews), len(reviews))
+def average_from_totals(total: int, count: int) -> float | None:
+    """The one rule for a location's score: None when it has no reviews yet."""
+    if count == 0:
+        return None
+    return rounded_average(total, count)
+
+
+def average_rating(reviews: Sequence[Review]) -> float | None:
+    return average_from_totals(sum(review.rating for review in reviews), len(reviews))
 
 
 def branch_scores() -> list[BranchScore]:
@@ -36,11 +43,7 @@ def branch_scores() -> list[BranchScore]:
             branch_id=totals.branch_id,
             name=totals.name,
             review_count=totals.review_count,
-            average_rating=(
-                rounded_average(totals.rating_total, totals.review_count)
-                if totals.review_count
-                else None
-            ),
+            average_rating=average_from_totals(totals.rating_total, totals.review_count),
         )
         for totals in repositories.branch_rating_totals()
     ]
@@ -130,7 +133,7 @@ def dashboard_overview(recent_limit: int = 6) -> DashboardOverview:
     rows = []
     for score in branch_scores():
         if score.average_rating is None:
-            # No reviews yet: no score, no bar and no status ("No reviews yet" is ticket #3)
+            # No reviews yet: no score, no bar, no status, and not "needs attention"
             rows.append(
                 BranchRow(
                     name=score.name,
