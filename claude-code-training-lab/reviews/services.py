@@ -26,26 +26,27 @@ def rounded_average(total: int, count: int) -> float:
     return float(average.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
-def average_rating(reviews: Sequence[Review]) -> float | None:
-    """Average of the ratings, or None for a location that has no reviews yet."""
-    if not reviews:
+def average_from_totals(total: int, count: int) -> float | None:
+    """The one rule for a location's score: None when it has no reviews yet."""
+    if count == 0:
         return None
-    return rounded_average(sum(review.rating for review in reviews), len(reviews))
+    return rounded_average(total, count)
+
+
+def average_rating(reviews: Sequence[Review]) -> float | None:
+    return average_from_totals(sum(review.rating for review in reviews), len(reviews))
 
 
 def branch_scores() -> list[BranchScore]:
-    scores: list[BranchScore] = []
-    for branch in repositories.list_branches():
-        reviews = repositories.list_reviews_for_branch(branch.id)
-        scores.append(
-            BranchScore(
-                branch_id=branch.id,
-                name=branch.name,
-                review_count=len(reviews),
-                average_rating=average_rating(reviews),
-            )
+    return [
+        BranchScore(
+            branch_id=totals.branch_id,
+            name=totals.name,
+            review_count=totals.review_count,
+            average_rating=average_from_totals(totals.rating_total, totals.review_count),
         )
-    return scores
+        for totals in repositories.branch_rating_totals()
+    ]
 
 
 @dataclass(frozen=True)

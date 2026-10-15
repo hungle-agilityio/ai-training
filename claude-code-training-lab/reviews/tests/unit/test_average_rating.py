@@ -1,7 +1,7 @@
 import pytest
 
 from reviews.models import Review
-from reviews.services import average_rating, rounded_average
+from reviews.services import average_from_totals, average_rating, rounded_average
 
 
 def _reviews(*ratings: int) -> list[Review]:
@@ -46,5 +46,10 @@ def test_rounded_average_rounds_half_up() -> None:
 
 
 def test_average_of_no_reviews_is_none() -> None:
-    # Bug #3: a location without reviews has no score, and must not raise
+    # A location without reviews has no score, and must not raise
     assert average_rating([]) is None
+
+
+def test_average_from_totals_uses_the_same_rule() -> None:
+    assert average_from_totals(0, 0) is None
+    assert average_from_totals(9, 4) == 2.3

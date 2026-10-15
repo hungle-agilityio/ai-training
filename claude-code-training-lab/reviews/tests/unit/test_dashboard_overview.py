@@ -100,8 +100,8 @@ def test_overview_status_follows_the_rounded_score() -> None:
 
 
 @pytest.mark.django_db
-def test_overview_branch_without_reviews_has_no_score_bar_or_status() -> None:
-    # Bug #3: Newtown has 0 reviews; it is not flagged for attention
+def test_overview_branch_without_reviews_is_not_flagged_for_attention() -> None:
+    # A location without reviews has no score: no bar, no status, not "needs attention"
     business = Business.objects.create(name="Demo")
     _branch_with_ratings(business, "Downtown", [4, 4])
     _branch_with_ratings(business, "Newtown", [])

@@ -1,16 +1,39 @@
 from collections.abc import Sequence
+from dataclasses import dataclass
 
-from django.db.models import Count, QuerySet
+from django.db.models import Count, QuerySet, Sum
+from django.db.models.functions import Coalesce
 
 from reviews.models import Branch, Review
 
 
-def list_branches() -> Sequence[Branch]:
-    return list(Branch.objects.order_by("id"))
+@dataclass(frozen=True)
+class BranchTotals:
+    branch_id: int
+    name: str
+    review_count: int
+    rating_total: int
 
 
-def list_reviews_for_branch(branch_id: int) -> Sequence[Review]:
-    return list(Review.objects.filter(branch_id=branch_id).order_by("created_at"))
+def branch_rating_totals() -> list[BranchTotals]:
+    """Review count and rating sum of every branch in one query, ordered by id.
+
+    Keep it to a single join: a second join would multiply both numbers.
+    """
+    rows = (
+        Branch.objects.order_by("id")
+        .values("id", "name")
+        .annotate(review_count=Count("reviews"), rating_total=Coalesce(Sum("reviews__rating"), 0))
+    )
+    return [
+        BranchTotals(
+            branch_id=int(row["id"]),
+            name=str(row["name"]),
+            review_count=int(row["review_count"]),
+            rating_total=int(row["rating_total"]),
+        )
+        for row in rows
+    ]
 
 
 def rating_counts() -> dict[int, int]:
