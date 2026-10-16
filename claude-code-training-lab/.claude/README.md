@@ -10,6 +10,7 @@
 ├── templates/       code skeletons (not the issue templates in docs/app/templates)
 ├── commands/        slash commands for each lifecycle step
 ├── agents/          sub-agents with a fixed model
+├── hooks/           guard that runs before every shell command (one repository only)
 └── settings.json    permissions
 ```
 

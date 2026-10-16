@@ -64,8 +64,7 @@
       "Bash(git reset --hard:*)",
       "Bash(git commit --no-verify:*)",
       "Bash(git push --no-verify:*)",
-      "Edit(./.git/**)",
-      "Write(./.git/**)"
+      "Edit(./.git/**)"
     ]
   },
   "env": {
