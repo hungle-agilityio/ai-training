@@ -2,7 +2,7 @@
 
 One folder per issue, grouped by type: `bugs/`, `features/` and `tasks/`. The folder name is a short lowercase description; the branch uses the same words after the issue number (issue 1 has the branch `bug/1-dashboard-wrong-score`).
 
-The issue number (ID) is the **GitLab issue number**, given when the issue is published with the `gitlab` skill. A draft is marked `draft` and has no ID yet. The first six tickets were drafted with local numbers; the "Local no." column keeps those numbers because older commits and branches use them. When one is published, its GitLab number becomes the ID.
+The issue number (ID) is the **GitLab issue number**, given when the issue is published with the `create-issue` skill. A draft is marked `draft` and has no ID yet. The first six tickets were drafted with local numbers; the "Local no." column keeps those numbers because older commits and branches use them. When one is published, its GitLab number becomes the ID.
 
 | Local no. | GitLab | Type | Folder | Title |
 |:---:|---|---|---|---|

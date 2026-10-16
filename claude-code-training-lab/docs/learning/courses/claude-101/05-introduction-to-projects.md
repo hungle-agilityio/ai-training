@@ -21,7 +21,7 @@ Claude.ai > Projects > + New Project.
   Tone: concise, plain language, no filler. Reply in Vietnamese, keep technical terms and code in English.
   Requirements: Python code must have type hints. Logic goes in a service layer, not in views. End every design answer with one trade-off.
   ```
-- **Knowledge:** upload `README.md` and `docs/courses/claude-101/02-first-conversation.md`, `03-getting-better-results.md`, `04-desktop-chat-cowork-code.md` (descriptive file names help Claude find the right file).
+- **Knowledge:** upload `README.md` and `docs/learning/courses/claude-101/02-first-conversation.md`, `03-getting-better-results.md`, `04-desktop-chat-cowork-code.md` (descriptive file names help Claude find the right file).
 
 ## Exercises
 

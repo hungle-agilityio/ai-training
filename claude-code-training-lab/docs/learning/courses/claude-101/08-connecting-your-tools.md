@@ -9,7 +9,7 @@ All exercises use ReviewRadar as the topic.
 
 ## Setup (do once)
 
-1. Upload `docs/reviewradar-project-context-2026-10.md` to your Google Drive. Do not upload anything sensitive.
+1. Upload `docs/app/reviewradar-project-context-2026-10.md` to your Google Drive. Do not upload anything sensitive.
 2. Claude.ai > Customize > Connectors (or **+** in the chat window > Connectors) > find **Google Drive** > **Connect** > sign in and review the permissions before authorizing.
 3. Test with: `Can you access my Google Drive?`
 

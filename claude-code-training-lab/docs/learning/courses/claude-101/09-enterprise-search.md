@@ -9,7 +9,7 @@ Enterprise Search is available on Team and Enterprise plans only and must be ena
 
 ## Setup (do once)
 
-Create a Notion page named `ReviewRadar Spec` and paste in `docs/reviewradar-project-context-2026-10.md` (nothing sensitive). Confirm the Notion connector is on in Claude.ai (Customize > Connectors).
+Create a Notion page named `ReviewRadar Spec` and paste in `docs/app/reviewradar-project-context-2026-10.md` (nothing sensitive). Confirm the Notion connector is on in Claude.ai (Customize > Connectors).
 
 ## Exercises
 
