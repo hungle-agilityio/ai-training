@@ -26,18 +26,19 @@ Everything that leaves this machine goes through GitHub: issues and pull request
 ## Procedure
 
 1. Take the issue from `docs/app/issues/<type>/<name>.md` or `docs/learning/issues/<type>/<name>.md` (older issues: `<name>/04-final.md`; an epic: `docs/learning/epics/<name>.md`). The user has reviewed it and said it is ready.
-2. Build the issue:
+2. **Quality gate.** Run `python3 -I .claude/skills/create-issue/check_issue.py <issue file>`. If it prints any problem (a missing or empty section, a placeholder left in the text, a missing area, kind or severity label, steps that are not numbered, acceptance criteria not in the "When ..., the screen must ..." form, an epic with fewer than 3 or more than 10 children), **do not publish**: list the problems to the user, fix the file with the `write-issue` skill and run the gate again.
+3. Build the issue:
    - **Title:** the first line of the file without the `# `, for example `[BUG] Dashboard numbers look wrong`.
    - **Body:** a temporary file holding the issue from `## Summary` to the end, with one first line `Reporter: <name>, reported on <date>`. Drop the `Reporter`, `Reported on`, `Type` and `Labels` lines (they become fields). GitHub has no due date for issues, so a deadline becomes one line `Deadline: <date>` in the body.
    - **Labels:** the labels of the issue, with the same names (see the mapping below).
    - **Assignee:** `hungle-agilityio`.
    - **Parent:** the epic number, when the issue is a child.
-3. Check the labels with `gh label list --json name`. Create each missing one with `gh label create "<name>"` and tell the user which ones you created.
-4. Look for an existing issue with `gh issue list --search "<title> in:title" --state all`. Never create a second issue for the same work: update the existing one instead.
-5. Show the preview and wait for approval.
-6. Create it with `gh issue create --title "<title>" --body-file <file> --label "<label>,<label>" --assignee hungle-agilityio`. For a child of an epic add `--parent <epic number>`; to attach an issue that already exists use `gh issue edit <epic number> --add-sub-issue <issue number>`.
-7. Record the result in the index (`docs/app/issues/README.md` or `docs/learning/issues/README.md`, GitHub column: `#<number>`) and tell the user. From now on the number is the issue ID: branch `<kind>/<number>-<description>`, commits `Part of #<number>`.
-8. Report with this table:
+4. Check the labels with `gh label list --json name`. Create each missing one with `gh label create "<name>"` and tell the user which ones you created.
+5. Look for an existing issue with `gh issue list --search "<title> in:title" --state all`. Never create a second issue for the same work: update the existing one instead.
+6. Show the preview and wait for approval.
+7. Create it with `gh issue create --title "<title>" --body-file <file> --label "<label>,<label>" --assignee hungle-agilityio`. For a child of an epic add `--parent <epic number>`; to attach an issue that already exists use `gh issue edit <epic number> --add-sub-issue <issue number>`.
+8. Record the result in the index (`docs/app/issues/README.md` or `docs/learning/issues/README.md`, GitHub column: `#<number>`) and tell the user. From now on the number is the issue ID: branch `<kind>/<number>-<description>`, commits `Part of #<number>`.
+9. Report with this table:
 
 | Title | GitHub |
 |---|---|
@@ -45,7 +46,7 @@ Everything that leaves this machine goes through GitHub: issues and pull request
 
 ### Label mapping
 
-The labels of an issue file are the GitHub labels, with the same names: `bug`, `feature`, `task`, `epic`, the area (`dashboard`, `reviews-list`, `hosting`, ...), the kind (`crash`, `wrong-data`, `performance`, `ui`, `wrong-output`, `intermittent`), `reproduced`, `partly-reproduced`, `cannot-reproduce`, `needs-info`, `high-priority`, and `env: dev`, `env: staging`, `env: production`, `env: to confirm`. `deadline: <date>` is not a label: it becomes the `Deadline:` line of the body.
+The labels of an issue file are the GitHub labels, with the same names: `bug`, `feature`, `task`, `epic`, the area (`dashboard`, `reviews-list`, `hosting`, ...), the kind (`crash`, `wrong-data`, `performance`, `ui`, `wrong-output`, `intermittent`), the severity (`severity: low`, `severity: medium`, `severity: high`), `reproduced`, `partly-reproduced`, `cannot-reproduce`, `needs-info`, `high-priority`, and `env: dev`, `env: staging`, `env: production`, `env: to confirm`. `deadline: <date>` is not a label: it becomes the `Deadline:` line of the body.
 
 ## Epics
 

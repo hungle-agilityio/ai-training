@@ -13,9 +13,9 @@ Write **one** file: `docs/app/issues/<type>/<name>.md`, the complete issue, buil
 
 | Type | Use when | Template | Folder | Branch |
 |---|---|---|---|---|
-| `BUG` | Something that worked, or should work, is wrong: error, wrong value, slow, wrong text | `docs/app/templates/04-final-bug.md` | `bugs/<name>` | `bug/<id>-...` |
-| `FEAT` | Users get a new ability, or an existing page changes what users see | `docs/app/templates/04-final-feature.md` | `features/<name>` | `feat/<id>-...` |
-| `TASK` | Work with no new user-facing behaviour: cleanup, data update, configuration, document, investigation | `docs/app/templates/04-final-task.md` | `tasks/<name>` | `task/<id>-...` |
+| `BUG` | Something that worked, or should work, is wrong: error, wrong value, slow, wrong text | `docs/app/templates/bug.md` | `bugs/<name>` | `bug/<id>-...` |
+| `FEAT` | Users get a new ability, or an existing page changes what users see | `docs/app/templates/feature.md` | `features/<name>` | `feat/<id>-...` |
+| `TASK` | Work with no new user-facing behaviour: cleanup, data update, configuration, document, investigation | `docs/app/templates/task.md` | `tasks/<name>` | `task/<id>-...` |
 | `EPIC` | A goal that needs between 3 and 10 issues | `docs/app/templates/epic.md` | `epics/<name>` | none (each child has its own) |
 
 - Follow the template's sections, in order, with nothing added or removed.
@@ -40,7 +40,7 @@ Write **one** file: `docs/app/issues/<type>/<name>.md`, the complete issue, buil
 3. **Name the page.** The Summary and the steps say which page or screen, and state plainly if it does not exist yet, or whether it is an existing page or a completely new one. There is no Where line, ID line or Status line in the issue.
 4. **Steps = user actions only.** No install, migrate, seed or run-server commands. If specific data must exist, say it inside the numbered steps with the real names and numbers (open this address, Riverside has 3 reviews rated 4, 5 and 2, look at this). There is no separate "Data needed" section.
 5. **Exact results.** Give the real values or texts ("shows 3, should show 3.67") and the calculation if there is one.
-6. **Labels (same set everywhere):** type (`bug`, `feature`, `task`); area (`dashboard`, `reviews-list`, ...); for bugs the kind (`crash`, `wrong-data`, `performance`, `ui`, `wrong-output`, optionally `intermittent`) and the reproduction result (`reproduced`, `partly-reproduced`, `cannot-reproduce`); `high-priority` only if urgent; `needs-info` while something is unconfirmed; `env: dev`, `env: staging`, `env: production` or `env: to confirm` (never guess; use `env: dev` for what you reproduced yourself locally, which is the dev environment); `deadline: <date>` only if one was given. Type line is just `Bug`, `New feature` or `Task`.
+6. **Labels (same set everywhere):** type (`bug`, `feature`, `task`); area (`dashboard`, `reviews-list`, ...); for bugs the kind (`crash`, `wrong-data`, `performance`, `ui`, `wrong-output`, optionally `intermittent`), the severity (`severity: low`, `severity: medium` or `severity: high`) and the reproduction result (`reproduced`, `partly-reproduced`, `cannot-reproduce`); `high-priority` only if urgent; `needs-info` while something is unconfirmed; `env: dev`, `env: staging`, `env: production` or `env: to confirm` (never guess; use `env: dev` for what you reproduced yourself locally, which is the dev environment); `deadline: <date>` only if one was given. Type line is just `Bug`, `New feature` or `Task`.
 7. **Attachments:** list what exists and what is still to be added, never a file link.
 8. **The issue stands alone.** It never refers to another file, to the learning files, or to "above" or "below". It may mention other issues by number (`#4`) when they are related.
 

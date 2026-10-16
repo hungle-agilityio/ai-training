@@ -80,7 +80,7 @@ Read the matching template before writing from scratch.
 |----------|---------|
 | `templates/layered-feature.md` | A new feature through repository, service, form, view and tests |
 
-Issue and pull request templates are a different thing: `docs/app/templates/` now and `.github/` after the templates task (the old `.gitlab/` folder is legacy and is removed then).
+Issue and pull request templates are a different thing: `docs/app/templates/` (the files `write-issue` fills in) and `.github/ISSUE_TEMPLATE/` plus `.github/PULL_REQUEST_TEMPLATE.md` (the forms on GitHub).
 
 ## Available commands (slash commands)
 

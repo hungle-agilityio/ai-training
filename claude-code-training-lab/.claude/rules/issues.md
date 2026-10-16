@@ -8,7 +8,7 @@ paths:
 
 # Issue rules
 
-Use the skill `write-issue` (bug, feature or task) to create issues.
+Use the skill `write-issue` (bug, feature, task or epic) to create issues.
 
 - **Issue number:** the GitHub issue number, assigned when the issue is published, written `#6` in text. A draft issue has no number yet. The type is shown by the title (`[BUG]`) and by the branch prefix, never by the number.
 - **Title format:** `[type] title`, where type is `BUG`, `FEAT`, `TASK` or `EPIC`. Example: `[BUG] dashboard show wrong score number`. The issue number is not part of the title or the file name.
@@ -16,6 +16,6 @@ Use the skill `write-issue` (bug, feature or task) to create issues.
 - **Epics:** built from `docs/app/templates/epic.md`; between 3 and 10 children, each child one pull request; the children are sub-issues of the epic (a checklist if sub-issues are not available); every change of scope is logged in the epic with its reason; a bigger epic is split.
 - **Index:** `docs/app/issues/README.md` and `docs/learning/issues/README.md` list local number, GitHub issue, type, file and title; add a row for every new issue.
 - **Tone:** issues are written in plain language for QA, BA and clients: no code, commits, branches or technical terms.
-- **The issue file:** the only file `write-issue` creates. It is the complete standalone issue, built from `docs/app/templates/04-final-bug.md`, `04-final-feature.md` or `04-final-task.md`, and posted as a GitHub issue, so it must not refer to any other file.
+- **The issue file:** the only file `write-issue` creates. It is the complete standalone issue, built from `docs/app/templates/bug.md`, `feature.md`, `task.md` or `epic.md`, and posted as a GitHub issue, so it must not refer to any other file.
 - **Old four-file folders** (`01-reported.md`, `02-analysis.md`, `03-discussion.md`, `04-final.md`) are learning material from the training: the report as received, our analysis, the conversation and the final issue. Do not create or change them.
 - **Markdown placeholders:** write `\<placeholder>`, not `<placeholder>`; the preview treats bare angle brackets as HTML and hides them.

@@ -19,7 +19,8 @@
       "Bash(gh pr diff:*)",
       "Bash(gh pr checks:*)",
       "Bash(gh repo view:*)",
-      "Bash(gh auth status:*)"
+      "Bash(gh auth status:*)",
+      "Bash(python3 -I .claude/skills/create-issue/check_issue.py:*)"
     ],
     "ask": [
       "Bash(git push:*)",

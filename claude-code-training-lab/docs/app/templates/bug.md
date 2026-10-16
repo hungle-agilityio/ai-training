@@ -3,7 +3,7 @@
 - **Reporter:** \<name, role>
 - **Reported on:** \<YYYY-MM-DD>
 - **Type:** Bug
-- **Labels:** `bug`, `<area, e.g. dashboard>`, `<kind: crash | wrong-data | performance | ui | wrong-output>`, `<high-priority, only if urgent>`, `<reproduced | partly-reproduced | cannot-reproduce>`, `<needs-info, remove when ready>`, `env: <dev | staging | production | to confirm>`, `deadline: <date, only if there is one>`
+- **Labels:** `bug`, `<area, e.g. dashboard>`, `<kind: crash | wrong-data | performance | ui | wrong-output>`, `<severity: low | medium | high>`, `<high-priority, only if urgent>`, `<reproduced | partly-reproduced | cannot-reproduce>`, `<needs-info, remove when ready>`, `env: <dev | staging | production | to confirm>`, `deadline: <date, only if there is one>`
 
 ## Summary
 

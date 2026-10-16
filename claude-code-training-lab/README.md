@@ -92,8 +92,7 @@ docs/
   app/                  The app: issues/ (index in README.md), templates/, project context
   learning/             Claude Code training: courses/, journal/, exercises/, epics/
 .claude/                Claude Code skills and agents shared by the team
-.github/workflows/      Automatic checks (GitHub Actions)
-.gitlab/                Legacy issue templates, replaced by `.github/` in a later task
+.github/                Automatic checks (workflows/), issue forms (ISSUE_TEMPLATE/) and the pull request template
 ```
 
 ## Architecture
@@ -116,7 +115,7 @@ uv run ruff check .    # lint
 uv run mypy .          # types (strict)
 uv run pytest          # tests with coverage
 uv run coverage report --include="reviews/services.py,reviews/repositories.py" --fail-under=90   # coverage gate
-uv run pytest .claude/hooks/tests --no-cov   # tests of the guard hook
+uv run pytest .claude/hooks/tests .claude/skills/create-issue/tests --no-cov   # tests of the guard hook and the issue checker
 ```
 
 Target: 90% coverage on the service layer. Mock external APIs; tests never use the network. The GitHub workflow runs the same checks on every push to `main` and on every pull request.
