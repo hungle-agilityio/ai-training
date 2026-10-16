@@ -29,7 +29,7 @@ The project is also the vehicle of a 15-day Claude Code training lab (see [Train
 - Python 3.11+, Django 5.2, SQLite
 - `uv` for the environment and dependencies
 - `pytest` (with `pytest-django`, `pytest-mock`, `pytest-cov`), `ruff`, `mypy` (strict) with `django-stubs`
-- Automatic checks: a GitHub workflow is added in a later task (the old pipeline file `.gitlab-ci.yml` is legacy)
+- Automatic checks: a GitHub workflow (`.github/workflows/checks.yml`) runs lint, types, tests and a coverage gate
 
 ## Getting started
 
@@ -92,6 +92,7 @@ docs/
   app/                  The app: issues/ (index in README.md), templates/, project context
   learning/             Claude Code training: courses/, journal/, exercises/, epics/
 .claude/                Claude Code skills and agents shared by the team
+.github/workflows/      Automatic checks (GitHub Actions)
 .gitlab/                Legacy issue templates, replaced by `.github/` in a later task
 ```
 
@@ -114,9 +115,11 @@ Rules: type hints on every function and strict `mypy`; validate input with Djang
 uv run ruff check .    # lint
 uv run mypy .          # types (strict)
 uv run pytest          # tests with coverage
+uv run coverage report --include="reviews/services.py,reviews/repositories.py" --fail-under=90   # coverage gate
+uv run pytest .claude/hooks/tests --no-cov   # tests of the guard hook
 ```
 
-Target: 90% coverage on the service layer. Mock external APIs; tests never use the network. The automatic checks (lint, types, tests) move to a GitHub workflow in a later task.
+Target: 90% coverage on the service layer. Mock external APIs; tests never use the network. The GitHub workflow runs the same checks on every push to `main` and on every pull request.
 
 ### Workflow
 

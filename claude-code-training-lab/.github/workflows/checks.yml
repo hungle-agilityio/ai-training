@@ -1,0 +1,37 @@
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install uv
+        run: pip install uv==0.5.30
+      - name: Install the locked dependencies
+        run: uv sync --frozen
+      - name: Lint
+        run: uv run ruff check .
+      - name: Types
+        run: uv run mypy .
+      - name: App tests with coverage
+        run: uv run pytest -q
+      - name: Coverage gate, 90 percent on services and repositories
+        run: uv run coverage report --include="reviews/services.py,reviews/repositories.py" --fail-under=90
+      - name: Hook tests
+        run: uv run pytest .claude/hooks/tests -q --no-cov -p no:cacheprovider

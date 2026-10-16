@@ -43,8 +43,8 @@ Status: `done`, `next`, `ready` (can start now), `needs you` (waits for somethin
 | T1 | Finish naming: rename the helper agents, set short model names, check that commands and skills do not repeat each other | | **done** |
 | T2 | Replace GitLab with GitHub in rules, skills, project map and README; remove the GitLab connection | | **done** |
 | T3 | Make the repository tell the truth: pin dependencies, README feature status, test for the demo data command | | **done** |
-| T4 | GitHub checks: workflow with lint, types, tests (also the hook tests) and a coverage gate; delete the GitLab pipeline | | **next** |
-| T5 | GitHub templates and basic files: issue forms (also for epics) and pull request template with the quality list, example settings file, contributing note | licence decision | after T2 |
+| T4 | GitHub checks: workflow with lint, types, tests (also the hook tests) and a coverage gate; delete the GitLab pipeline | | **done** |
+| T5 | GitHub templates and basic files: issue forms (also for epics) and pull request template with the quality list, example settings file, contributing note | licence decision | **next** |
 | T6 | Project map and decision records | | ready |
 | T7 | Workflow rules: four team principles, two-round limit, guardrails, mode guide, five review areas | | ready |
 | T8 | `test-runner` helper on the cheapest model, used by the test step | | ready |
