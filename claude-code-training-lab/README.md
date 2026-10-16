@@ -176,7 +176,7 @@ ReviewRadar is built as part of a **15-day Claude Code training lab**: each day 
 <summary>What the lab has produced so far</summary>
 
 - **Skills** (`.claude/skills/`): `write-issue` (one complete issue file), `create-commit` (branches and commits that follow the project rules), `create-issue` and `create-pull-request` (publish through the GitLab MCP server), `review-pull-request`, `write-tests`, `diagnose-bug` and `grill-me`.
-- **Sub-agents** (`.claude/agents/`): `ticket-analyst` (analyses a ticket against the code) and `ticket-planner` (turns the analysis into a step-by-step plan).
+- **Sub-agents** (`.claude/agents/`): `analyst` (analyses a ticket against the code), `planner` (turns the analysis into a step-by-step plan), `implementer` and `reviewer`.
 - **Templates** (`docs/app/templates/`): issue templates and the README template.
 - **Issues** (`docs/app/issues/`): five seeded tickets analysed and reproduced, and the reviews page (#6), built and tested.
 - **Rules** (`.claude/CLAUDE.md` and `.claude/rules/`): ticket, branch, commit and merge request formats, the workflow by difficulty (easy, medium, hard) and lessons learned.

@@ -46,11 +46,18 @@ Scale the workflow to the difficulty of the ticket; the table and gates are in `
 /understand → /plan → Gate 1 (human) → /implement → /test → /review → /verify → Gate 2 (human) → /learn → /commit
 ```
 
-- `/understand` runs `ticket-analyst`: evidence first, questions for the reporter, then rates the ticket Easy, Medium or Hard. Easy tickets skip `/plan`.
-- Sub-agents: `ticket-planner` (opus) writes the plan, `implementer` (sonnet) builds exactly what the approved plan says, `reviewer` (opus) re-derives correctness independently.
+- `/understand` runs `analyst`: evidence first, questions for the reporter, then rates the ticket Easy, Medium or Hard. Easy tickets skip `/plan`.
+- Sub-agents, their roles and models are in the table below.
 - The reviewer is mandatory for Hard tickets and for Medium tickets that hit the trigger list in `rules/workflow.md`.
 - Gate 1: a human approves the plan before any code is written. Gate 2: after `/verify`, a human checks the result. Nothing is committed before the user says it is OK.
 - The command files are the source of truth for each step; this section is an overview.
+
+| Sub-agent | Role | Model | Does |
+|---|---|---|---|
+| `analyst` | advisor | opus | evidence first, questions, rates the difficulty |
+| `planner` | advisor | opus | writes the step-by-step plan |
+| `implementer` | builder | sonnet | builds exactly what the approved plan says |
+| `reviewer` | advisor | opus | re-derives correctness independently |
 
 ## Available skills
 
@@ -87,6 +94,8 @@ Ticket and issue templates are a different thing: `docs/app/templates/`, `.gitla
 | `/verify` | Final check: PASS / FAIL / NOT CONFIGURED per axis |
 | `/learn` | Save reusable knowledge after a task |
 | `/commit` | Draft and make a commit in the project format |
+
+**Command or skill?** A command is a step you type, one lifecycle verb. A skill is a procedure Claude loads when the job matches. A command holds only the gate check and the order and calls the agent or skill that does the work; the rules live in the skill, never repeated in the command.
 
 ## MCP and permissions
 

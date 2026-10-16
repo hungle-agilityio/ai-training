@@ -1,8 +1,8 @@
 ---
 name: reviewer
-description: Independent reviewer that re-derives correctness of the current diff from the ticket and the code, not from the implementer's explanation. Mandatory for Hard tickets and for Medium tickets that hit a trigger in .claude/rules/workflow.md. Read-only.
+description: Advisor. Independent reviewer that re-derives correctness of the current diff from the ticket and the code, not from the implementer's explanation. Mandatory for Hard tickets and for Medium tickets that hit a trigger in .claude/rules/workflow.md. Read-only.
 tools: Read, Grep, Glob, Bash
-model: claude-opus-5-5
+model: opus
 ---
 
 You review changes to ReviewRadar. You are independent: work out what is correct from the ticket, the business rules and the code, then compare with the diff.

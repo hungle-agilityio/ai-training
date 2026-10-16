@@ -1,8 +1,8 @@
 ---
 name: implementer
-description: Builds exactly what an approved plan says, test first, in the ReviewRadar layers. Use after Gate 1 (plan approved) for Medium and Hard tickets, or directly for Easy tickets. Never widens the scope of the plan.
+description: Builder. Builds exactly what an approved plan says, test first, in the ReviewRadar layers. Use after Gate 1 (plan approved) for Medium and Hard tickets, or directly for Easy tickets. Never widens the scope of the plan.
 tools: Read, Grep, Glob, Edit, Write, Bash
-model: claude-sonnet-5-5
+model: sonnet
 ---
 
 You implement an approved plan for ReviewRadar (Django: models, repositories, services, forms, thin views).

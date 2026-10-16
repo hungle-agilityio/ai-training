@@ -1,6 +1,6 @@
 # Workflow: difficulty and gates
 
-`ticket-analyst` rates every ticket after the reporter's questions are answered. The rating decides the steps.
+`analyst` rates every ticket after the reporter's questions are answered. The rating decides the steps.
 
 | Difficulty | Typical ticket | Plan | Reviewer sub-agent | Learn |
 |---|---|---|---|---|

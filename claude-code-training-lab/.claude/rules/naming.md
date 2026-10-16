@@ -1,6 +1,6 @@
 # Naming rules
 
-One pattern for every name in `.claude/`, so a new name can be guessed. Decided in epic problem P01; renames are applied in P02 to P04.
+One pattern for every name in `.claude/`, so a new name can be guessed. Decided in epic problem P01; the renames are done.
 
 ## Pattern
 
@@ -24,17 +24,18 @@ One pattern for every name in `.claude/`, so a new name can be guessed. Decided 
 - Say **issue** (not "ticket") and **pull request** (not "merge request"). Issues are grouped as bug, feature or task.
 - Names and text in the project are English.
 
-## Planned renames
+## Renames
 
-| Now | New | Problem |
+| Old | New | Status |
 |---|---|---|
-| skill `debug` | `diagnose-bug` | P02 |
-| skill `git` | `create-commit` | P02 |
-| skill `gitlab` | `create-issue` and `create-pull-request` | P02 |
-| skill `pr-review` | `review-pull-request` | P02 |
-| skill `testing` | `write-tests` | P02 |
-| skill `write-ticket` | `write-issue` | P02 |
-| agent `ticket-analyst` | `analyst` | P03 |
-| agent `ticket-planner` | `planner` | P03 |
-| agents `implementer`, `reviewer` | keep | P03 |
-| new | `test-runner` (P17); `grill-me` (P14, done) | P17 |
+| skill `debug` | `diagnose-bug` | done |
+| skill `git` | `create-commit` | done |
+| skill `gitlab` | `create-issue` and `create-pull-request` | done |
+| skill `pr-review` | `review-pull-request` | done |
+| skill `testing` | `write-tests` | done |
+| skill `write-ticket` | `write-issue` | done |
+| agent `ticket-analyst` | `analyst` | done |
+| agent `ticket-planner` | `planner` | done |
+| agents `implementer`, `reviewer` | keep | done |
+| new | `grill-me` | done |
+| new | `test-runner` | planned (runner role) |
