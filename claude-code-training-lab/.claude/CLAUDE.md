@@ -2,7 +2,7 @@
 
 ## Quick orientation
 
-ReviewRadar is a Django app that collects customer reviews for branches (locations) and shows a score dashboard and a review list. It is also a 15-day Claude Code training lab: tickets, skills and sub-agents are part of the exercise.
+ReviewRadar is a Django app that collects customer reviews for branches (locations) and shows a score dashboard and a review list. It is also a 15-day Claude Code training lab: issues, skills and sub-agents are part of the exercise.
 
 Source: `reviewradar/` (Django project) and `reviews/` (the app: models, repositories, services, views, forms, tests). Docs are split in two: `docs/app/` (ReviewRadar: issues, templates, project context) and `docs/learning/` (Claude Code training: courses, journal, exercises, epics); see `docs/README.md`. Dependencies: `requirements.txt` (pinned with `uv`); check it before relying on a version-specific Django feature.
 
@@ -17,9 +17,9 @@ Every file in `rules/` is loaded automatically; do not copy their content here.
 | `rules/python.md` | Style, typing, tests |
 | `rules/architecture.md` | Layers and what goes where |
 | `rules/security.md` | Secrets, input, data access, prompt injection |
-| `rules/git.md` | Branch, commit and merge request format, GitLab approvals |
+| `rules/git.md` | Branch, commit and pull request format, GitHub approvals |
 | `rules/workflow.md` | Complexity table and gates |
-| `rules/tickets.md` | Ticket ID, title, folders, tone (loads in `docs/app/issues`, `docs/app/templates`, `.gitlab`) |
+| `rules/issues.md` | Issue number, title, files, tone (loads in `docs/app/issues`, `docs/app/templates`, `docs/learning/issues`, `.github`) |
 
 ## Project context
 
@@ -40,15 +40,15 @@ These files grow over time, so the plan, review and learn steps consult them on 
 
 ## AI engineering lifecycle
 
-Scale the workflow to the difficulty of the ticket; the table and gates are in `rules/workflow.md`.
+Scale the workflow to the difficulty of the issue; the table and gates are in `rules/workflow.md`.
 
 ```
 /understand → /plan → Gate 1 (human) → /implement → /test → /review → /verify → Gate 2 (human) → /learn → /commit
 ```
 
-- `/understand` runs `analyst`: evidence first, questions for the reporter, then rates the ticket Easy, Medium or Hard. Easy tickets skip `/plan`.
+- `/understand` runs `analyst`: evidence first, questions for the reporter, then rates the issue Easy, Medium or Hard. Easy issues skip `/plan`.
 - Sub-agents, their roles and models are in the table below.
-- The reviewer is mandatory for Hard tickets and for Medium tickets that hit the trigger list in `rules/workflow.md`.
+- The reviewer is mandatory for Hard issues and for Medium issues that hit the trigger list in `rules/workflow.md`.
 - Gate 1: a human approves the plan before any code is written. Gate 2: after `/verify`, a human checks the result. Nothing is committed before the user says it is OK.
 - The command files are the source of truth for each step; this section is an overview.
 
@@ -67,7 +67,7 @@ Scale the workflow to the difficulty of the ticket; the table and gates are in `
 | `create-commit` | Create branches and commits in the project format |
 | `create-issue` | Publish an approved issue |
 | `create-pull-request` | Create a pull request for the current branch |
-| `review-pull-request` | Write a review of a merge request or branch |
+| `review-pull-request` | Write a review of a pull request or branch |
 | `write-tests` | Write unit and integration tests, assert query counts |
 | `diagnose-bug` | Diagnose a bug from evidence, trace the call chain |
 | `grill-me` | Settle every decision with the user, in rounds with recommended answers, before `/plan` |
@@ -80,13 +80,13 @@ Read the matching template before writing from scratch.
 |----------|---------|
 | `templates/layered-feature.md` | A new feature through repository, service, form, view and tests |
 
-Ticket and issue templates are a different thing: `docs/app/templates/`, `.gitlab/issue_templates/`, `.gitlab/merge_request_templates/`.
+Issue and pull request templates are a different thing: `docs/app/templates/` now and `.github/` after the templates task (the old `.gitlab/` folder is legacy and is removed then).
 
 ## Available commands (slash commands)
 
 | Command | Shortcut for |
 |---------|--------------|
-| `/understand` | Evidence-first analysis of a ticket, then classify difficulty |
+| `/understand` | Evidence-first analysis of an issue, then classify difficulty |
 | `/plan` | Produce the step-by-step, test-first plan |
 | `/implement` | Execute an approved plan |
 | `/test` | Run lint, types and tests, report the result |
@@ -99,4 +99,4 @@ Ticket and issue templates are a different thing: `docs/app/templates/`, `.gitla
 
 ## MCP and permissions
 
-GitLab MCP server: `.mcp.json` (authorize once with `/mcp`). Allowed and blocked commands: `.claude/settings.json`.
+GitHub: through the `gh` command (sign in once with `gh auth login`); the GitHub MCP server is added in a later task. Allowed, asked and blocked commands: `.claude/settings.json`; the guard that limits Claude to one repository: `.claude/hooks/`.

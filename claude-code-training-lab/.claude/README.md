@@ -7,7 +7,7 @@
 ├── context/         background knowledge, imported by CLAUDE.md
 ├── knowledge/       growing store (business rules, pitfalls, ADRs), NOT auto-loaded
 ├── skills/          how to do a topic (write-issue, create-commit, create-issue, create-pull-request, review-pull-request, write-tests, diagnose-bug, grill-me)
-├── templates/       code skeletons (not the ticket templates in docs/app/templates)
+├── templates/       code skeletons (not the issue templates in docs/app/templates)
 ├── commands/        slash commands for each lifecycle step
 ├── agents/          sub-agents with a fixed model
 └── settings.json    permissions

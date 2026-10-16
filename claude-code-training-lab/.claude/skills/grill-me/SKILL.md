@@ -12,8 +12,8 @@ This skill only settles decisions. It writes no code and does not plan; when it 
 ## When it runs
 
 - **Called by the user:** `/grill-me <topic>`.
-- **Proposed by Claude** (the rule in `.claude/rules/workflow.md`): after `/understand`, if the ticket is Medium or Hard, or any decision is still open, say in one line how many decisions are open and ask "run grill-me before planning?". Wait for the answer. The user can skip; Claude never skips on its own and never starts the interview without a yes.
-- **Not needed:** Easy tickets with a clear rule and one layer.
+- **Proposed by Claude** (the rule in `.claude/rules/workflow.md`): after `/understand`, if the issue is Medium or Hard, or any decision is still open, say in one line how many decisions are open and ask "run grill-me before planning?". Wait for the answer. The user can skip; Claude never skips on its own and never starts the interview without a yes.
+- **Not needed:** Easy issues with a clear rule and one layer.
 
 ## 1. Frame
 

@@ -11,5 +11,5 @@ uv run pytest -q --no-cov
 ```
 
 - Show the failing tests with the reason in one line each.
-- Failing tests that belong to open bug tickets are expected: say which ticket, do not hide them.
+- Failing tests that belong to open bug issues are expected: say which issue, do not hide them.
 - Do not change code in this step unless I ask. See the `write-tests` skill for writing tests.

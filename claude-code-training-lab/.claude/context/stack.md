@@ -8,8 +8,8 @@
 | Time zone | `Asia/Ho_Chi_Minh` |
 | Tooling | `uv`, `ruff`, `mypy` (strict, `django-stubs`) |
 | Tests | `pytest`, `pytest-django`, `pytest-mock`, `pytest-cov` (tests in `reviews/tests`) |
-| CI | GitLab pipeline `.gitlab-ci.yml`: `ruff check` and `pytest` |
-| Tracker | GitLab `hung.le/ai-training` through the MCP server in `.mcp.json` |
+| CI | none yet: a GitHub workflow (lint, types, tests) is added in the checks task |
+| Tracker | GitHub, through the `gh` command (the MCP server comes later) |
 
 Versions and settings come from `requirements.txt` and `pyproject.toml`; check them before relying on a version-specific feature.
 

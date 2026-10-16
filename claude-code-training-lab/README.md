@@ -29,7 +29,7 @@ The project is also the vehicle of a 15-day Claude Code training lab (see [Train
 - Python 3.11+, Django 5.2, SQLite
 - `uv` for the environment and dependencies
 - `pytest` (with `pytest-django`, `pytest-mock`, `pytest-cov`), `ruff`, `mypy` (strict) with `django-stubs`
-- GitLab CI (`.gitlab-ci.yml`)
+- Automatic checks: a GitHub workflow is added in a later task (the old pipeline file `.gitlab-ci.yml` is legacy)
 
 ## Getting started
 
@@ -94,7 +94,7 @@ docs/
   templates/            Issue and README templates
   journal/, courses/    Training notes
 .claude/                Claude Code skills and agents shared by the team
-.gitlab/                Issue and merge request templates (CI is `.gitlab-ci.yml`)
+.gitlab/                Legacy issue templates, replaced by `.github/` in a later task
 ```
 
 ## Architecture
@@ -118,14 +118,14 @@ uv run mypy .          # types (strict)
 uv run pytest          # tests with coverage
 ```
 
-Target: 90% coverage on the service layer. Mock external APIs; tests never use the network. GitLab CI runs lint and tests on every push.
+Target: 90% coverage on the service layer. Mock external APIs; tests never use the network. The automatic checks (lint, types, tests) move to a GitHub workflow in a later task.
 
 ### Workflow
 
-- Work is tracked as GitLab issues; the drafts and the index are in `docs/app/issues/`. The ticket ID is the GitLab issue number (`#6`).
+- Work is tracked as GitHub issues; the drafts and the index are in `docs/app/issues/`. The issue number is the GitHub issue number (`#6`).
 - Branch: `<kind>/<number>-<description>`, for example `bug/1-dashboard-wrong-score`.
 - Commit: title, blank line, detail, blank line, `Part of #<number>`.
-- Merge request into `main`: title `[type] title`, for example `[FEAT] Reviews page to show all reviews`, description ends with `Closes #<number>`. A human reviews and merges it.
+- Pull request into `main`: title `[type] title`, for example `[FEAT] Reviews page to show all reviews`, description ends with `Closes #<number>`. A human reviews and merges it.
 - The rules are in [`.claude/CLAUDE.md`](.claude/CLAUDE.md) and [`.claude/rules/`](.claude/rules); the skills and agents that apply them are in `.claude/`.
 
 ## Known issues and roadmap
@@ -137,7 +137,7 @@ Target: 90% coverage on the service layer. Mock external APIs; tests never use t
 | 3 | A location without reviews breaks the dashboard | Open, failing test in place |
 | 4 | Filter reviews by good or bad and by week | Open |
 | 5 | Reply drafts in the wrong language | Open, feature not built yet |
-| 6 | Reviews page | Built, ticket still to confirm |
+| 6 | Reviews page | Built, issue still to confirm |
 
 Two tests fail on purpose until #2 and #3 are fixed.
 
@@ -151,7 +151,7 @@ Limitations: there is no login and data is not limited per business, so the dash
 
 ## Training lab
 
-ReviewRadar is built as part of a **15-day Claude Code training lab**: each day adds a Claude Code skill to the real project (tickets, tests, sub-agents, skills, hooks) instead of a toy exercise.
+ReviewRadar is built as part of a **15-day Claude Code training lab**: each day adds a Claude Code skill to the real project (issues, tests, sub-agents, skills, hooks) instead of a toy exercise.
 
 > [!NOTE]
 > **Progress: 1 of 15 days done, Day 2 in progress.** Skills, sub-agents and `CLAUDE.md` were started early, during Day 2.
@@ -159,7 +159,7 @@ ReviewRadar is built as part of a **15-day Claude Code training lab**: each day 
 | Day | Topic | Practice | Status | Notes |
 |:---:|---|---|:---:|:---:|
 | 1 | Setup and Claude 101 | Project skeleton, first conversations with Claude | ✅ | [journal](docs/learning/journal/day-01.md) |
-| 2 | Ticket analysis, reproduce and understand | Analyse tickets, reproduce bugs, write failing tests, `git pull --rebase`, merge conflict | 🟨 | [journal](docs/learning/journal/day-02.md) |
+| 2 | Issue analysis, reproduce and understand | Analyse issues, reproduce bugs, write failing tests, `git pull --rebase`, merge conflict | 🟨 | [journal](docs/learning/journal/day-02.md) |
 | 3 | To be defined | | ⬜ | [journal](docs/learning/journal/day-03.md) |
 | 4 | The `.claude/` folder | | ⬜ | [journal](docs/learning/journal/day-04.md) |
 | 5 | `CLAUDE.md` | | ⬜ | [journal](docs/learning/journal/day-05.md) |
@@ -175,10 +175,10 @@ ReviewRadar is built as part of a **15-day Claude Code training lab**: each day 
 <details>
 <summary>What the lab has produced so far</summary>
 
-- **Skills** (`.claude/skills/`): `write-issue` (one complete issue file), `create-commit` (branches and commits that follow the project rules), `create-issue` and `create-pull-request` (publish through the GitLab MCP server), `review-pull-request`, `write-tests`, `diagnose-bug` and `grill-me`.
-- **Sub-agents** (`.claude/agents/`): `analyst` (analyses a ticket against the code), `planner` (turns the analysis into a step-by-step plan), `implementer` and `reviewer`.
+- **Skills** (`.claude/skills/`): `write-issue` (one complete issue file), `create-commit` (branches and commits that follow the project rules), `create-issue` and `create-pull-request` (publish on GitHub with the `gh` command), `review-pull-request`, `write-tests`, `diagnose-bug` and `grill-me`.
+- **Sub-agents** (`.claude/agents/`): `analyst` (analyses an issue against the code), `planner` (turns the analysis into a step-by-step plan), `implementer` and `reviewer`.
 - **Templates** (`docs/app/templates/`): issue templates and the README template.
-- **Issues** (`docs/app/issues/`): five seeded tickets analysed and reproduced, and the reviews page (#6), built and tested.
-- **Rules** (`.claude/CLAUDE.md` and `.claude/rules/`): ticket, branch, commit and merge request formats, the workflow by difficulty (easy, medium, hard) and lessons learned.
+- **Issues** (`docs/app/issues/`): five seeded issues analysed and reproduced, and the reviews page (#6), built and tested.
+- **Rules** (`.claude/CLAUDE.md` and `.claude/rules/`): issue, branch, commit and pull request formats, the workflow by difficulty (easy, medium, hard) and lessons learned.
 
 </details>
