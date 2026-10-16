@@ -49,12 +49,12 @@ Status: `done`, `next`, `ready` (can start now), `needs you` (waits for somethin
 | T7 | Workflow rules: four team principles, two-round limit, guardrails, mode guide, five review areas | | **done** |
 | T8 | `test-runner` helper on the cheapest model, used by the test step | | **done** |
 | T9 | Safety hooks and permission lists | | **done** |
-| T10 | Memory: the rule for when to save and the first memories | | **next** |
+| T10 | Memory: the rule for when to save and the first memories | | **done** |
 | T11 | Repository on GitHub: empty repository, backup, split of the history, replace the local `.git`, first push, push policy | empty repository, token, restart, your approval for each step | **needs you** (best after T10, so the split carries every commit) |
 | T12 | Protect the repository: main branch rules, squash only, delete branches after merge, code owners, dependency updates, secret scanning | | after T11 and T4 |
 | T13 | Connect GitHub to the assistant (MCP): limited token, tests with the first real issues | token | after T11 |
 | T14 | Publish the epics as issues: three parent issues, one closed issue for done work, one issue per remaining task attached to its epic | your approval of the table | after T13 |
-| T15 | Browser check in verify: start the app, drive the page, screenshots, console and network status | | ready |
+| T15 | Browser check in verify: start the app, drive the page, screenshots, console and network status | | **next** |
 | T16 | Verify report as a local file: template, builder script, opens by itself | | after T15 |
 | T17 | Share the report: private link, privacy and approval rule, when something becomes an artifact | | after T16 |
 | T18 | Before and after screenshots on the same demo data | | after T15 |
@@ -101,7 +101,7 @@ Dropped: P24, clean merged local branches. The new repository starts with `main`
 
 **T10 Memory.** A short rule: when the user corrects something that will come up again, save it. Save at least three useful memories (for example "no Part of line without an issue number"). Done when: a new session knows them.
 
-**T11 Repository on GitHub.** You: delete and recreate the repository empty, create the limited token, set `GH_TOKEN`, log out the broad login, restart. Then, with your approval for each step: new backup, redo the split on the commits that exist then (history of the lab folder, old `#N` references rewritten, ID-based no-reply address), rename the old `.git` to `.git-old-gitlab`, put the new one in the lab folder, add `origin`, push `main` over the existing SSH key (kept; the hook limits it). Write the push policy (see below). Done when: GitHub shows the full history under your account and the working tree is unchanged.
+**T11 Repository on GitHub.** You: delete and recreate the repository empty, create the limited token, set `GH_TOKEN`, log out the broad login, restart. Then, with your approval for each step: new backup, redo the split on the commits that exist then (history of the lab folder, old `#N` references rewritten, ID-based no-reply address), rename the old `.git` to `.git-old-gitlab`, put the new one in the lab folder, add `origin`, push `main` over the existing SSH key (kept; the hook limits it). Copy the memory folder of the project to the new project key, because it follows the git root (`~/.claude/projects/<root>/memory`). Write the push policy (see below). Done when: GitHub shows the full history under your account and the working tree is unchanged.
 
 **T12 Protect the repository.** Main requires a pull request and passing checks, squash merge only, branches deleted after merge, code owners file, dependency update bot, secret scanning and push protection. Done when: a direct push to `main` is refused.
 

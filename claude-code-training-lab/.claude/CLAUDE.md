@@ -63,7 +63,7 @@ These files grow over time, so the plan, review and learn steps consult them on 
 | GitHub issues | Tasks and who claimed them | Every machine |
 | Reports (an artifact, shared by private link) | Evidence and comment threads | Whoever the link is shared with |
 
-If a second session needs it, it goes in a channel, not in one session's head. Explained it twice? A fact goes in this file, a procedure becomes a skill.
+If a second session needs it, it goes in a channel, not in one session's head. When the user corrects something that will come up again, save it as a memory (with why and how to apply); do not save what this repository already records. Explained it twice? A fact goes in this file, a procedure becomes a skill.
 
 ## AI engineering lifecycle
 
