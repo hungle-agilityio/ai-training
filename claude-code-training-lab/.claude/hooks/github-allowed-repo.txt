@@ -1,0 +1,2 @@
+# The only GitHub repository Claude may reach (owner/name). Read by before-github-command-check.py.
+hungle-agilityio/ai-training
