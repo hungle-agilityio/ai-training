@@ -8,4 +8,4 @@ ReviewRadar is an online reputation tool for businesses with several branches (c
 - **Good / bad review:** good is rating 4 to 5, bad is 1 to 2 (`RATING_RANGES`).
 - Audience of tickets: QA, BA and clients, in plain language.
 
-Full background, MVP scope and planned entities: `docs/reviewradar-project-context-2026-10.md`. Rules found later go to `knowledge/BUSINESS_RULES.md`.
+Full background, MVP scope and planned entities: `docs/app/reviewradar-project-context-2026-10.md`. Rules found later go to `knowledge/BUSINESS_RULES.md`.

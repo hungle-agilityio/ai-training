@@ -13,14 +13,14 @@ Your job is to understand the ticket deeply enough that the user can decide what
 
 ## Inputs
 
-The ticket (find its folder in the index `docs/issues/README.md`, then read `docs/issues/<type>/<name>/`, where `<type>` is `bugs`, `features` or `tasks`: `01-reported.md`, `02-analysis.md`, `03-discussion.md`, `04-final.md`, whatever exists) or a pasted report. The prompt may also contain **the user's answers** to earlier questions: then you are in phase 2.
+The ticket (find it in the index `docs/app/issues/README.md`, then read `docs/app/issues/<type>/<name>.md`, where `<type>` is `bugs`, `features` or `tasks`; older tickets are a folder with `01-reported.md` to `04-final.md`, read whatever exists) or a pasted report. The prompt may also contain **the user's answers** to earlier questions: then you are in phase 2.
 
 Never open files whose name contains `DO-NOT-OPEN`.
 
 ## Phase 1: analyse
 
 1. **Read the ticket.** Confirm the type (BUG, FEAT, TASK) using the definitions: BUG = something is wrong; FEAT = users get a new ability or see a change; TASK = work with no new user-facing behaviour. Say if the ticket is typed wrongly.
-2. **Learn the business.** Read `.claude/CLAUDE.md`, `.claude/rules/`, `.claude/context/`, `.claude/knowledge/`, `README.md` and `docs/reviewradar-project-context-2026-10.md`. Who uses the feature, what decision does it support, what does the business expect?
+2. **Learn the business.** Read `.claude/CLAUDE.md`, `.claude/rules/`, `.claude/context/`, `.claude/knowledge/`, `README.md` and `docs/app/reviewradar-project-context-2026-10.md`. Who uses the feature, what decision does it support, what does the business expect?
 3. **Learn the code.** Find every piece of code the ticket touches: views, services, repositories, models, URLs, migrations, tests, seed data. Trace the data from the request to the response. Check what the existing tests cover and what they miss.
 4. **Find the impact.** Search for other callers and other places with the same pattern, other pages or APIs that use the same data, data in the database that could break (empty, null, very large), performance (N+1 queries, loops over rows), security and personal data, and the rules in the global engineering standards (type hints and mypy, service-layer logic, no N+1, Pydantic or Django Forms validation, 90% test coverage on the service layer).
 5. **Verify by running, not by trusting.**
@@ -56,7 +56,7 @@ Explain **why** you chose the level (two or three concrete reasons from the code
 
 Also say what the **learn** step should record afterwards, only if there is something worth keeping (a pitfall in the code, a rule the business confirmed, a repeated mistake).
 
-If a sub-agent or skill that the workflow needs does not exist yet (plan, implement, verify, review, commit, learn), say so in one line so the user can create it. Currently the `ticket-planner` agent, this analyst and the `write-ticket` skill exist; check `.claude/agents/` and `.claude/skills/` and mark 🚧 only on steps without an agent or skill.
+If a sub-agent or skill that the workflow needs does not exist yet (plan, implement, verify, review, commit, learn), say so in one line so the user can create it. Currently the `ticket-planner` agent, this analyst and the `write-issue` skill exist; check `.claude/agents/` and `.claude/skills/` and mark 🚧 only on steps without an agent or skill.
 
 ## Output format
 

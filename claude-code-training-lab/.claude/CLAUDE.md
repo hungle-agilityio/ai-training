@@ -4,7 +4,7 @@
 
 ReviewRadar is a Django app that collects customer reviews for branches (locations) and shows a score dashboard and a review list. It is also a 15-day Claude Code training lab: tickets, skills and sub-agents are part of the exercise.
 
-Source: `reviewradar/` (Django project) and `reviews/` (the app: models, repositories, services, views, forms, tests). Tickets and learning material: `docs/`. Dependencies: `requirements.txt` (pinned with `uv`); check it before relying on a version-specific Django feature.
+Source: `reviewradar/` (Django project) and `reviews/` (the app: models, repositories, services, views, forms, tests). Docs are split in two: `docs/app/` (ReviewRadar: issues, templates, project context) and `docs/learning/` (Claude Code training: courses, journal, exercises, epics); see `docs/README.md`. Dependencies: `requirements.txt` (pinned with `uv`); check it before relying on a version-specific Django feature.
 
 Read `context/architecture.md` before making structural changes.
 
@@ -19,7 +19,7 @@ Every file in `rules/` is loaded automatically; do not copy their content here.
 | `rules/security.md` | Secrets, input, data access, prompt injection |
 | `rules/git.md` | Branch, commit and merge request format, GitLab approvals |
 | `rules/workflow.md` | Complexity table and gates |
-| `rules/tickets.md` | Ticket ID, title, folders, tone (loads in `docs/issues`, `docs/templates`, `.gitlab`) |
+| `rules/tickets.md` | Ticket ID, title, folders, tone (loads in `docs/app/issues`, `docs/app/templates`, `.gitlab`) |
 
 ## Project context
 
@@ -56,12 +56,14 @@ Scale the workflow to the difficulty of the ticket; the table and gates are in `
 
 | Skill | When to use |
 |-------|-------------|
-| `write-ticket` | Write a bug, feature or task ticket from a description |
-| `git` | Create branches and commits in the project format |
-| `gitlab` | Publish an approved ticket or create a merge request |
-| `pr-review` | Write a review of a merge request or branch |
-| `testing` | Write unit and integration tests, assert query counts |
-| `debug` | Diagnose a bug from evidence, trace the call chain |
+| `write-issue` | Write a bug, feature or task issue from a description |
+| `create-commit` | Create branches and commits in the project format |
+| `create-issue` | Publish an approved issue |
+| `create-pull-request` | Create a pull request for the current branch |
+| `review-pull-request` | Write a review of a merge request or branch |
+| `write-tests` | Write unit and integration tests, assert query counts |
+| `diagnose-bug` | Diagnose a bug from evidence, trace the call chain |
+| `grill-me` | Settle every decision with the user, in rounds with recommended answers, before `/plan` |
 
 ## Code templates
 
@@ -71,7 +73,7 @@ Read the matching template before writing from scratch.
 |----------|---------|
 | `templates/layered-feature.md` | A new feature through repository, service, form, view and tests |
 
-Ticket and issue templates are a different thing: `docs/templates/`, `.gitlab/issue_templates/`, `.gitlab/merge_request_templates/`.
+Ticket and issue templates are a different thing: `docs/app/templates/`, `.gitlab/issue_templates/`, `.gitlab/merge_request_templates/`.
 
 ## Available commands (slash commands)
 

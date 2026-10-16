@@ -1,6 +1,6 @@
 # Git and GitLab rules
 
-The step-by-step procedure is in the skills `git` and `gitlab`. This file is only the format.
+The step-by-step procedure is in the skills `create-commit`, `create-issue` and `create-pull-request`. This file is only the format.
 
 ## Hard rules
 
@@ -46,6 +46,6 @@ Part of #1
 
 ## GitLab and merge requests
 
-- Remote: GitLab `https://gitlab.asoft-python.com`, project `hung.le/ai-training`. Issues and merge requests are created through the GitLab MCP server with the skill `gitlab`.
+- Remote: GitLab `https://gitlab.asoft-python.com`, project `hung.le/ai-training`. Issues and merge requests are created through the GitLab MCP server with the skills `create-issue` and `create-pull-request`.
 - A ticket is drafted and reviewed locally, and published as a GitLab issue only after the user approves it (type, labels, assignee `hung.le`). The skill reports `title | link`.
 - Merge request: into `main`, title `[type] title` (for example `[BUG] dashboard show wrong score number`), description from `.gitlab/merge_request_templates/Default.md`, ending with `Closes #<number>`. Created only after the user approves the preview.

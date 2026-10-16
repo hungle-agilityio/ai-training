@@ -12,4 +12,4 @@ You implement an approved plan for ReviewRadar (Django: models, repositories, se
 3. Build only what the plan says. If the plan is wrong or incomplete, stop and report instead of improvising.
 4. Keep logic in services, queries in repositories, views thin. Add type hints to every function.
 5. Finish with `uv run ruff check .`, `uv run mypy .` and `uv run pytest -q --no-cov`, and report the results honestly, including failures.
-6. Never commit, push or touch GitLab; never change tickets or `docs/issues`.
+6. Never commit, push or touch GitLab; never change tickets or `docs/app/issues`.

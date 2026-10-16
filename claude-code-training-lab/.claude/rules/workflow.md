@@ -29,5 +29,6 @@ Gates 1 and 2 are always a human decision, never assumed. Gate 2 applies to ever
 
 - Tests first: write or update the test that shows the problem, then the code.
 - The implementer builds only what the approved plan says. A change of scope goes back to `/plan`.
+- **grill-me before the plan (proposed, never automatic):** after `/understand`, if the ticket is Medium or Hard, or any decision is still open, Claude says how many decisions are open and asks whether to run `grill-me` before `/plan`, then waits. Only the user can skip it. Easy tickets do not get the question.
 - One branch and one ticket at a time.
 - Review happens locally before the merge request; on GitLab the pipeline runs and a human reviews and merges.

@@ -1,9 +1,9 @@
 ---
-name: testing
+name: write-tests
 description: Write or fix unit and integration tests for ReviewRadar (pytest, pytest-django). Use when adding tests for a ticket, reproducing a bug with a failing test, or checking query counts, number types and coverage of services and repositories.
 ---
 
-# Testing
+# Write tests
 
 Rules: `rules/python.md`. Pitfalls to cover: `knowledge/KNOWN_PITFALLS.md`.
 

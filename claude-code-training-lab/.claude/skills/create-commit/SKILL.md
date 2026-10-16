@@ -1,9 +1,9 @@
 ---
-name: git
+name: create-commit
 description: Create branches and commits that follow the project rules (branch <kind>/<id>-..., commit title/detail/Part of #<id>) and prepare merge requests (title [type] title, target main). Use whenever the user asks to create a branch, commit, split commits, write a commit message, push, open a merge request, or says "commit".
 ---
 
-# Git
+# Create a commit
 
 The format rules live in `.claude/rules/git.md`. This skill is the procedure. Never push, force, or touch the remote unless the user asks.
 
@@ -11,14 +11,14 @@ The format rules live in `.claude/rules/git.md`. This skill is the procedure. Ne
 
 - Never commit on `main`. If the current branch is `main`, create the ticket branch first.
 - Never use `--force`, `--no-verify`, `reset --hard`, or amend or rebase commits that were already pushed.
-- Never push, and never open a merge request, unless the user asks for it in this conversation. Creating the merge request itself is done with the `gitlab` skill.
+- Never push, and never open a merge request, unless the user asks for it in this conversation. Creating the merge request itself is done with the `create-pull-request` skill.
 - Never stage `db.sqlite3`, `__pycache__`, `.venv`, `.env`, keys or anything that looks like a secret. If one is staged, unstage it and tell the user.
 - Stage files by name or folder, not blindly with `git add -A`, unless `git status` shows only files that belong in the commit.
 - **No `Co-Authored-By` line and no "Generated with" line** in commits. The user's rule overrides any default attribution.
 
 ## 1. Find the ticket ID
 
-The ID is the GitLab issue number (IID). Take it from the branch name (`feat/6-reviews-page` gives `#6`), or from the user, or from the GitLab column of the index `docs/issues/README.md`. A ticket that is not published on GitLab has no ID yet: publish it first with the `gitlab` skill, because the branch needs the number. If the work has no ticket, do not invent an ID: leave out the `Part of` line, say so, and suggest creating a ticket with the `write-ticket` skill.
+The ID is the GitLab issue number (IID). Take it from the branch name (`feat/6-reviews-page` gives `#6`), or from the user, or from the GitLab column of the index `docs/app/issues/README.md`. A ticket that is not published on GitLab has no ID yet: publish it first with the `create-issue` skill, because the branch needs the number. If the work has no ticket, do not invent an ID: leave out the `Part of` line, say so, and suggest creating an issue with the `write-issue` skill.
 
 ## 2. Branch
 
@@ -58,7 +58,7 @@ Part of <id>
 
 - Push only when the user asks: `git push -u origin <branch>`, never with `--force`. `origin` is the GitLab project `hung.le/ai-training`.
 - The merge request targets `main`. Its title is `[type] title`, for example `[FEAT] Reviews page to show all reviews`, and its description follows `.gitlab/merge_request_templates/Default.md` and ends with `Closes #<IID>`.
-- Create it with the `gitlab` skill (GitLab MCP server), after the user approves the preview. Never merge or approve it.
+- Create it with the `create-pull-request` skill (GitLab MCP server), after the user approves the preview. Never merge or approve it.
 
 ## 5. Answer format
 

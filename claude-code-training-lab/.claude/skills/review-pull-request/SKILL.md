@@ -1,9 +1,9 @@
 ---
-name: pr-review
+name: review-pull-request
 description: Review a merge request or a branch and write one review in a fixed structure (PR Review Summary, Strengths, Issues & Recommendations), in English, ready to paste into the merge request. Use when the user asks to review a PR or MR, review a branch, "give me review comments", or play the role of another reviewer. Read-only: it never posts, approves or merges.
 ---
 
-# PR review
+# Review a pull request
 
 The rules live in `.claude/rules/`, `.claude/knowledge/` and `.claude/CLAUDE.md`. This skill is the procedure and the output format. The result is **one document, in English**, that the user pastes into the merge request by hand.
 
@@ -18,7 +18,7 @@ The rules live in `.claude/rules/`, `.claude/knowledge/` and `.claude/CLAUDE.md`
 
 1. The branch or merge request the user names. If none, use the current branch.
 2. The target is the merge request target; if the user does not say, it is `feat/claude-code-training-lab` (the base of the project, `main` has no code yet). Diff with `git diff <target>...<branch>` and read the commits with `git log <target>..<branch>`; use `git show <branch>:./<path>` to read files without switching branches.
-3. The ticket: the issue number from the branch name (`bug/1-...` is `#1`), then its `docs/issues/<type>/<name>/04-final.md` and the index `docs/issues/README.md`. Check the change against the ticket's expected result. Use GitLab issue numbers in the review, not local numbers.
+3. The ticket: the issue number from the branch name (`bug/1-...` is `#1`), then its `docs/app/issues/<type>/<name>.md` (or `<name>/04-final.md` for older tickets) and the index `docs/app/issues/README.md`. Check the change against the ticket's expected result. Use GitLab issue numbers in the review, not local numbers.
 
 ## 2. Review order
 
