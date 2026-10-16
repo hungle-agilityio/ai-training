@@ -30,6 +30,8 @@ def problems(command: str) -> list[str]:
 
 
 MAY_RUN = [
+    "env FOO=1 uv run pytest -q",
+    "echo hello world",
     "uv run pytest -q --no-cov",
     "echo hello",
     "ls -R docs",
@@ -79,6 +81,13 @@ MAY_RUN = [
 ]
 
 MUST_BLOCK = [
+    "echo $GH_TOKEN",
+    'echo "${GITHUB_TOKEN}"',
+    "printenv",
+    "printenv GH_TOKEN",
+    "env",
+    "git status && env",
+    "export GH_TOKEN=abc",
     "git config remote.origin.url https://github.com/cli/cli.git",
     "git config remote.origin.pushurl git@github.com:cli/cli.git",
     "git config --global url.git@github.com:.insteadOf x",

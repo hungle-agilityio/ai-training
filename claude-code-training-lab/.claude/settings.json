@@ -30,7 +30,8 @@
       "Bash(gh issue reopen:*)",
       "Bash(gh api:*)",
       "Bash(git remote add:*)",
-      "Bash(git remote set-url:*)"
+      "Bash(git remote set-url:*)",
+      "Bash(git rebase:*)"
     ],
     "deny": [
       "Bash(git push --force:*)",
@@ -65,7 +66,10 @@
       "Bash(git reset --hard:*)",
       "Bash(git commit --no-verify:*)",
       "Bash(git push --no-verify:*)",
-      "Edit(./.git/**)"
+      "Edit(./.git/**)",
+      "Bash(gh pr review:*)",
+      "Bash(gh pr comment:*)",
+      "Read(**/*DO-NOT-OPEN*)"
     ]
   },
   "env": {
@@ -79,6 +83,10 @@
           {
             "type": "command",
             "command": "/usr/bin/env python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/before-github-command-check.py\""
+          },
+          {
+            "type": "command",
+            "command": "/usr/bin/env python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/before-commit-check.py\""
           }
         ]
       }

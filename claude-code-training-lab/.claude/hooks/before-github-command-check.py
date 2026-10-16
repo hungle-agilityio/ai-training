@@ -35,6 +35,10 @@ QUOTED_HEREDOC = re.compile(r"<<-?\s*'(\w+)'[^\n]*\n.*?\n\s*\1[ \t]*(?:\n|$)", r
 SHELL_WORD = re.compile(r"\b(?:bash|sh|zsh|dash|ksh|eval|source)\b")
 CONFIG_READ_FLAGS = {"--get", "--get-all", "--get-regexp", "--get-urlmatch", "--list", "-l"}
 REMOTE_KEY = re.compile(r"\bremote\.[^\s]+\.(?:url|pushurl)\b|\burl\.")
+TOKEN_USE = re.compile(
+    r"\b(?:GH_TOKEN|GITHUB_TOKEN|GITHUB_PERSONAL_ACCESS_TOKEN)\b"
+    r"|(?:^|[;&|\n]\s*)(?:printenv|env)\s*(?:$|[;&|\n])"
+)
 SEGMENT_SPLIT = re.compile(r"&&|\|\||;|\||\n")
 ENV_PREFIX = r"(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*"
 GH_SEGMENT = re.compile(rf"^{ENV_PREFIX}(?:sudo\s+)?gh\b\s*(.*)$", re.S)
@@ -204,9 +208,11 @@ def check_fetch_tool(segment: str, allowed: str) -> list[str]:
 def check_command(command: str, allowed: str) -> list[str]:
     """Return the reasons to block a command, or an empty list when it may run."""
     command = without_inert_heredocs(command)
-    if RELEVANT.search(command) is None:
-        return []
     problems: list[str] = []
+    if TOKEN_USE.search(command):
+        problems.append("the token must never be read or printed (GH_TOKEN, printenv, env)")
+    if RELEVANT.search(command) is None:
+        return problems
     if ADMIN_GH.search(command):
         problems.append("gh commands that manage repositories, accounts or secrets are not allowed")
     for segment in SEGMENT_SPLIT.split(command):
@@ -242,7 +248,8 @@ def main() -> int:
         return 0
     tool_input = payload.get("tool_input")
     command = str(tool_input.get("command", "")) if isinstance(tool_input, dict) else ""
-    if RELEVANT.search(command) is None:
+    plain = without_inert_heredocs(command)
+    if RELEVANT.search(command) is None and TOKEN_USE.search(plain) is None:
         return 0
     try:
         problems = check_command(command, read_allowed())
