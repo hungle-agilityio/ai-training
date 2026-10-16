@@ -25,6 +25,31 @@
 
 Gates 1 and 2 are always a human decision, never assumed. Gate 2 applies to every difficulty. Easy issues also stop for the human check after `/test`.
 
+## Team principles
+
+These apply to every helper and to the main assistant.
+
+1. The AI never changes the requirement. What an issue asks for is changed only by the user, in the issue.
+2. The AI never widens the scope. An idea beyond the approved plan is raised and written down, not built.
+3. The reviewer does not rely on the implementer's reasoning. It works out what is correct from the issue, the rules and the code, then compares with the diff.
+4. No endless loops: at most two rounds of AI fix and review. If a finding is still open after the second round, the work stops and a human decides.
+
+## Guardrails
+
+These hold in every mode.
+
+- **Archive, do not delete:** move to an archive or rely on git history. Never delete a file or data that the user did not ask to delete.
+- **Verify, then close:** an issue is closed only after the build and the tests pass and a human checked the result. An issue that cannot be finished is released back, never closed.
+- **Write down why:** a removal or a reversal is recorded, with its reason and date, in "Removed, and why" in `.claude/CLAUDE.md` or in a decision record.
+- Never force-push, never skip the checks (`--no-verify`), never reset hard. Commit messages are written from the real diff.
+
+## Modes
+
+- **Auto mode** is for flow: reads, edits and scripts that the allow list lets through, without a prompt for each step.
+- **Plan mode** is the gate: anything that changes code or shared state is first approved as a plan (Gate 1).
+- **Background runs:** a long build or crawl is started in the background with a monitor and reports when it ends. Nobody watches a progress bar.
+- Whatever the mode, the guardrails above and the Gate 3 approval for anything that leaves the machine still apply.
+
 ## Rules of the flow
 
 - Tests first: write or update the test that shows the problem, then the code.

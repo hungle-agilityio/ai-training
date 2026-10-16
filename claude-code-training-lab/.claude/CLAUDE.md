@@ -75,7 +75,7 @@ Scale the workflow to the difficulty of the issue; the table and gates are in `r
 
 - `/understand` runs `analyst`: evidence first, questions for the reporter, then rates the issue Easy, Medium or Hard. Easy issues skip `/plan`.
 - Sub-agents, their roles and models are in the table below.
-- The reviewer is mandatory for Hard issues and for Medium issues that hit the trigger list in `rules/workflow.md`.
+- The reviewer is mandatory for Hard issues and for Medium issues that hit the trigger list in `rules/workflow.md`. The team principles (never change the requirement, never widen the scope, the reviewer does not rely on the implementer's reasoning, at most two rounds of fix and review) and the guardrails are in the same file.
 - Gate 1: a human approves the plan before any code is written. Gate 2: after `/verify`, a human checks the result. Nothing is committed before the user says it is OK.
 - The command files are the source of truth for each step; this section is an overview.
 
