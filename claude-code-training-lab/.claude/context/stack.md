@@ -11,7 +11,7 @@
 | CI | none yet: a GitHub workflow (lint, types, tests) is added in the checks task |
 | Tracker | GitHub, through the `gh` command (the MCP server comes later) |
 
-Versions and settings come from `requirements.txt` and `pyproject.toml`; check them before relying on a version-specific feature.
+Versions and settings come from `pyproject.toml` and the lock file `uv.lock` (install with `uv sync`); check them before relying on a version-specific feature.
 
 ## Commands
 

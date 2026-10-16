@@ -4,7 +4,7 @@
 
 ReviewRadar is a Django app that collects customer reviews for branches (locations) and shows a score dashboard and a review list. It is also a 15-day Claude Code training lab: issues, skills and sub-agents are part of the exercise.
 
-Source: `reviewradar/` (Django project) and `reviews/` (the app: models, repositories, services, views, forms, tests). Docs are split in two: `docs/app/` (ReviewRadar: issues, templates, project context) and `docs/learning/` (Claude Code training: courses, journal, exercises, epics); see `docs/README.md`. Dependencies: `requirements.txt` (pinned with `uv`); check it before relying on a version-specific Django feature.
+Source: `reviewradar/` (Django project) and `reviews/` (the app: models, repositories, services, views, forms, tests). Docs are split in two: `docs/app/` (ReviewRadar: issues, templates, project context) and `docs/learning/` (Claude Code training: courses, journal, exercises, epics); see `docs/README.md`. Dependencies: `pyproject.toml` (ranges) and `uv.lock` (exact versions, install with `uv sync`); check them before relying on a version-specific Django feature.
 
 Read `context/architecture.md` before making structural changes.
 

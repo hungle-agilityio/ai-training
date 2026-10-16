@@ -56,7 +56,7 @@ All modules are empty skeletons at this stage.
 
 ## Tooling
 
-- Run: `uv venv`, `uv pip install -r requirements.txt`, `uv run python manage.py runserver`.
+- Run: `uv sync`, `uv run python manage.py runserver`.
 - Test: `uv run pytest`.
 - Branch: `feat/claude-code-training-lab`.
 

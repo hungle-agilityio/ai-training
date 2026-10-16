@@ -2,7 +2,7 @@
 
 Online reputation management for businesses with several locations: collect customer reviews, see how each location is rated, and respond faster.
 
-**Status:** MVP in progress. The dashboard and the reviews page work on demo data; review import, sentiment analysis with the Claude API and reply suggestions are planned.
+**Status:** MVP in progress. The dashboard, the reviews page with filters and the JSON API work on demo data; review import, sentiment analysis with the Claude API and reply suggestions are planned.
 
 ## Overview
 
@@ -16,12 +16,12 @@ The project is also the vehicle of a 15-day Claude Code training lab (see [Train
 |---|---|
 | Dashboard: key numbers, location scores, rating breakdown, latest reviews | Done |
 | Reviews page: table of all reviews, newest first, 20 per page, full text on hover or focus | Done |
+| Filter reviews by location, rating (good or bad) and week | Done |
 | JSON API for location scores (`/api/dashboard/`) | Done |
 | Demo data command | Done |
-| Filter reviews by good or bad and by week | Planned (#4) |
 | Import reviews from CSV or a mock API | Planned |
 | Sentiment classification with the Claude API | Planned (today sentiment is derived from the stars) |
-| Reply drafts in the language of the review | Planned (#5) |
+| Reply drafts in the language of the review | Planned |
 | Score trend per location | Planned |
 
 ## Tech stack
@@ -41,8 +41,7 @@ The project is also the vehicle of a 15-day Claude Code training lab (see [Train
 ### Install and run
 
 ```bash
-uv venv
-uv pip install -r requirements.txt
+uv sync
 uv run python manage.py migrate
 uv run python manage.py seed_demo_data
 uv run python manage.py runserver
@@ -55,7 +54,7 @@ Open http://127.0.0.1:8000/. If port 8000 is busy, use `runserver 8800`.
 | Option | Effect |
 |---|---|
 | `--branches N` | Add N extra locations with 3 reviews each (for example `--branches 597` gives about 1,800 reviews) |
-| `--with-new-branch` | Add a location without reviews (reproduces issue #3) |
+| `--with-new-branch` | Add a location without reviews (the dashboard shows it without a score) |
 
 ### Configuration
 
@@ -72,7 +71,7 @@ Time zone is `Asia/Ho_Chi_Minh`. Never commit `.env` or secrets.
 |---|---|
 | `/` | Redirects to the dashboard |
 | `/dashboard/` | Key numbers, score per location, rating breakdown, latest reviews |
-| `/reviews/` | All reviews in a table with pagination (`?page=N`) |
+| `/reviews/` | All reviews in a table with pagination and filters (`?page=N&location=ID&rating=good` or `bad`, `&week=YYYY-MM-DD`) |
 | `/api/dashboard/` | JSON: review count and average rating per location |
 
 ## Project structure
@@ -90,9 +89,8 @@ reviews/                Django app
   tests/unit/           Unit tests
   tests/integration/    Integration tests
 docs/
-  issues/               Issues by type: bugs/, features/, tasks/ (index in README.md)
-  templates/            Issue and README templates
-  journal/, courses/    Training notes
+  app/                  The app: issues/ (index in README.md), templates/, project context
+  learning/             Claude Code training: courses/, journal/, exercises/, epics/
 .claude/                Claude Code skills and agents shared by the team
 .gitlab/                Legacy issue templates, replaced by `.github/` in a later task
 ```
@@ -124,22 +122,21 @@ Target: 90% coverage on the service layer. Mock external APIs; tests never use t
 
 - Work is tracked as GitHub issues; the drafts and the index are in `docs/app/issues/`. The issue number is the GitHub issue number (`#6`).
 - Branch: `<kind>/<number>-<description>`, for example `bug/1-dashboard-wrong-score`.
-- Commit: title, blank line, detail, blank line, `Part of #<number>`.
+- Commit: title, blank line, detail, blank line, `Part of #<number>` (left out while there is no issue number).
 - Pull request into `main`: title `[type] title`, for example `[FEAT] Reviews page to show all reviews`, description ends with `Closes #<number>`. A human reviews and merges it.
 - The rules are in [`.claude/CLAUDE.md`](.claude/CLAUDE.md) and [`.claude/rules/`](.claude/rules); the skills and agents that apply them are in `.claude/`.
 
 ## Known issues and roadmap
 
-| # | Issue | State |
-|---|---|---|
-| 1 | Dashboard numbers look wrong (rounding) | Fixed |
-| 2 | Dashboard is very slow with many locations (one query per location) | Open, failing test in place |
-| 3 | A location without reviews breaks the dashboard | Open, failing test in place |
-| 4 | Filter reviews by good or bad and by week | Open |
-| 5 | Reply drafts in the wrong language | Open, feature not built yet |
-| 6 | Reviews page | Built, issue still to confirm |
+| Issue | State |
+|---|---|
+| Dashboard numbers look wrong (rounding) | Fixed |
+| Dashboard is very slow with many locations (one query per location) | Fixed: the scores load in one query, and a test asserts the query count |
+| A location without reviews breaks the dashboard | Fixed: the location is shown without a score |
+| Reviews page, with filters by location, rating and week | Built and tested |
+| Reply drafts in the wrong language | Open, the reply feature is not built yet |
 
-Two tests fail on purpose until #2 and #3 are fixed.
+All tests pass.
 
 Limitations: there is no login and data is not limited per business, so the dashboard and the reviews page show the reviews of every business. Do not use real customer data until access control is added.
 
@@ -178,7 +175,7 @@ ReviewRadar is built as part of a **15-day Claude Code training lab**: each day 
 - **Skills** (`.claude/skills/`): `write-issue` (one complete issue file), `create-commit` (branches and commits that follow the project rules), `create-issue` and `create-pull-request` (publish on GitHub with the `gh` command), `review-pull-request`, `write-tests`, `diagnose-bug` and `grill-me`.
 - **Sub-agents** (`.claude/agents/`): `analyst` (analyses an issue against the code), `planner` (turns the analysis into a step-by-step plan), `implementer` and `reviewer`.
 - **Templates** (`docs/app/templates/`): issue templates and the README template.
-- **Issues** (`docs/app/issues/`): five seeded issues analysed and reproduced, and the reviews page (#6), built and tested.
+- **Issues** (`docs/app/issues/`): five seeded issues analysed and reproduced, and the reviews page, built and tested.
 - **Rules** (`.claude/CLAUDE.md` and `.claude/rules/`): issue, branch, commit and pull request formats, the workflow by difficulty (easy, medium, hard) and lessons learned.
 
 </details>
