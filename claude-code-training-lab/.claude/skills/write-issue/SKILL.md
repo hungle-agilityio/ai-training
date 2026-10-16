@@ -16,6 +16,7 @@ Write **one** file: `docs/app/issues/<type>/<name>.md`, the complete ticket, bui
 | `BUG` | Something that worked, or should work, is wrong: error, wrong value, slow, wrong text | `docs/app/templates/04-final-bug.md` | `bugs/<name>` | `bug/<id>-...` |
 | `FEAT` | Users get a new ability, or an existing page changes what users see | `docs/app/templates/04-final-feature.md` | `features/<name>` | `feat/<id>-...` |
 | `TASK` | Work with no new user-facing behaviour: cleanup, data update, configuration, document, investigation | `docs/app/templates/04-final-task.md` | `tasks/<name>` | `task/<id>-...` |
+| `EPIC` | A goal that needs between 3 and 10 issues | `docs/app/templates/epic.md` | `epics/<name>` | none (each child has its own) |
 
 - Follow the template's sections, in order, with nothing added or removed.
 - If the type is unclear, decide from the table and say which you chose and why. If the user names a type, use it.
