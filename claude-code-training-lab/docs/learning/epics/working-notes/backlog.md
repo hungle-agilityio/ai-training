@@ -47,8 +47,8 @@ Status: `done`, `next`, `ready` (can start now), `needs you` (waits for somethin
 | T5 | GitHub templates and basic files: issue forms (also for epics) and pull request template with the quality list, example settings file, contributing note | licence decision | **done** |
 | T6 | Project map and decision records | | **done** |
 | T7 | Workflow rules: four team principles, two-round limit, guardrails, mode guide, five review areas | | **done** |
-| T8 | `test-runner` helper on the cheapest model, used by the test step | | **next** |
-| T9 | Safety hooks and permission lists | | ready |
+| T8 | `test-runner` helper on the cheapest model, used by the test step | | **done** |
+| T9 | Safety hooks and permission lists | | **next** |
 | T10 | Memory: the rule for when to save and the first memories | | ready |
 | T11 | Repository on GitHub: empty repository, backup, split of the history, replace the local `.git`, first push, push policy | empty repository, token, restart, your approval for each step | **needs you** (best after T10, so the split carries every commit) |
 | T12 | Protect the repository: main branch rules, squash only, delete branches after merge, code owners, dependency updates, secret scanning | | after T11 and T4 |

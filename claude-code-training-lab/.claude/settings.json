@@ -20,7 +20,8 @@
       "Bash(gh pr checks:*)",
       "Bash(gh repo view:*)",
       "Bash(gh auth status:*)",
-      "Bash(python3 -I .claude/skills/create-issue/check_issue.py:*)"
+      "Bash(python3 -I .claude/skills/create-issue/check_issue.py:*)",
+      "Bash(uv run coverage:*)"
     ],
     "ask": [
       "Bash(git push:*)",

@@ -9,7 +9,7 @@
 ├── skills/          how to do a topic (write-issue, create-commit, create-issue, create-pull-request, review-pull-request, write-tests, diagnose-bug, grill-me)
 ├── templates/       code skeletons (not the issue templates in docs/app/templates)
 ├── commands/        slash commands for each lifecycle step
-├── agents/          sub-agents with a fixed model
+├── agents/          sub-agents with a role and a model (analyst, planner, implementer, reviewer, test-runner)
 ├── hooks/           guard that runs before every shell command (one repository only)
 └── settings.json    permissions
 ```

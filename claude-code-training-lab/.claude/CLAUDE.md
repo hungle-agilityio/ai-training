@@ -85,6 +85,7 @@ Scale the workflow to the difficulty of the issue; the table and gates are in `r
 | `planner` | advisor | opus | writes the step-by-step plan |
 | `implementer` | builder | sonnet | builds exactly what the approved plan says |
 | `reviewer` | advisor | opus | re-derives correctness independently |
+| `test-runner` | runner | haiku | runs the checks and reports only what failed |
 
 ## Working with helpers
 

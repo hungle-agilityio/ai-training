@@ -38,4 +38,4 @@ One pattern for every name in `.claude/`, so a new name can be guessed. Decided 
 | agent `ticket-planner` | `planner` | done |
 | agents `implementer`, `reviewer` | keep | done |
 | new | `grill-me` | done |
-| new | `test-runner` | planned (runner role) |
+| new | `test-runner` | done |
