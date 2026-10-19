@@ -60,13 +60,19 @@ Token permissions for the user to set: owner `hungle-agilityio`, only repository
 
 Order inside Phase 1 because of D6: P34 (repository from the lab folder), P05 (remote), then P43 (create the token for that one repository, set the variable, connect, test). The GitHub user name for assignee is `hungle-agilityio` (D7).
 
-## Push policy (proposal, confirmed in task T11)
+## Push policy (confirmed in task T11, 2026-10-19)
 
-| Push | Never push | Your decision |
+| Push | Never push | Decided |
 |---|---|---|
-| App code, tests, dependency list and lock file | Database file, `.env` files, tokens, keys | The trainer answer-key file in the issues folder |
-| Team assistant settings: project map, rules, context, knowledge, commands, skills, agents, shared `settings.json` | Personal assistant settings and personal notes (`settings.local.json`, `CLAUDE.local.md`), memory, session logs | The learning journal |
-| GitHub workflow, templates, code owners | Virtual environment, caches, coverage output, `.DS_Store` | The copied course notes (check the licence before making the repo public) |
-| Issues folder, epic, decision records, README | Working copies and scratch files, real customer data | Repository visibility (private recommended for now) |
+| App code, tests, dependency list and lock file | Database file, `.env` files, tokens, keys | Trainer answer-key file in the issues folder: never pushed. No such file exists yet; when one is added it is ignored first |
+| Team assistant settings: project map, rules, context, knowledge, commands, skills, agents, shared `settings.json` | Personal assistant settings and personal notes (`settings.local.json`, `CLAUDE.local.md`), memory, session logs | Learning journal: pushed, only while the repository is private |
+| GitHub workflow, templates, code owners | Virtual environment, caches, coverage output, `.DS_Store` | Copied course notes (`courses/claude-101`, 11 files): already in the history; not pushed to a public repository until the licence is checked |
+| Issues folder, epic, decision records, README | Working copies and scratch files, real customer data | Repository visibility: private |
+
+Check made on 2026-10-19 before the push policy: none of `.env`, `db.sqlite3`, `settings.local.json`, `CLAUDE.local.md`, `.coverage` or `.DS_Store` appears anywhere in the 62 commits of the history.
+
+## Repository layout (decided in task T11, 2026-10-19)
+
+The repository root is `ai-training/` and the code lives in `claude-code-training-lab/`, because later plans and practice projects will sit next to it. The first split (root = the lab folder, as the task text and P34 said) was done and pushed, then reversed the same day: it dropped the folder name and the two first commits. The wrong `.git` is kept in `~/hungle/training/backups/git-split-wrong-2026-10-19`; the old GitLab `.git` stays as `ai-training/.git-old-gitlab` (excluded from git). Old `#N` GitLab references were rewritten (`Part of #N` lines removed, `#N` in text became `GitLab #N`) and the author address is the GitHub no-reply address.
 
 Process: nothing is pushed without approval of that exact item; one branch per issue and a pull request into main; run verify first; look at the list of staged files before every commit; never force.
