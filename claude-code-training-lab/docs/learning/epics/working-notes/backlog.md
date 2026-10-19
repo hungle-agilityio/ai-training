@@ -61,7 +61,7 @@ Status: `done`, `next`, `ready` (can start now), `needs you` (waits for somethin
 | T19 | Mask sensitive data in screenshots and logs, with an automatic scan that stops the run | list of sensitive fields | **done** |
 | T20 | Pull request draft with evidence: the skill, evidence link, local image folder, one worked example | | done |
 | T21 | Page on the flow with outside tools (Slack, Drive, Gmail, Calendar, GitHub) | which tools you really use | done (page: `docs/learning/outside-tools-flow.md`; tool list assumed) |
-| T22 | Skills base: layout, rulebook files, one example run and a test per skill | | ready |
+| T22 | Skills base: layout, rulebook files, one example run and a test per skill | | done (`.claude/skills/README.md`, layout test) |
 
 Optional, only if needed (each can be dropped with a written reason):
 

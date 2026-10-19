@@ -120,6 +120,8 @@ Scale the workflow to the difficulty of the issue; the table and gates are in `r
 | `share-report` | Share a verify report as a private link, only when the sharing gate allows (masking clean, standing approval on) |
 | `capture-before-after` | Capture the same browser steps before and after a change on the same demo data and pair the screenshots |
 
+How a skill is built, where rulebooks live and the test pattern: `.claude/skills/README.md` (a layout test checks every skill).
+
 ## Code templates
 
 Read the matching template before writing from scratch.
