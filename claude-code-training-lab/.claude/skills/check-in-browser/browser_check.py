@@ -171,7 +171,8 @@ def run_step(
     ok = True
     try:
         if "goto" in step:
-            page.goto(base + step["goto"], wait_until="load", timeout=15000)
+            response = page.goto(base + step["goto"], wait_until="load", timeout=15000)
+            record["http_status"] = response.status if response else None
         for action in step.get("actions", []):
             if "select" in action:
                 for selector, value in action["select"].items():

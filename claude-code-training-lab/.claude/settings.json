@@ -24,7 +24,8 @@
       "Bash(uv run coverage:*)",
       "Bash(uv run python .claude/skills/check-in-browser/browser_check.py:*)",
       "Bash(uv run python .claude/skills/build-verify-report/build_report.py:*)",
-      "Bash(python3 -I .claude/skills/share-report/share_gate.py:*)"
+      "Bash(python3 -I .claude/skills/share-report/share_gate.py:*)",
+      "Bash(uv run python .claude/skills/capture-before-after/before_after.py:*)"
     ],
     "ask": [
       "Bash(git push:*)",
