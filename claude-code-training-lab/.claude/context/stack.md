@@ -8,7 +8,7 @@
 | Time zone | `Asia/Ho_Chi_Minh` |
 | Tooling | `uv`, `ruff`, `mypy` (strict, `django-stubs`) |
 | Tests | `pytest`, `pytest-django`, `pytest-mock`, `pytest-cov` (tests in `reviews/tests`); `playwright` (headless Chromium) for the browser check |
-| CI | GitHub Actions `.github/workflows/checks.yml`: `ruff`, `mypy`, `pytest`, a 90% coverage gate on services and repositories, and the hook tests |
+| CI | GitHub Actions `../.github/workflows/checks.yml` (runs inside `claude-code-training-lab/`): `ruff`, `mypy`, `pytest`, a 90% coverage gate on services and repositories, and the hook tests |
 | Tracker | GitHub, through the `gh` command (the MCP server comes later) |
 
 Versions and settings come from `pyproject.toml` and the lock file `uv.lock` (install with `uv sync`); check them before relying on a version-specific feature.

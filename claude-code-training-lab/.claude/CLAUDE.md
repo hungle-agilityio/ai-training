@@ -16,7 +16,7 @@ Read `context/architecture.md` before making structural changes.
 | `docs/app/` | ReviewRadar issues (`issues/`, index in its README), issue templates, project context |
 | `docs/learning/` | Claude Code training: courses, journal, exercises, the epics and their working notes |
 | `.claude/` | This folder: rules, context, knowledge, skills, agents, commands, hooks, settings |
-| `.github/` | Automatic checks (`workflows/`), issue forms and the pull request template |
+| `../.github/` | Automatic checks (`workflows/`), issue forms, the pull request template, code owners and the dependency bot (GitHub reads it only at the repository root, one level above this folder) |
 | `pyproject.toml`, `uv.lock` | Dependencies and their exact versions |
 | `env.example` | Example settings; the real `.env` is never committed |
 
@@ -130,7 +130,7 @@ Read the matching template before writing from scratch.
 |----------|---------|
 | `templates/layered-feature.md` | A new feature through repository, service, form, view and tests |
 
-Issue and pull request templates are a different thing: `docs/app/templates/` (the files `write-issue` fills in) and `.github/ISSUE_TEMPLATE/` plus `.github/PULL_REQUEST_TEMPLATE.md` (the forms on GitHub).
+Issue and pull request templates are a different thing: `docs/app/templates/` (the files `write-issue` fills in) and `../.github/ISSUE_TEMPLATE/` plus `../.github/PULL_REQUEST_TEMPLATE.md` (the forms on GitHub).
 
 ## Available commands (slash commands)
 
