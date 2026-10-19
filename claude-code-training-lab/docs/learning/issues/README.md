@@ -4,3 +4,4 @@ One file per issue, grouped by type (`bugs/`, `features/`, `tasks/`). These are 
 
 | Epic code | GitHub | Type | File | Title |
 |:---:|---|---|---|---|
+| – | #5 | Task | `tasks/connect-github-mcp.md` | [TASK] connect the AI assistant to the GitHub project |
