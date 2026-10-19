@@ -76,3 +76,23 @@ Check made on 2026-10-19 before the push policy: none of `.env`, `db.sqlite3`, `
 The repository root is `ai-training/` and the code lives in `claude-code-training-lab/`, because later plans and practice projects will sit next to it. The first split (root = the lab folder, as the task text and P34 said) was done and pushed, then reversed the same day: it dropped the folder name and the two first commits. The wrong `.git` is kept in `~/hungle/training/backups/git-split-wrong-2026-10-19`; the old GitLab `.git` stays as `ai-training/.git-old-gitlab` (excluded from git). Old `#N` GitLab references were rewritten (`Part of #N` lines removed, `#N` in text became `GitLab #N`) and the author address is the GitHub no-reply address.
 
 Process: nothing is pushed without approval of that exact item; one branch per issue and a pull request into main; run verify first; look at the list of staged files before every commit; never force.
+
+## Protecting the repository (task T12, 2026-10-19): partly done
+
+Decision: keep the repository private on the current plan and rely on local discipline; do not pay for a team plan and do not make the repository public for now.
+
+| Part | State | Evidence |
+|---|---|---|
+| `.github/` at the repository root (GitHub reads it only there) | Done | The checks workflow ran and passed on the first pull request |
+| Checks run inside `claude-code-training-lab/` | Done | Same run |
+| Code owners file | Done, but it only names the owner; it cannot force a review | `.github/CODEOWNERS` |
+| Weekly dependency updates (`uv`, GitHub Actions) | File done | `.github/dependabot.yml` |
+| Rule set on `main` (pull request and passing check required, force push and deletion blocked) | **Not configured, blocked by the plan** | GitHub says rule sets are not enforced on a private repository without a team plan; a direct push to `main` was accepted (`1c54fb9..f307546`, an empty commit) |
+| Squash merge only, delete branches after merge | Not checked; set in repository settings, which Claude may not change | The first pull request was merged with a merge commit |
+| Secret scanning and push protection | **Not configured, blocked by the plan** | Same limit |
+
+Done when (a direct push to `main` is refused): **not met.**
+
+What still protects `main`: the hook `before-commit-check` blocks commits on `main` and the project rules forbid pushing there, but both bind Claude only, not a person. The checks run on every pull request and a human merges.
+
+Revisit when the repository becomes public or moves to a team plan: create the rule set, turn on secret scanning and push protection, repeat the direct push test and record the result.

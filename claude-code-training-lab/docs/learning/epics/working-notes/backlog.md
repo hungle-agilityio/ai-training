@@ -51,7 +51,7 @@ Status: `done`, `next`, `ready` (can start now), `needs you` (waits for somethin
 | T9 | Safety hooks and permission lists | | **done** |
 | T10 | Memory: the rule for when to save and the first memories | | **done** |
 | T11 | Repository on GitHub: empty repository, backup, split of the history, replace the local `.git`, first push, push policy | empty repository, token, restart, your approval for each step | **done** (2026-10-19: root `ai-training/`, 62 commits on GitHub, push policy in `decision-log.md`) |
-| T12 | Protect the repository: main branch rules, squash only, delete branches after merge, code owners, dependency updates, secret scanning | | after T11 and T4 |
+| T12 | Protect the repository: main branch rules, squash only, delete branches after merge, code owners, dependency updates, secret scanning | a paid plan, or a public repository | **partly done, blocked by the plan** (2026-10-19: files done and checks green; rules on `main` and secret scanning are not enforced on a private repository; see `decision-log.md`) |
 | T13 | Connect GitHub to the assistant (MCP): limited token, tests with the first real issues | token | after T11 |
 | T14 | Publish the epics as issues: three parent issues, one closed issue for done work, one issue per remaining task attached to its epic | your approval of the table | after T13 |
 | T15 | Browser check in verify: start the app, drive the page, screenshots, console and network status | | **done** |
