@@ -24,7 +24,7 @@ GitLab is being dropped. The rules and skills still describe GitLab, the automat
 Each item must be something a person can check without technical help.
 - [x] The words GitLab and merge request appear nowhere in the working instructions of the project; they remain only in history records (decision records, the table of removed things, the naming rules and the tests that block them).
 - [x] A clean install gives the same dependency versions twice.
-- [ ] A deliberate type error makes the automatic checks fail on GitHub.
+- [ ] A deliberate type error makes the automatic checks fail on GitHub (not run: it needs a temporary pull request; the owner accepted this on 2026-10-19).
 - [ ] GitHub shows the full history of the lab folder under the account `hungle-agilityio`, and a direct push to `main` is refused (the refusal is postponed with #9).
 - [x] The assistant can read and create an issue in this repository and cannot reach any other repository.
 
@@ -64,6 +64,7 @@ Every change of scope is written here with its reason, never made silently.
 |---|---|---|
 | 2026-10-16 | This epic was created by splitting the first single epic (31 tasks) into three | An epic should have 3 to 10 children |
 | 2026-10-19 | The rules on the main branch and secret scanning are postponed (#9 closed as not planned for now) | GitHub does not enforce them on a private repository without a paid plan; the owner keeps the repository private |
+| 2026-10-19 | The live test of a deliberate type error is not run | It needs a temporary pull request with an error; the owner prefers to finish sooner. The automatic checks do run on every pull request |
 | 2026-10-19 | The first success criterion allows the words GitLab and merge request in history records | They are kept on purpose in the table of removed things, the decision records and the tests that block them |
 
 ## Environment

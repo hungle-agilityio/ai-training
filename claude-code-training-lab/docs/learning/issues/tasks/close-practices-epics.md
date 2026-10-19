@@ -13,8 +13,8 @@ The owner decided on 2026-10-19: the repository stays private on the current pla
 
 ## Scope
 
-- **Included:** closing the protection issue as postponed, with the reason and how to reopen it; writing the four answers in the epics and removing the "needs info" label; rewording one success criterion and logging the scope changes; running a deliberate type error on a temporary branch to see the automatic checks fail; ticking the success criteria that were checked, with the evidence; a short list of what the owner must check by hand; closing the epics that are fully done.
-- **Not included:** switching the repository to a paid plan or to public; checks that need a new session or the owner's own hands (they stay as a list for the owner); any change to the reviews app.
+- **Included:** closing the protection issue as postponed, with the reason and how to reopen it; writing the four answers in the epics and removing the "needs info" label; rewording one success criterion and logging the scope changes; ticking the success criteria that were checked, with the evidence; a short list of what the owner must check by hand; closing the epics that are fully done.
+- **Not included:** the live test that a deliberate type error makes the automatic checks fail (it needs a temporary pull request; the owner chose on 2026-10-19 not to run it, and the epic says so); switching the repository to a paid plan or to public; checks that need a new session or the owner's own hands (they stay as a list for the owner); any change to the reviews app.
 
 ## Done when
 
@@ -22,7 +22,7 @@ Each item must be something a person can check without technical help.
 - [ ] The issue about protecting the repository is closed with the reason "not planned for now" and a comment that says how to reopen it.
 - [ ] The four open questions show their answer and the date in each epic, and the "needs info" label is gone from the three epics.
 - [ ] The GitHub epic's success criterion about old mentions is reworded, and the change is logged with its reason.
-- [ ] A deliberate type error on a temporary branch makes the automatic checks fail on GitHub, and the temporary branch is deleted afterwards.
+- [ ] The test of a deliberate type error is recorded in the GitHub epic as not run, with the reason and the owner's decision.
 - [ ] Each success criterion that was checked is ticked with its evidence, and each one that was not checked is listed for the owner.
 
 ## Steps to check the result
@@ -30,7 +30,7 @@ Each item must be something a person can check without technical help.
 1. Open the issue about protecting the repository on GitHub and read its closing comment.
 2. Open each of the three epics and check the answers to the open questions and the absence of the "needs info" label.
 3. Open the GitHub epic and read the reworded criterion and the scope change.
-4. Open the list of runs of the automatic checks on GitHub and find the failed run of the temporary branch.
+4. Open the GitHub epic and find the criterion about the deliberate type error: it says it was not run, and why.
 5. In each epic, check which criteria are ticked and which are left for the owner.
 
 ## Expected result
@@ -43,4 +43,4 @@ dev
 
 ## Attachments
 
-Nothing attached yet. To add: the link to the failed run and the list of hand checks for the owner.
+Nothing attached yet. To add: the list of hand checks for the owner.
