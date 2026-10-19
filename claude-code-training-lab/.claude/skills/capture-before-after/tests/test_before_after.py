@@ -152,3 +152,12 @@ def test_the_prefix_printed_by_git_may_end_with_a_new_line() -> None:
         "/tmp/tree/claude-code-training-lab"
     )
     assert BA.project_in(Path("/tmp/tree"), "\n") == Path("/tmp/tree")
+
+
+def test_masking_of_both_sides_must_be_clean() -> None:
+    clean = {"masking": {"status": "clean", "findings": []}}
+    leaked = {"masking": {"status": "findings", "findings": [{"step": "a", "kinds": ["email"]}]}}
+
+    assert BA.combined_masking(clean, clean)["status"] == "clean"
+    assert BA.combined_masking(clean, leaked)["status"] == "findings"
+    assert BA.combined_masking(clean, leaked)["findings"][0]["step"] == "a"

@@ -29,6 +29,6 @@ uv run python .claude/skills/capture-before-after/before_after.py [--base <ref>]
 
 ## Rules
 
-- The images show demo data only. They are not shared until the masking step has marked them `clean`; do not publish or attach them before that.
+- The images show demo data only. The same masking scan as in `check-in-browser` runs on both sides: if personal data is found the run stops (exit code 3) and `compare.json` says `masking: findings`. Do not publish or attach the images unless it says `clean`.
 - When the base cannot be built (a missing dependency, a broken commit), report `NOT RUN` and the reason; never fake the "before".
 - A change that users cannot see has no before and after: say "nothing visible to users" instead.

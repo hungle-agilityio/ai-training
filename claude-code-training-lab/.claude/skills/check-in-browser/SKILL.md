@@ -30,7 +30,16 @@ uv run python .claude/skills/check-in-browser/browser_check.py
 |---|---|---|
 | 0 | `result: clean`: no console error, no failed request, every expected text shown | PASS, with the screenshots of the steps |
 | 1 | Something is wrong | FAIL, with each flagged line and its screenshot |
+| 3 | **Masking:** personal data was found; the run stopped and kept no screenshot of that step | FAIL for masking: name the kind and the step (never the value), and do not share anything |
 | 2 | The check could not run | NOT CONFIGURED and the reason; if no browser is installed run `uv sync` and `uv run playwright install chromium`, then try once more |
+
+## Masking
+
+Every page text, log line and address is scanned for emails, phone numbers, tokens, local paths, public IP addresses and credentials in a URL. The first finding stops the whole run, the screenshot of that step is deleted, and logs are stored with the values replaced by `[redacted]`; only the kind and the step are reported. `result.json` carries `masking: clean` or `findings`, which the report and the sharing gate read.
+
+- Only the page is captured (never the browser window), on a throw-away demo database.
+- Fields that show customer text, names or emails are marked `data-sensitive` in the templates; `--blur` blurs them in the screenshots.
+- `--plant "<text>"` adds a review with that text to the throw-away database, to prove that the scan stops a run (for example a fake email). Use it only for that test.
 
 ## Rules
 

@@ -64,7 +64,7 @@
               <td>
                 <span class="stars" role="img" aria-label="{{ row.rating }} out of 5" title="{{ row.rating }} out of 5"><span style="--pct: {{ row.rating_percent }}%"></span></span>
               </td>
-              <td class="review-text">
+              <td class="review-text" data-sensitive="review-text">
                 {% if row.is_truncated %}
                   <span class="expandable" tabindex="0"><span class="text-short" aria-hidden="true">{{ row.text_short }}</span> <span class="text-full">{{ row.text }}</span></span>
                 {% else %}

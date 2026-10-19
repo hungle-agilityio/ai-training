@@ -202,3 +202,57 @@ def test_the_report_opens_by_itself_unless_told_not_to(
     BUILD.build(root, tmp_path / "b", scripted(), "I", None, None, False, open_report=False)
 
     assert len(opened) == 1 and opened[0].endswith("a/report.html")
+
+
+def test_masking_is_clean_only_when_the_browser_run_and_the_texts_are_clean() -> None:
+    clean = {"status": "clean", "findings": []}
+
+    assert BUILD.masking_status(None, ["x"])["status"] == "not run"
+    assert BUILD.masking_status(clean, ["a normal title"])["status"] == "clean"
+    leaked_text = BUILD.masking_status(clean, ["mail me at jane.doe@example.com"])
+    assert leaked_text["status"] == "findings" and "email" in json.dumps(leaked_text)
+    assert "jane.doe" not in json.dumps(leaked_text)
+    found = {"status": "findings", "findings": [{"step": "a", "kinds": ["token"]}]}
+    assert BUILD.masking_status(found, ["x"])["status"] == "findings"
+
+
+def test_a_browser_run_with_masking_findings_fails_the_browser_axis(tmp_path: Path) -> None:
+    (tmp_path / "result.json").write_text(
+        json.dumps(
+            {
+                "status": "not clean",
+                "steps": [{"name": "a", "screenshot": ""}],
+                "console_errors": 0,
+                "network_failures": 0,
+                "problems": 0,
+                "masking": {"status": "findings", "findings": [{"step": "a", "kinds": ["email"]}]},
+            }
+        )
+    )
+
+    axis = BUILD.browser_axis(tmp_path, 3, "")
+
+    assert axis["status"] == "FAIL" and "email" in axis["evidence"]
+
+
+def test_the_share_page_follows_the_artifact_page_contract(tmp_path: Path) -> None:
+    (tmp_path / "01-a.png").write_bytes(b"png")
+    report = {
+        "title": "Issue",
+        "verdict": "PASS",
+        "branch": "b",
+        "commit": "c",
+        "date": "d",
+        "axes": [{"name": "Lint", "status": "PASS", "evidence": "ok"}],
+        "screenshots": [str(tmp_path / "01-a.png")],
+        "review": "",
+        "check_yourself": [],
+    }
+
+    page = BUILD.render_share_html(report)
+
+    assert "<!doctype" not in page.lower() and "<html" not in page and "<body" not in page
+    assert '<meta name="claude:viewport-fit-sides" content="cover">' in page
+    assert "<title>Verify report</title>" in page
+    assert "max(16px,env(safe-area-inset-left,0px))" in page
+    assert "data:image/png;base64," in page and 'data-theme="dark"' in page

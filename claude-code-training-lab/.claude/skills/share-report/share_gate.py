@@ -45,8 +45,9 @@ def decide(folder: Path, rules: Path = RULES) -> tuple[bool, str]:
     approval, limit = settings
     if approval != "on":
         return False, "BLOCKED: the standing approval is off, ask the user"
-    if page.stat().st_size > limit * 1024 * 1024:
-        return False, f"BLOCKED: the page is too big (more than {limit} MB)"
+    for candidate in (page, folder / "report-share.html"):
+        if candidate.is_file() and candidate.stat().st_size > limit * 1024 * 1024:
+            return False, f"BLOCKED: the page is too big (more than {limit} MB)"
     return True, "ALLOWED: masking is clean, the standing approval is on, the size is fine"
 
 

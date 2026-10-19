@@ -45,6 +45,10 @@ When the review step ran, save its summary as a text file whose **first line** i
 
 Give the user the verdict, the path of the report and the failed axes, then stop at Gate 2. Never write PASS for an axis the report does not show as PASS.
 
+## Masking
+
+The report carries a `masking` status (`clean`, `findings` or `not run`) in `report.json`: clean only when the browser run was clean and no text of the report (title, criteria, review) holds personal data. Findings make the Browser axis FAIL and block sharing. `--plant "<text>"` is for testing the scan only.
+
 ## Rules
 
 - The screenshots show demo data only. Do not publish or share the report here: sharing is a separate step with its own checks.

@@ -170,18 +170,46 @@ def security_axis(diff: str) -> dict[str, str]:
     return axis("Security", "PASS", "no secret-like string in the added lines of the diff")
 
 
+def browser_module() -> Any:
+    path = SKILLS / "check-in-browser" / "browser_check.py"
+    spec = importlib.util.spec_from_file_location("browser_check", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def masking_status(browser_masking: dict[str, Any] | None, texts: list[str]) -> dict[str, Any]:
+    """clean only when the browser run was clean and no text of the report holds personal data."""
+    if browser_masking is None:
+        return {"status": "not run"}
+    scan = browser_module().scan_text
+    kinds = sorted({kind for text in texts for kind in scan(text)})
+    findings = list(browser_masking.get("findings", []))
+    if kinds:
+        findings.append({"step": "report text", "kinds": kinds})
+    return {
+        "status": "findings" if findings or browser_masking["status"] != "clean" else "clean",
+        "findings": findings,
+    }
+
+
 def browser_axis(result_dir: Path | None, code: int | None, output: str) -> dict[str, str]:
     if result_dir is None or code is None:
         return axis("Browser", "NOT CONFIGURED", "not run (add --browser)")
     if code == 2:
         return axis("Browser", "NOT CONFIGURED", last_lines(output, 1))
     data = json.loads((result_dir / "result.json").read_text())
-    shots = len(data["steps"])
+    shots = len([step for step in data["steps"] if step.get("screenshot")])
     detail = (
         f"{len(data['steps'])} step(s), {shots} screenshot{'s' if shots != 1 else ''}, "
         f"console {data['console_errors']} error(s), network {data['network_failures']} failure(s)"
     )
-    return axis("Browser", "PASS" if data["status"] == "clean" else "FAIL", detail)
+    leaked = data.get("masking", {}).get("status") == "findings"
+    if leaked:
+        kinds = sorted({k for f in data["masking"]["findings"] for k in f["kinds"]})
+        detail += f"; masking found: {', '.join(kinds)}"
+    return axis("Browser", "PASS" if data["status"] == "clean" and not leaked else "FAIL", detail)
 
 
 def review_axis(text: str | None) -> dict[str, str] | None:
@@ -226,7 +254,7 @@ CSS = (
 )
 
 
-def render_html(report: dict[str, Any]) -> str:
+def render_body(report: dict[str, Any]) -> str:
     esc = html.escape
     rows = "".join(
         f'<tr><td>{esc(a["name"])}</td><td class="{esc(a["status"])}">{esc(a["status"])}</td>'
@@ -243,20 +271,44 @@ def render_html(report: dict[str, Any]) -> str:
     check = "".join(f"<li>{esc(item)}</li>" for item in report.get("check_yourself", []))
     review = f"<h2>Review</h2><pre>{esc(report['review'])}</pre>" if report.get("review") else ""
     return (
-        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        f"<title>Verify report</title><style>{CSS}</style></head><body><main>"
+        "<main>"
         f"<h1>Verify report: {esc(report['title'])}</h1>"
         f'<p class="meta">Branch {esc(report["branch"])} · commit {esc(report["commit"])} · '
         f"{esc(report['date'])}</p>"
         f'<h2>Result: <span class="{esc(report["verdict"])}">{esc(report["verdict"])}</span></h2>'
         '<div class="table-wrap"><table><thead><tr><th>Axis</th><th>Result</th>'
-        '<th>Evidence</th></tr></thead>'
+        "<th>Evidence</th></tr></thead>"
         f"<tbody>{rows}</tbody></table></div>"
         + (f'<h2>Screenshots</h2><div class="shots">{shots}</div>' if shots else "")
         + review
         + (f"<h2>What to check yourself</h2><ol>{check}</ol>" if check else "")
-        + "</main></body></html>"
+        + "</main>"
+    )
+
+
+def render_html(report: dict[str, Any]) -> str:
+    """The report as a full page, for opening from the disk."""
+    return (
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        f"<title>Verify report</title><style>{CSS}</style></head><body>"
+        f"{render_body(report)}</body></html>"
+    )
+
+
+SHARE_GUTTER = (
+    "body{padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));"
+    "padding-right:max(16px,env(safe-area-inset-right,0px))}"
+)
+
+
+def render_share_html(report: dict[str, Any]) -> str:
+    """The report as the content of an artifact page: no html, head or body tags (the platform
+    adds them), the title and the style at the top, and the gutter the page contract asks for."""
+    return (
+        '<meta name="claude:viewport-fit-sides" content="cover">'
+        f"<title>Verify report</title><style>{CSS}{SHARE_GUTTER}</style>"
+        f"{render_body(report)}"
     )
 
 
@@ -274,6 +326,7 @@ def build(
     review: str | None,
     browser: bool,
     open_report: bool,
+    plant: str | None = None,
 ) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
     axes = run_checks(root, run)
@@ -282,16 +335,21 @@ def build(
     _, diff = run(["git", "diff", "HEAD", "-U0"], root)
     axes.append(security_axis(diff))
     shots: list[str] = []
+    masking: dict[str, Any] = {"status": "not run"}
     if browser:
         script = SKILLS / "check-in-browser" / "browser_check.py"
         folder = out_dir / "browser"
-        code, text = run([sys.executable, str(script), "--out", str(folder)], root)
+        command = [sys.executable, str(script), "--out", str(folder)]
+        command += ["--plant", plant] if plant else []
+        code, text = run(command, root)
         axes.append(
             browser_axis(folder if (folder / "result.json").is_file() else None, code, text)
         )
         if (folder / "result.json").is_file():
-            steps = json.loads((folder / "result.json").read_text())["steps"]
-            shots = [str(folder / s["screenshot"]) for s in steps]
+            result = json.loads((folder / "result.json").read_text())
+            shots = [str(folder / s["screenshot"]) for s in result["steps"] if s.get("screenshot")]
+            texts = [title, json.dumps(criteria or {}), review or ""]
+            masking = masking_status(result["masking"], texts)
     else:
         axes.append(browser_axis(None, None, ""))
     extra = review_axis(review)
@@ -306,13 +364,14 @@ def build(
         "axes": axes,
         "screenshots": shots,
         "review": review or "",
-        "masking": {"status": "not run"},
+        "masking": masking,
         "share": None,
         "check_yourself": (criteria or {}).get("check_yourself", []),
     }
     (out_dir / "report.json").write_text(json.dumps(report, indent=2))
     page = out_dir / "report.html"
     page.write_text(render_html(report))
+    (out_dir / "report-share.html").write_text(render_share_html(report))
     if open_report:
         webbrowser.open(page.as_uri())
     return report
@@ -332,6 +391,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--review", type=Path, help="text file; first line Status: PASS or FAIL")
     parser.add_argument("--browser", action="store_true", help="run the browser check too")
     parser.add_argument("--no-open", action="store_true", help="do not open the report")
+    parser.add_argument("--plant", help="add a review with this text, to test the scan only")
     parser.add_argument("--out", type=Path, help="folder (default: out/verify/<time>)")
     args = parser.parse_args(argv)
     root = project_root(Path.cwd())
@@ -339,7 +399,15 @@ def main(argv: list[str]) -> int:
     criteria = json.loads(args.criteria.read_text()) if args.criteria else None
     review = args.review.read_text() if args.review else None
     report = build(
-        root, out_dir, real_run, args.title, criteria, review, args.browser, not args.no_open
+        root,
+        out_dir,
+        real_run,
+        args.title,
+        criteria,
+        review,
+        args.browser,
+        not args.no_open,
+        args.plant,
     )
     for item in report["axes"]:
         print(f"{item['status']:<15} {item['name']:<22} {item['evidence']}")

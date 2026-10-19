@@ -171,3 +171,13 @@ def test_menu_links_to_reviews_and_marks_it_active() -> None:
 def test_export_button_is_not_shown_on_reviews_page() -> None:
     assert "Export JSON" in Client().get("/dashboard/").content.decode()
     assert "Export JSON" not in Client().get("/reviews/").content.decode()
+
+
+@pytest.mark.django_db
+def test_review_text_on_the_reviews_page_is_marked_as_personal_data() -> None:
+    branch = Branch.objects.create(business=Business.objects.create(name="Demo"), name="Downtown")
+    Review.objects.create(branch=branch, rating=5, text="Lovely", created_at=datetime.now(UTC))
+
+    content = Client().get("/reviews/").content.decode()
+
+    assert 'data-sensitive="review-text"' in content

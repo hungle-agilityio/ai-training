@@ -33,7 +33,7 @@ All fail closed: if a hook cannot check a command that looks relevant, the comma
 
 ## Limits
 
-- `before-artifact-publish` has 15 tests of its logic but has **not yet been seen firing** in a live session: the Artifact tool rejected a probe itself, and no line was written to `out/artifact-publish.log`. The first real publish will show whether it runs; until then the gate in the `share-report` skill is the control.
+- `before-artifact-publish` has 15 tests of its logic and was seen firing on the first real publish (an `allowed` line in `out/artifact-publish.log`). A call that the Artifact tool rejects first, for example for a missing file, never reaches the hook. A live `blocked` case has not been triggered on purpose, because it would need a publish to be attempted.
 - A hook sees only the shell commands that Claude runs. It does not see what a script run by Claude does inside, and it does not see commands the user types.
 - A change of settings or hooks needs a new session to take effect.
 - The secret scan knows a few token shapes (GitHub, AWS, Slack, `sk-`, private keys). It is a net, not a proof.

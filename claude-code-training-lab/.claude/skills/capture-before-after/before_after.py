@@ -9,7 +9,7 @@ touched. Both sides run the same steps in the same window size, each on a throw-
 database. Pairs are matched by step name and labelled: changed, no visible difference, did not
 exist before, or not captured. Writes compare.html and compare.json next to the screenshots.
 
-Exit code: 0 done, 2 could not run.
+Exit code: 0 done and masking clean, 2 could not run, 3 personal data was found (masking).
 """
 
 from __future__ import annotations
@@ -149,11 +149,17 @@ def render_compare_html(title: str, base: str, head: str, pairs: list[dict[str, 
     )
 
 
-def capture(root: Path, steps: list[dict[str, Any]], folder: Path) -> list[dict[str, Any]]:
+def capture(root: Path, steps: list[dict[str, Any]], folder: Path) -> dict[str, Any]:
     browser = load_skill("check-in-browser", "browser_check")
     summary: dict[str, Any] = browser.run(root, steps, folder)
-    result: list[dict[str, Any]] = summary["steps"]
-    return result
+    return summary
+
+
+def combined_masking(*summaries: dict[str, Any]) -> dict[str, Any]:
+    """clean only when every side is clean; findings are listed with their side."""
+    findings = [f for summary in summaries for f in summary["masking"].get("findings", [])]
+    clean = all(summary["masking"]["status"] == "clean" for summary in summaries)
+    return {"status": "clean" if clean else "findings", "findings": findings}
 
 
 def main(argv: list[str]) -> int:
@@ -172,20 +178,25 @@ def main(argv: list[str]) -> int:
         steps = browser.load_steps(args.spec)
         code, prefix = real_run(["git", "rev-parse", "--show-prefix"], root)
         with checkout(root, base) as tree:
-            before = capture(project_in(tree, prefix if code == 0 else ""), steps, out / "before")
-        after = capture(root, steps, out / "after")
+            before_run = capture(
+                project_in(tree, prefix if code == 0 else ""), steps, out / "before"
+            )
+        after_run = capture(root, steps, out / "after")
+        before, after = before_run["steps"], after_run["steps"]
     except Exception as error:
         print(f"NOT RUN: {str(error).splitlines()[0] if str(error) else type(error).__name__}")
         return 2
     pairs = pair_steps(before, out / "before", after, out / "after")
     head = real_run(["git", "rev-parse", "--short", "HEAD"], root)[1].strip() or "HEAD"
     (out / "compare.html").write_text(render_compare_html(root.name, base[:12], head, pairs))
-    report = {"base": base, "head": head, "pairs": pairs, "masking": {"status": "not run"}}
+    masking = combined_masking(before_run, after_run)
+    report = {"base": base, "head": head, "pairs": pairs, "masking": masking}
     (out / "compare.json").write_text(json.dumps(report, indent=2))
     for p in pairs:
         print(f"{p['label']:<24} {p['name']:<14} {p['url']}")
+    print(f"masking: {masking['status']}")
     print(f"folder: {out}")
-    return 0
+    return 0 if masking["status"] == "clean" else 3
 
 
 if __name__ == "__main__":

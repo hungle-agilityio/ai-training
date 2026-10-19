@@ -108,7 +108,7 @@
               <span class="badge badge-{{ review.sentiment }}">{{ review.sentiment_label }}</span>
               <time datetime="{{ review.created_at|date:'c' }}">{{ review.created_at|date:"M j, Y" }}</time>
             </div>
-            <p>{{ review.text }}</p>
+            <p data-sensitive="review-text">{{ review.text }}</p>
           </li>
         {% endfor %}
       </ul>

@@ -178,3 +178,13 @@ def test_dashboard_api_gives_null_average_for_a_branch_without_reviews() -> None
 
     assert branch["review_count"] == 0
     assert branch["average_rating"] is None
+
+
+@pytest.mark.django_db
+def test_review_text_on_the_dashboard_is_marked_as_personal_data() -> None:
+    business = Business.objects.create(name="Demo")
+    _add_branch(business, "Downtown", (5, 4))
+
+    content = Client().get("/dashboard/").content.decode()
+
+    assert 'data-sensitive="review-text"' in content

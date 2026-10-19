@@ -172,3 +172,12 @@ def test_the_hook_writes_one_audit_line_per_publish_call(
     log = (tmp_path / "out" / "artifact-publish.log").read_text().strip().splitlines()
 
     assert len(log) == 1 and " blocked " in log[0] and "report.html" in log[0]
+
+
+def test_the_share_page_counts_for_the_size_limit_too(report: Path, rules: Path) -> None:
+    (report / "report-share.html").write_text("x" * 2000)
+    rules.write_text("- standing-approval: on\n- max-size-mb: 0.001\n")
+
+    allowed, reason = GATE.decide(report, rules)
+
+    assert not allowed and "big" in reason

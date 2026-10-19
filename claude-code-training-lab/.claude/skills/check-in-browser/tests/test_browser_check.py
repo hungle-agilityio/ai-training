@@ -152,3 +152,126 @@ def test_run_step_reports_a_failed_action_and_still_takes_the_screenshot(tmp_pat
 
 def test_the_limit_of_failed_actions_is_three() -> None:
     assert CHECK.MAX_FAILED_ACTIONS == 3
+
+
+# ---- masking: what must never be left in a screenshot, a log or a report
+
+FAKE_EMAIL = "jane.doe@example.com"
+FAKE_PHONE = "+84 912 345 678"
+FAKE_TOKEN = "ghp_" + "a" * 36
+
+
+@pytest.mark.parametrize(
+    ("text", "kind"),
+    [
+        (f"Please call me, mail {FAKE_EMAIL}", "email"),
+        (f"Call {FAKE_PHONE} today", "phone number"),
+        ("Call (028) 3822 1234", "phone number"),
+        (f"token {FAKE_TOKEN}", "token"),
+        ("saved in /Users/hungle/secret/file.txt", "local path"),
+        ("saved in C:\\Users\\hungle\\file.txt", "local path"),
+        ("server at 203.0.113.7 answered", "ip address"),
+        ("see https://admin:hunter2@example.com/x", "credentials in a url"),
+    ],
+)
+def test_the_scan_finds_personal_data_and_names_only_the_kind(text: str, kind: str) -> None:
+    findings = CHECK.scan_text(text)
+
+    assert kind in findings
+    assert all(FAKE_EMAIL not in item and FAKE_TOKEN not in item for item in findings)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Showing 1-10 of 10 reviews",
+        "Oct 16, 2026 · 142 tests passed · 99% coverage",
+        "2026-10-16T09:14:00+07:00",
+        "http://127.0.0.1:8815/reviews/?rating=bad&page=2",
+        "Average rating 3.67 over 12 reviews",
+        "Waited 50 minutes, nobody apologized.",
+        "version 1.2.3 of the tool",
+    ],
+)
+def test_the_scan_leaves_ordinary_page_text_alone(text: str) -> None:
+    assert CHECK.scan_text(text) == []
+
+
+def test_redact_removes_the_values_but_keeps_the_sentence() -> None:
+    cleaned = CHECK.redact(f"{FAKE_EMAIL} wrote from /Users/hungle/x with {FAKE_TOKEN}")
+
+    assert (
+        FAKE_EMAIL not in cleaned and "/Users/hungle" not in cleaned and FAKE_TOKEN not in cleaned
+    )
+    assert "wrote from" in cleaned and "[redacted]" in cleaned
+
+
+class LeakyPage(FakePage):
+    def inner_text(self, selector: str) -> str:
+        return f"Review: contact {FAKE_EMAIL}"
+
+
+def test_a_step_that_shows_personal_data_records_the_kind_and_not_the_value(tmp_path: Path) -> None:
+    record, _ = CHECK.run_step(
+        LeakyPage(), "http://127.0.0.1:1", {"name": "leak", "goto": "/x"}, tmp_path, 1
+    )
+
+    assert record["masking_findings"] == ["email"]
+    assert FAKE_EMAIL not in json.dumps(record)
+
+
+def test_logs_are_cleaned_before_they_are_stored(tmp_path: Path) -> None:
+    class Noisy(FakePage):
+        def __init__(self) -> None:
+            super().__init__()
+            self.handlers: dict[str, Any] = {}
+
+        def on(self, event: str, handler: Any) -> None:
+            self.handlers[event] = handler
+
+    page = Noisy()
+    record, _ = CHECK.run_step(page, "http://127.0.0.1:1", {"name": "n", "goto": "/x"}, tmp_path, 1)
+
+    class Message:
+        type = "error"
+        text = f"failed for {FAKE_EMAIL} in /Users/hungle/app"
+
+    page.handlers["console"](Message())
+
+    assert record["console_errors"] == ["failed for [redacted] in [redacted]/app"] or all(
+        FAKE_EMAIL not in line and "/Users/hungle" not in line for line in record["console_errors"]
+    )
+
+
+def test_blur_hides_the_marked_fields_before_the_screenshot(tmp_path: Path) -> None:
+    class Styled(FakePage):
+        styles: list[str] = []
+
+        def add_style_tag(self, content: str) -> None:
+            self.styles.append(content)
+
+    page = Styled()
+    CHECK.run_step(page, "http://127.0.0.1:1", {"name": "b", "goto": "/x"}, tmp_path, 1, blur=True)
+
+    assert any("[data-sensitive]" in style and "blur" in style for style in page.styles)
+
+
+def test_summary_is_not_clean_and_names_the_step_when_masking_found_something() -> None:
+    steps = [step(name="leak", masking_findings=["email"])]
+
+    summary = CHECK.summarize(
+        steps,
+        "masking: stopped",
+        masking={"status": "findings", "findings": [{"step": "leak", "kinds": ["email"]}]},
+    )
+
+    assert summary["status"] == "not clean" and summary["masking"]["status"] == "findings"
+    assert CHECK.summarize([step()], None)["masking"]["status"] == "clean"
+
+
+def test_masking_status_helper() -> None:
+    assert CHECK.masking_of([step()])["status"] == "clean"
+    leaked = CHECK.masking_of([step(name="a", masking_findings=["email", "token"])])
+    assert leaked["status"] == "findings" and leaked["findings"] == [
+        {"step": "a", "kinds": ["email", "token"]}
+    ]
