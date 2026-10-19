@@ -159,7 +159,7 @@ A few words are enough because this map, the rules and the skills say how.
 
 ## MCP and permissions
 
-GitHub: through the `gh` command (sign in once with `gh auth login`); the GitHub MCP server is added in a later task. Allowed, asked and blocked commands: `.claude/settings.json`; the guards that run before shell commands (one repository only, commit checks, the token): `.claude/hooks/` (read its README for the limits).
+GitHub: through the `gh` command and the official GitHub MCP server (`.mcp.json`, token only in the environment variable `GH_TOKEN`, never written to a file; the server is limited by the token to the one repository). Allowed, asked and blocked commands: `.claude/settings.json`; the guards that run before shell commands (one repository only, commit checks, the token): `.claude/hooks/` (read its README for the limits).
 
 ## Removed, and why
 
