@@ -1,6 +1,6 @@
 ---
 name: create-pull-request
-description: Create a pull request on GitHub for the current branch (title, description with What, Why, How tested, Screenshot and Closes, base main) with the gh command, after the user approves the preview. Use when the user asks to open, create or update a pull request.
+description: Create a pull request on GitHub for the current branch (title, description with What, Why, How tested, Evidence, One concern and Closes, base main) with the gh command, after the user approves the preview. Use when the user asks to open, create or update a pull request.
 ---
 
 # Create a pull request
@@ -30,7 +30,7 @@ Everything that leaves this machine goes through GitHub: issues and pull request
 3. Look for an existing pull request with `gh pr list --head <branch> --state all`. Never create a second one for the same branch: update the existing one instead.
 4. Build the pull request:
    - **Title:** `[type] title`, the same as the issue.
-   - **Description:** a temporary file with the sections What, Why, How tested (the real output of the checks), Screenshot (or the evidence link), ending with `Closes #<number>`. When `.github/PULL_REQUEST_TEMPLATE.md` exists, use its sections.
+   - **Description:** run `draft-pull-request` and use its `pr-body.md` (What, Why, How tested with the real output, Evidence, One concern, ending with `Closes #<number>`). Do not create the pull request while the draft says it is incomplete or not ready. The user drags the files of its `images/` folder into the description.
    - **Base:** `main`. **Head:** the current branch. **Assignee:** `hungle-agilityio`. Copy the labels of the issue.
 5. Show the preview and wait for approval.
 6. Create it with `gh pr create --base main --head <branch> --title "<title>" --body-file <file> --assignee hungle-agilityio --label "<label>,<label>"`.

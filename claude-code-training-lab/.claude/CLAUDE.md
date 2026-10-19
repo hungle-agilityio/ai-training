@@ -109,7 +109,8 @@ Scale the workflow to the difficulty of the issue; the table and gates are in `r
 | `write-issue` | Write a bug, feature or task issue from a description |
 | `create-commit` | Create branches and commits in the project format |
 | `create-issue` | Publish an approved issue |
-| `create-pull-request` | Create a pull request for the current branch |
+| `draft-pull-request` | Draft a pull request from the verify report and before and after images, and say if it is complete |
+| `create-pull-request` | Create a pull request for the current branch, from the draft, after approval |
 | `review-pull-request` | Write a review of a pull request or branch |
 | `write-tests` | Write unit and integration tests, assert query counts |
 | `diagnose-bug` | Diagnose a bug from evidence, trace the call chain |

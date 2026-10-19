@@ -59,8 +59,8 @@ Status: `done`, `next`, `ready` (can start now), `needs you` (waits for somethin
 | T17 | Share the report: private link, privacy and approval rule, when something becomes an artifact | | **done** (first live private link on 2026-10-19; the Artifact hook seen firing) |
 | T18 | Before and after screenshots on the same demo data | | **done** |
 | T19 | Mask sensitive data in screenshots and logs, with an automatic scan that stops the run | list of sensitive fields | **done** |
-| T20 | Pull request draft with evidence: the skill, evidence link, local image folder, one worked example | | **next** |
-| T21 | Page on the flow with outside tools (Slack, Drive, Gmail, Calendar, GitHub) | which tools you really use | ready |
+| T20 | Pull request draft with evidence: the skill, evidence link, local image folder, one worked example | | done |
+| T21 | Page on the flow with outside tools (Slack, Drive, Gmail, Calendar, GitHub) | which tools you really use | **next** |
 | T22 | Skills base: layout, rulebook files, one example run and a test per skill | | ready |
 
 Optional, only if needed (each can be dropped with a written reason):
