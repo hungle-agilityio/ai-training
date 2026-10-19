@@ -31,12 +31,12 @@ Each item must be something a person can check without technical help.
 ## Child issues
 
 In the order they should be done. One child is one pull request.
-- [ ] Browser check in verify: start the app, drive the page, screenshots, console and network status
-- [ ] Verify report as a local file: template, builder script, opens by itself
-- [ ] Share the report: private link, privacy and approval rule, when something becomes an artifact
-- [ ] Before and after screenshots on the same demo data
-- [ ] Mask sensitive data in screenshots and logs, with an automatic scan that stops the run
-- [ ] Pull request draft with evidence: evidence link, local image folder, one worked example
+- [x] Browser check in verify: start the app, drive the page, screenshots, console and network status (done, see #8)
+- [x] Verify report as a local file: template, builder script, opens by itself (done, see #8)
+- [x] Share the report: private link, privacy and approval rule, when something becomes an artifact (done, see #8)
+- [x] Before and after screenshots on the same demo data (done, see #8)
+- [x] Mask sensitive data in screenshots and logs, with an automatic scan that stops the run (done, see #8)
+- [x] Pull request draft with evidence: evidence link, local image folder, one worked example (done, see #8)
 
 ## Dependencies and risks
 

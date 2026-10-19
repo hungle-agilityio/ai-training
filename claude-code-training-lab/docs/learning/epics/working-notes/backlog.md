@@ -39,29 +39,29 @@ Status: `done`, `next`, `ready` (can start now), `needs you` (waits for somethin
 
 | Task | What | Needs from you | Status |
 |---|---|---|---|
-| T0 | Baseline: naming rules, skill renames, grill-me, one file per issue, docs split, GitHub guard hook, this epic | | **done** (4 commits) |
-| T1 | Finish naming: rename the helper agents, set short model names, check that commands and skills do not repeat each other | | **done** |
-| T2 | Replace GitLab with GitHub in rules, skills, project map and README; remove the GitLab connection | | **done** |
-| T3 | Make the repository tell the truth: pin dependencies, README feature status, test for the demo data command | | **done** |
-| T4 | GitHub checks: workflow with lint, types, tests (also the hook tests) and a coverage gate; delete the GitLab pipeline | | **done** |
-| T5 | GitHub templates and basic files: issue forms (also for epics) and pull request template with the quality list, example settings file, contributing note | licence decision | **done** |
-| T6 | Project map and decision records | | **done** |
-| T7 | Workflow rules: four team principles, two-round limit, guardrails, mode guide, five review areas | | **done** |
-| T8 | `test-runner` helper on the cheapest model, used by the test step | | **done** |
-| T9 | Safety hooks and permission lists | | **done** |
-| T10 | Memory: the rule for when to save and the first memories | | **done** |
-| T11 | Repository on GitHub: empty repository, backup, split of the history, replace the local `.git`, first push, push policy | empty repository, token, restart, your approval for each step | **done** (2026-10-19: root `ai-training/`, 62 commits on GitHub, push policy in `decision-log.md`) |
-| T12 | Protect the repository: main branch rules, squash only, delete branches after merge, code owners, dependency updates, secret scanning | a paid plan, or a public repository | **partly done, blocked by the plan** (2026-10-19: files done and checks green; rules on `main` and secret scanning are not enforced on a private repository; see `decision-log.md`) |
-| T13 | Connect GitHub to the assistant (MCP): limited token, tests with the first real issues | token | after T11 |
-| T14 | Publish the epics as issues: three parent issues, one closed issue for done work, one issue per remaining task attached to its epic | your approval of the table | after T13 |
-| T15 | Browser check in verify: start the app, drive the page, screenshots, console and network status | | **done** |
-| T16 | Verify report as a local file: template, builder script, opens by itself | | **done** |
-| T17 | Share the report: private link, privacy and approval rule, when something becomes an artifact | | **done** (first live private link on 2026-10-19; the Artifact hook seen firing) |
-| T18 | Before and after screenshots on the same demo data | | **done** |
-| T19 | Mask sensitive data in screenshots and logs, with an automatic scan that stops the run | list of sensitive fields | **done** |
-| T20 | Pull request draft with evidence: the skill, evidence link, local image folder, one worked example | | done |
-| T21 | Page on the flow with outside tools (Slack, Drive, Gmail, Calendar, GitHub) | which tools you really use | done (page: `docs/learning/outside-tools-flow.md`; tool list assumed) |
-| T22 | Skills base: layout, rulebook files, one example run and a test per skill | | done (`.claude/skills/README.md`, layout test) |
+| T0 | Baseline: naming rules, skill renames, grill-me, one file per issue, docs split, GitHub guard hook, this epic (#8) | | **done** (4 commits) |
+| T1 | Finish naming: rename the helper agents, set short model names, check that commands and skills do not repeat each other (#8) | | **done** |
+| T2 | Replace GitLab with GitHub in rules, skills, project map and README; remove the GitLab connection (#8) | | **done** |
+| T3 | Make the repository tell the truth: pin dependencies, README feature status, test for the demo data command (#8) | | **done** |
+| T4 | GitHub checks: workflow with lint, types, tests (also the hook tests) and a coverage gate; delete the GitLab pipeline (#8) | | **done** |
+| T5 | GitHub templates and basic files: issue forms (also for epics) and pull request template with the quality list, example settings file, contributing note (#8) | licence decision | **done** |
+| T6 | Project map and decision records (#8) | | **done** |
+| T7 | Workflow rules: four team principles, two-round limit, guardrails, mode guide, five review areas (#8) | | **done** |
+| T8 | `test-runner` helper on the cheapest model, used by the test step (#8) | | **done** |
+| T9 | Safety hooks and permission lists (#8) | | **done** |
+| T10 | Memory: the rule for when to save and the first memories (#8) | | **done** |
+| T11 | Repository on GitHub: empty repository, backup, split of the history, replace the local `.git`, first push, push policy (#8) | empty repository, token, restart, your approval for each step | **done** (2026-10-19: root `ai-training/`, 62 commits on GitHub, push policy in `decision-log.md`) |
+| T12 | Protect the repository (#9): main branch rules, squash only, delete branches after merge, code owners, dependency updates, secret scanning | a paid plan, or a public repository | **partly done, blocked by the plan** (2026-10-19: files done and checks green; rules on `main` and secret scanning are not enforced on a private repository; see `decision-log.md`) |
+| T13 | Connect GitHub to the assistant (MCP): limited token, tests with the first real issues (#5) | token | **done** (2026-10-19: read, issue creation and sub-issue attach tested through the MCP server; another repository refused) |
+| T14 | Publish the epics as issues: three parent issues, one closed issue for done work, one issue per remaining task attached to its epic (#7; epics #10, #11, #12; done work #8) | your approval of the table | **done** once its pull request is merged |
+| T15 | Browser check in verify: start the app, drive the page, screenshots, console and network status (#8) | | **done** |
+| T16 | Verify report as a local file: template, builder script, opens by itself (#8) | | **done** |
+| T17 | Share the report: private link, privacy and approval rule, when something becomes an artifact (#8) | | **done** (first live private link on 2026-10-19; the Artifact hook seen firing) |
+| T18 | Before and after screenshots on the same demo data (#8) | | **done** |
+| T19 | Mask sensitive data in screenshots and logs, with an automatic scan that stops the run (#8) | list of sensitive fields | **done** |
+| T20 | Pull request draft with evidence: the skill, evidence link, local image folder, one worked example (#8) | | done |
+| T21 | Page on the flow with outside tools (Slack, Drive, Gmail, Calendar, GitHub) (#8) | which tools you really use | done (page: `docs/learning/outside-tools-flow.md`; tool list assumed) |
+| T22 | Skills base: layout, rulebook files, one example run and a test per skill (#8) | | done (`.claude/skills/README.md`, layout test) |
 
 Optional, only if needed (each can be dropped with a written reason):
 

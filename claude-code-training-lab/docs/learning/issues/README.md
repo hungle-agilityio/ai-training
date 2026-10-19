@@ -5,3 +5,6 @@ One file per issue, grouped by type (`bugs/`, `features/`, `tasks/`). These are 
 | Epic code | GitHub | Type | File | Title |
 |:---:|---|---|---|---|
 | – | #5 | Task | `tasks/connect-github-mcp.md` | [TASK] connect the AI assistant to the GitHub project |
+| – | #7 | Task | `tasks/publish-epics.md` | [TASK] publish the epics as issues |
+| – | #8 | Task | `tasks/practices-already-in-place.md` | [TASK] Claude Code practices already in place |
+| – | #9 | Task | `tasks/protect-repository.md` | [TASK] protect the repository |
