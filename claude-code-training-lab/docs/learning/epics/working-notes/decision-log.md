@@ -96,3 +96,7 @@ Done when (a direct push to `main` is refused): **not met.**
 What still protects `main`: the hook `before-commit-check` blocks commits on `main` and the project rules forbid pushing there, but both bind Claude only, not a person. The checks run on every pull request and a human merges.
 
 Revisit when the repository becomes public or moves to a team plan: create the rule set, turn on secret scanning and push protection, repeat the direct push test and record the result.
+
+## Epics closing (2026-10-19)
+
+Decisions by the owner: protecting `main` is postponed and issue #9 is closed as not planned for now (reopen it when the repository becomes public or moves to a team plan); the four open questions are answered with their proposals (no licence, sensitive fields are customer names, review text and emails, start with the four proposed hooks, the outside tools list stays an assumption); the first success criterion of the GitHub epic allows the words GitLab and merge request in history records.

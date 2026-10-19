@@ -51,7 +51,7 @@ In the order they should be done. One child is one pull request.
 
 | Question | Proposal | Owner | Decided on |
 |---|---|---|---|
-| Which fields are sensitive? | Customer names, review text and emails | Hung Le | open |
+| Which fields are sensitive? | Customer names, review text and emails | Hung Le | 2026-10-19: accepted |
 
 ## Scope changes
 

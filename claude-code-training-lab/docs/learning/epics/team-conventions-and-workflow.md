@@ -22,7 +22,7 @@ Skill and helper names followed no pattern, the safety rules are sentences that 
 ## Success criteria
 
 Each item must be something a person can check without technical help.
-- [ ] A search finds no old skill or helper name.
+- [x] A search finds no old skill or helper name.
 - [ ] A new session understands a short request such as "commit" without any explanation.
 - [ ] Each safety hook refuses the forbidden action when it is tried in a live session.
 - [ ] A correction made once is not repeated in a new session.
@@ -54,8 +54,8 @@ In the order they should be done. One child is one pull request.
 
 | Question | Proposal | Owner | Decided on |
 |---|---|---|---|
-| Which hooks besides the four proposed (database file, attribution line, lint before commit, main branch warning)? | Start with those four | Hung Le | open |
-| Which outside tools does the team really use? | Ask the owner before the page is written | Hung Le | open |
+| Which hooks besides the four proposed (database file, attribution line, lint before commit, main branch warning)? | Start with those four | Hung Le | 2026-10-19: accepted |
+| Which outside tools does the team really use? | Keep the assumed list on the page and change it when a tool is really used | Hung Le | 2026-10-19: accepted |
 
 ## Scope changes
 

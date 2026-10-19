@@ -22,11 +22,11 @@ GitLab is being dropped. The rules and skills still describe GitLab, the automat
 ## Success criteria
 
 Each item must be something a person can check without technical help.
-- [ ] The words GitLab and merge request appear nowhere in the project except in one decision record.
-- [ ] A clean install gives the same dependency versions twice.
+- [x] The words GitLab and merge request appear nowhere in the working instructions of the project; they remain only in history records (decision records, the table of removed things, the naming rules and the tests that block them).
+- [x] A clean install gives the same dependency versions twice.
 - [ ] A deliberate type error makes the automatic checks fail on GitHub.
-- [ ] GitHub shows the full history of the lab folder under the account `hungle-agilityio`, and a direct push to `main` is refused.
-- [ ] The assistant can read and create an issue in this repository and cannot reach any other repository.
+- [ ] GitHub shows the full history of the lab folder under the account `hungle-agilityio`, and a direct push to `main` is refused (the refusal is postponed with #9).
+- [x] The assistant can read and create an issue in this repository and cannot reach any other repository.
 
 ## Child issues
 
@@ -36,7 +36,7 @@ In the order they should be done. One child is one pull request.
 - [x] GitHub checks: lint, types, tests (also the hook tests) and a coverage gate (done, see #8)
 - [x] GitHub templates and basic files: issue forms (also for epics), pull request template, example settings file, contributing note (done, see #8)
 - [x] Repository on GitHub: backup, history split, first push (done, see #8)
-- [ ] Protect the repository: main branch rules, code owners, dependency updates, secret scanning (#9)
+- [ ] Protect the repository: main branch rules, code owners, dependency updates, secret scanning (#9, postponed 2026-10-19)
 - [ ] Connect GitHub to the assistant: limited token and tests (#5)
 - [ ] Publish the epics as issues (#7)
 
@@ -54,7 +54,7 @@ In the order they should be done. One child is one pull request.
 
 | Question | Proposal | Owner | Decided on |
 |---|---|---|---|
-| Which licence, if any? | None for now: the repository is private | Hung Le | open |
+| Which licence, if any? | None for now: the repository is private | Hung Le | 2026-10-19: accepted |
 
 ## Scope changes
 
@@ -63,6 +63,8 @@ Every change of scope is written here with its reason, never made silently.
 | Date | Change | Reason |
 |---|---|---|
 | 2026-10-16 | This epic was created by splitting the first single epic (31 tasks) into three | An epic should have 3 to 10 children |
+| 2026-10-19 | The rules on the main branch and secret scanning are postponed (#9 closed as not planned for now) | GitHub does not enforce them on a private repository without a paid plan; the owner keeps the repository private |
+| 2026-10-19 | The first success criterion allows the words GitLab and merge request in history records | They are kept on purpose in the table of removed things, the decision records and the tests that block them |
 
 ## Environment
 
