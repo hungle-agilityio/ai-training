@@ -12,6 +12,10 @@ concurrency:
   group: checks-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    working-directory: claude-code-training-lab
+
 jobs:
   checks:
     runs-on: ubuntu-latest

@@ -4,6 +4,7 @@ paths:
   - "docs/app/templates/**"
   - "docs/learning/issues/**"
   - ".github/**"
+  - "../.github/**"
 ---
 
 # Issue rules

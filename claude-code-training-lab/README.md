@@ -29,7 +29,7 @@ The project is also the vehicle of a 15-day Claude Code training lab (see [Train
 - Python 3.11+, Django 5.2, SQLite
 - `uv` for the environment and dependencies
 - `pytest` (with `pytest-django`, `pytest-mock`, `pytest-cov`), `ruff`, `mypy` (strict) with `django-stubs`
-- Automatic checks: a GitHub workflow (`.github/workflows/checks.yml`) runs lint, types, tests and a coverage gate
+- Automatic checks: a GitHub workflow (`../.github/workflows/checks.yml`, at the repository root) runs lint, types, tests and a coverage gate
 
 ## Getting started
 
@@ -92,7 +92,6 @@ docs/
   app/                  The app: issues/ (index in README.md), templates/, project context
   learning/             Claude Code training: courses/, journal/, exercises/, epics/
 .claude/                Claude Code skills and agents shared by the team
-.github/                Automatic checks (workflows/), issue forms (ISSUE_TEMPLATE/) and the pull request template
 ```
 
 ## Architecture
