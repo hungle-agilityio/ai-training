@@ -31,3 +31,27 @@ Reproducible gotchas. Add one entry per pitfall with the symptom, the cause and 
 - **Symptom:** a template preview looks empty or shows `[]`.
 - **Cause:** `<title>` is read as an HTML tag and hidden.
 - **Fix:** write `\<title>`.
+
+## GitHub token cannot see the repository
+
+- **Symptom:** the GitHub MCP tool `get_me` works, but reading the repository fails with "Could not resolve to a Repository". `gh pr checks` fails with "Resource not accessible by personal access token".
+- **Cause:** a fine-grained token only reaches the repositories chosen in its settings, and only with the permissions ticked. GitHub answers "not found" instead of "forbidden".
+- **Fix:** in the token settings add the repository and the permissions (Issues, Pull requests, Contents, and Checks: Read to see checks). No restart is needed; try the call again.
+
+## MCP tools missing in a session
+
+- **Symptom:** the GitHub tools are not there although `.mcp.json` is committed.
+- **Cause:** a project `.mcp.json` is read from the folder where the session is opened. Here it lives in `claude-code-training-lab/`, one level below the git root.
+- **Fix:** open the session in `claude-code-training-lab/`. See ADR-006.
+
+## Attaching a sub-issue
+
+- **Symptom:** `gh issue create --parent` does not exist (gh 2.83); the MCP tool `sub_issue_write` rejects the issue number.
+- **Cause:** `sub_issue_write` wants the internal issue id, not the number.
+- **Fix:** for a new issue pass `parent_issue_number` to `issue_write` (create). For an existing one read its id with `gh api repos/<repository>/issues/<number> --jq .id` (this command always asks) and pass it as `sub_issue_id`.
+
+## An issue with every box ticked cannot be published
+
+- **Symptom:** the issue check says "Done when: it needs at least one checkbox item (- [ ])" for an issue that records finished work.
+- **Cause:** the check requires an open box.
+- **Fix:** add one real item that is still open (for example "the epics point to this issue"), publish, tick it and close the issue when it is true. Do not weaken the check.

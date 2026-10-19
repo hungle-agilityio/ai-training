@@ -20,3 +20,4 @@ One file per decision: `ADR-001-short-title.md`, numbered in order. Write one fo
 - [ADR-003: Repository layout and issue files](ADR-003-repository-layout.md)
 - [ADR-004: Claude may reach only one GitHub repository](ADR-004-one-repository-only.md)
 - [ADR-005: Dependencies are locked with uv](ADR-005-dependencies-locked-with-uv.md)
+- [ADR-006: Project configuration lives in the lab folder](ADR-006-project-config-in-lab-folder.md)

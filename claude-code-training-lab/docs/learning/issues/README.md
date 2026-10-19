@@ -8,3 +8,4 @@ One file per issue, grouped by type (`bugs/`, `features/`, `tasks/`). These are 
 | – | #7 | Task | `tasks/publish-epics.md` | [TASK] publish the epics as issues |
 | – | #8 | Task | `tasks/practices-already-in-place.md` | [TASK] Claude Code practices already in place |
 | – | #9 | Task | `tasks/protect-repository.md` | [TASK] protect the repository |
+| – | #14 | Task | `tasks/record-github-lessons.md` | [TASK] write down what we learned from connecting the assistant to GitHub |
