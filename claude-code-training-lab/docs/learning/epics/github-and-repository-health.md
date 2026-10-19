@@ -31,14 +31,14 @@ Each item must be something a person can check without technical help.
 ## Child issues
 
 In the order they should be done. One child is one pull request.
-- [ ] Replace GitLab with GitHub in rules, skills and README
-- [ ] Make the repository tell the truth: pin dependencies, README status, test for the demo data command
-- [ ] GitHub checks: lint, types, tests (also the hook tests) and a coverage gate
-- [ ] GitHub templates and basic files: issue forms (also for epics), pull request template, example settings file, contributing note
-- [ ] Repository on GitHub: backup, history split, first push
-- [ ] Protect the repository: main branch rules, code owners, dependency updates, secret scanning
-- [ ] Connect GitHub to the assistant: limited token and tests
-- [ ] Publish the epics as issues
+- [x] Replace GitLab with GitHub in rules, skills and README (done, see #8)
+- [x] Make the repository tell the truth: pin dependencies, README status, test for the demo data command (done, see #8)
+- [x] GitHub checks: lint, types, tests (also the hook tests) and a coverage gate (done, see #8)
+- [x] GitHub templates and basic files: issue forms (also for epics), pull request template, example settings file, contributing note (done, see #8)
+- [x] Repository on GitHub: backup, history split, first push (done, see #8)
+- [ ] Protect the repository: main branch rules, code owners, dependency updates, secret scanning (#9)
+- [ ] Connect GitHub to the assistant: limited token and tests (#5)
+- [ ] Publish the epics as issues (#7)
 
 ## Dependencies and risks
 

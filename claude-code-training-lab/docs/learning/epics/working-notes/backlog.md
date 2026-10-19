@@ -51,9 +51,9 @@ Status: `done`, `next`, `ready` (can start now), `needs you` (waits for somethin
 | T9 | Safety hooks and permission lists | | **done** |
 | T10 | Memory: the rule for when to save and the first memories | | **done** |
 | T11 | Repository on GitHub: empty repository, backup, split of the history, replace the local `.git`, first push, push policy | empty repository, token, restart, your approval for each step | **done** (2026-10-19: root `ai-training/`, 62 commits on GitHub, push policy in `decision-log.md`) |
-| T12 | Protect the repository: main branch rules, squash only, delete branches after merge, code owners, dependency updates, secret scanning | a paid plan, or a public repository | **partly done, blocked by the plan** (2026-10-19: files done and checks green; rules on `main` and secret scanning are not enforced on a private repository; see `decision-log.md`) |
-| T13 | Connect GitHub to the assistant (MCP): limited token, tests with the first real issues | token | after T11 |
-| T14 | Publish the epics as issues: three parent issues, one closed issue for done work, one issue per remaining task attached to its epic | your approval of the table | after T13 |
+| T12 | Protect the repository (#9): main branch rules, squash only, delete branches after merge, code owners, dependency updates, secret scanning | a paid plan, or a public repository | **partly done, blocked by the plan** (2026-10-19: files done and checks green; rules on `main` and secret scanning are not enforced on a private repository; see `decision-log.md`) |
+| T13 | Connect GitHub to the assistant (MCP): limited token, tests with the first real issues (#5) | token | **done** (2026-10-19: read, issue creation and sub-issue attach tested through the MCP server; another repository refused) |
+| T14 | Publish the epics as issues: three parent issues, one closed issue for done work, one issue per remaining task attached to its epic (#7; epics #10, #11, #12; done work #8) | your approval of the table | **done** once its pull request is merged |
 | T15 | Browser check in verify: start the app, drive the page, screenshots, console and network status | | **done** |
 | T16 | Verify report as a local file: template, builder script, opens by itself | | **done** |
 | T17 | Share the report: private link, privacy and approval rule, when something becomes an artifact | | **done** (first live private link on 2026-10-19; the Artifact hook seen firing) |

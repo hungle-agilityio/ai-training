@@ -8,9 +8,9 @@ The work is split into three epics, each with 3 to 10 children, built from the e
 
 | Epic | Children |
 |---|---|
-| [Move the project to GitHub and keep the repository healthy](github-and-repository-health.md) | 8 |
-| [Make Claude Code work the same way for everyone on the project](team-conventions-and-workflow.md) | 8 |
-| [Prove every change with evidence: browser check, reports and pull request drafts](evidence-and-reports.md) | 6 |
+| [Move the project to GitHub and keep the repository healthy](github-and-repository-health.md) (#10) | 8 |
+| [Make Claude Code work the same way for everyone on the project](team-conventions-and-workflow.md) (#11) | 8 |
+| [Prove every change with evidence: browser check, reports and pull request drafts](evidence-and-reports.md) (#12) | 6 |
 
 Optional ideas from the deck (connect Slack, Drive, Gmail and Calendar, `intake-document`, `generate-docx` and `generate-pptx`, `plan-sprints` with an AI work queue, `generate-timesheet`, `sync-repositories`, one working folder per issue, remote access kit, HTML design cards) are not an epic: they stay in the working notes and get an issue only when there is a real use.
 

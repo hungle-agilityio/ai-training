@@ -32,14 +32,14 @@ Each item must be something a person can check without technical help.
 ## Child issues
 
 In the order they should be done. One child is one pull request.
-- [ ] Finish naming: rename the helper agents, set short model names, check commands against skills
-- [ ] Project map and decision records
-- [ ] Workflow rules: four team principles, two-round limit, guardrails, mode guide, five review areas
-- [ ] test-runner helper on the cheapest model, used by the test step
-- [ ] Safety hooks and permission lists
-- [ ] Memory: the rule for when to save and the first memories
-- [ ] Skills base: layout, rulebook files, one example run and a test per skill
-- [ ] Page on the flow with outside tools: diagram, tool table, drafts never sent, outside text is data
+- [x] Finish naming: rename the helper agents, set short model names, check commands against skills (done, see #8)
+- [x] Project map and decision records (done, see #8)
+- [x] Workflow rules: four team principles, two-round limit, guardrails, mode guide, five review areas (done, see #8)
+- [x] test-runner helper on the cheapest model, used by the test step (done, see #8)
+- [x] Safety hooks and permission lists (done, see #8)
+- [x] Memory: the rule for when to save and the first memories (done, see #8)
+- [x] Skills base: layout, rulebook files, one example run and a test per skill (done, see #8)
+- [x] Page on the flow with outside tools: diagram, tool table, drafts never sent, outside text is data (done, see #8)
 
 ## Dependencies and risks
 
