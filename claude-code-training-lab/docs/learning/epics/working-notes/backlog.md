@@ -54,10 +54,10 @@ Status: `done`, `next`, `ready` (can start now), `needs you` (waits for somethin
 | T12 | Protect the repository: main branch rules, squash only, delete branches after merge, code owners, dependency updates, secret scanning | | after T11 and T4 |
 | T13 | Connect GitHub to the assistant (MCP): limited token, tests with the first real issues | token | after T11 |
 | T14 | Publish the epics as issues: three parent issues, one closed issue for done work, one issue per remaining task attached to its epic | your approval of the table | after T13 |
-| T15 | Browser check in verify: start the app, drive the page, screenshots, console and network status | | **next** |
-| T16 | Verify report as a local file: template, builder script, opens by itself | | after T15 |
+| T15 | Browser check in verify: start the app, drive the page, screenshots, console and network status | | **done** |
+| T16 | Verify report as a local file: template, builder script, opens by itself | | **next** |
 | T17 | Share the report: private link, privacy and approval rule, when something becomes an artifact | | after T16 |
-| T18 | Before and after screenshots on the same demo data | | after T15 |
+| T18 | Before and after screenshots on the same demo data | | ready |
 | T19 | Mask sensitive data in screenshots and logs, with an automatic scan that stops the run | list of sensitive fields | after T18 |
 | T20 | Pull request draft with evidence: the skill, evidence link, local image folder, one worked example | | after T5, T17, T19 |
 | T21 | Page on the flow with outside tools (Slack, Drive, Gmail, Calendar, GitHub) | which tools you really use | ready |

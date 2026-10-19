@@ -15,6 +15,7 @@ Give one line per axis, `PASS`, `FAIL` or `NOT CONFIGURED`, with the evidence:
 | Coverage | `uv run pytest`; 90% on services and repositories |
 | Issue | each "Done when" or acceptance criterion of the issue, checked in the running app or a test |
 | Query count | asserted for list and dashboard pages |
+| Browser | for an issue that changes what users see: the `check-in-browser` skill. PASS needs one screenshot per step and `console: 0 error(s), network: 0 failure(s)`; otherwise FAIL (with the lines) or NOT CONFIGURED (with the reason) |
 | Security | `.claude/rules/security.md`, no secrets in the diff |
 
 If an axis cannot be checked, write `NOT CONFIGURED` and why; never write PASS without evidence.

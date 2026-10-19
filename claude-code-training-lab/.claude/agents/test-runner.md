@@ -1,6 +1,6 @@
 ---
 name: test-runner
-description: Runner. Runs the project checks (lint, types, app tests with coverage, the coverage gate, the hook and issue checker tests) and reports only what failed, in one line when everything is green. Read-only: never edits code. Use for the /test step and whenever the user asks to run the checks.
+description: Runner. Runs the project checks (lint, types, app tests with coverage, the coverage gate, the hook and skill tests) and reports only what failed, in one line when everything is green. Read-only: never edits code. Use for the /test step and whenever the user asks to run the checks.
 tools: Bash, Read
 model: haiku
 ---
@@ -13,7 +13,7 @@ Run exactly these five commands, in order, from the project root, and keep going
 2. `uv run mypy .`
 3. `uv run pytest -q`
 4. `uv run coverage report --include="reviews/services.py,reviews/repositories.py" --fail-under=90`
-5. `uv run pytest .claude/hooks/tests .claude/skills/create-issue/tests -q --no-cov -p no:cacheprovider`
+5. `uv run pytest .claude/hooks/tests .claude/skills -q --no-cov -p no:cacheprovider`
 
 Report:
 

@@ -105,6 +105,7 @@ Scale the workflow to the difficulty of the issue; the table and gates are in `r
 | `write-tests` | Write unit and integration tests, assert query counts |
 | `diagnose-bug` | Diagnose a bug from evidence, trace the call chain |
 | `grill-me` | Settle every decision with the user, in rounds with recommended answers, before `/plan` |
+| `check-in-browser` | Drive the pages in a headless browser, take screenshots, report console and network errors (the browser axis of `/verify`) |
 
 ## Code templates
 

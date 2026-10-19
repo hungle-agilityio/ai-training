@@ -7,7 +7,7 @@
 | Database | SQLite in dev (hides N+1; assert query counts in tests) |
 | Time zone | `Asia/Ho_Chi_Minh` |
 | Tooling | `uv`, `ruff`, `mypy` (strict, `django-stubs`) |
-| Tests | `pytest`, `pytest-django`, `pytest-mock`, `pytest-cov` (tests in `reviews/tests`) |
+| Tests | `pytest`, `pytest-django`, `pytest-mock`, `pytest-cov` (tests in `reviews/tests`); `playwright` (headless Chromium) for the browser check |
 | CI | GitHub Actions `.github/workflows/checks.yml`: `ruff`, `mypy`, `pytest`, a 90% coverage gate on services and repositories, and the hook tests |
 | Tracker | GitHub, through the `gh` command (the MCP server comes later) |
 
