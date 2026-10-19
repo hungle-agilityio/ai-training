@@ -13,3 +13,9 @@
 - **If a command is blocked,** do not look for a way around it: tell the user which rule stopped it and ask.
 - **Never** read, print or write the token. It lives in an environment variable on the user's machine.
 - Allowed without asking: read, create and edit issues, comments and labels in that repository. Always ask: opening a pull request, closing or reopening an issue, `gh api`, adding or changing a remote, `git push`. Never: merge, delete, change repository settings, create or delete repositories, change authentication.
+
+## Sharing reports
+
+- A verify report may be published as a **private** artifact link only when its masking check is `clean`, the page shows demo data only, and the standing approval in `.claude/skills/share-report/rules.md` is `on` (the user gave it on 2026-10-16 and can switch it off by editing one line).
+- The gate in the `share-report` skill applies this, and the hook `before-artifact-publish` is a second layer for the Artifact tool (not yet seen firing in a live session; see `.claude/hooks/README.md`). Any other artifact is shared only with the user's approval of that item.
+- The link is posted as a comment on the issue, not inside the issue file. Screenshots and reports never contain real customer data.

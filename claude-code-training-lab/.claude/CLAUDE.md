@@ -65,6 +65,15 @@ These files grow over time, so the plan, review and learn steps consult them on 
 
 If a second session needs it, it goes in a channel, not in one session's head. When the user corrects something that will come up again, save it as a memory (with why and how to apply); do not save what this repository already records. Explained it twice? A fact goes in this file, a procedure becomes a skill.
 
+## When something becomes an artifact
+
+| It is... | It goes to |
+|---|---|
+| Evidence of a change (verify report), a pull request review summary, before and after screenshots, a release note with an animation, a design card, a diagram of a mechanism | An artifact: one private link, updated in place as the work moves (`share-report`) |
+| A short answer, a status, a question | The chat |
+| A rule, a decision, an issue, an epic | A file in the repository |
+| A deliverable for a client (Word, slides) | Rendered from its sources, not an artifact |
+
 ## AI engineering lifecycle
 
 Scale the workflow to the difficulty of the issue; the table and gates are in `rules/workflow.md`.
@@ -107,6 +116,7 @@ Scale the workflow to the difficulty of the issue; the table and gates are in `r
 | `grill-me` | Settle every decision with the user, in rounds with recommended answers, before `/plan` |
 | `check-in-browser` | Drive the pages in a headless browser, take screenshots, report console and network errors (the browser axis of `/verify`) |
 | `build-verify-report` | Run every verify axis and write one report page with the real numbers and screenshots, then open it (`/verify`) |
+| `share-report` | Share a verify report as a private link, only when the sharing gate allows (masking clean, standing approval on) |
 
 ## Code templates
 

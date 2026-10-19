@@ -23,7 +23,8 @@
       "Bash(python3 -I .claude/skills/create-issue/check_issue.py:*)",
       "Bash(uv run coverage:*)",
       "Bash(uv run python .claude/skills/check-in-browser/browser_check.py:*)",
-      "Bash(uv run python .claude/skills/build-verify-report/build_report.py:*)"
+      "Bash(uv run python .claude/skills/build-verify-report/build_report.py:*)",
+      "Bash(python3 -I .claude/skills/share-report/share_gate.py:*)"
     ],
     "ask": [
       "Bash(git push:*)",
@@ -89,6 +90,15 @@
           {
             "type": "command",
             "command": "/usr/bin/env python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/before-commit-check.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Artifact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/before-artifact-publish.py\""
           }
         ]
       }

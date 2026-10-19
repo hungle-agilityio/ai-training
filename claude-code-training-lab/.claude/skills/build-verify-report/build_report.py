@@ -200,22 +200,30 @@ def verdict(axes: list[dict[str, str]]) -> str:
     return "INCOMPLETE" if "NOT CONFIGURED" in states else "PASS"
 
 
-CSS = """
-:root{--bg:#fff;--fg:#1a1a1a;--muted:#5a5a5a;--line:#d9d9d9;--pass:#176a2a;--fail:#a61b1b;
---warn:#8a5a00;--card:#f6f6f4}
-@media (prefers-color-scheme:dark){:root{--bg:#161616;--fg:#ececec;--muted:#a8a8a8;
---line:#3a3a3a;--pass:#58c46f;--fail:#ff7b7b;--warn:#e0b04a;--card:#1f1f1f}}
-body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;margin:0;padding:24px}
-main{max-width:980px;margin:0 auto}h1{margin:.2em 0}h2{margin-top:1.6em}
-.meta{color:var(--muted)}table{border-collapse:collapse;width:100%}
-th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
-.PASS{color:var(--pass);font-weight:700}.FAIL{color:var(--fail);font-weight:700}
-.NOT\\ CONFIGURED,.INCOMPLETE{color:var(--warn);font-weight:700}
-.shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
-.shots figure{margin:0;background:var(--card);padding:8px;border-radius:8px}
-.shots img{width:100%;height:auto;border:1px solid var(--line)}
-pre{background:var(--card);padding:12px;overflow:auto;white-space:pre-wrap}
-"""
+LIGHT = (
+    "--bg:#fff;--fg:#1a1a1a;--muted:#5a5a5a;--line:#d9d9d9;"
+    "--pass:#176a2a;--fail:#a61b1b;--warn:#8a5a00;--card:#f6f6f4"
+)
+DARK = (
+    "--bg:#161616;--fg:#ececec;--muted:#a8a8a8;--line:#3a3a3a;"
+    "--pass:#58c46f;--fail:#ff7b7b;--warn:#e0b04a;--card:#1f1f1f"
+)
+CSS = (
+    ":root{" + LIGHT + "}"
+    '@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){' + DARK + "}}"
+    ':root[data-theme="dark"]{' + DARK + "}"
+    "body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;"
+    "margin:0;padding:24px 16px}"
+    "main{max-width:980px;margin:0 auto}h1{margin:.2em 0}h2{margin-top:1.6em}"
+    ".meta{color:var(--muted)}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%}"
+    "th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}"
+    ".PASS{color:var(--pass);font-weight:700}.FAIL{color:var(--fail);font-weight:700}"
+    ".NOT\\ CONFIGURED,.INCOMPLETE{color:var(--warn);font-weight:700}"
+    ".shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}"
+    ".shots figure{margin:0;background:var(--card);padding:8px;border-radius:8px}"
+    ".shots img{width:100%;height:auto;border:1px solid var(--line)}"
+    "pre{background:var(--card);padding:12px;overflow:auto;white-space:pre-wrap}"
+)
 
 
 def render_html(report: dict[str, Any]) -> str:
@@ -242,8 +250,9 @@ def render_html(report: dict[str, Any]) -> str:
         f'<p class="meta">Branch {esc(report["branch"])} · commit {esc(report["commit"])} · '
         f"{esc(report['date'])}</p>"
         f'<h2>Result: <span class="{esc(report["verdict"])}">{esc(report["verdict"])}</span></h2>'
-        f"<table><thead><tr><th>Axis</th><th>Result</th><th>Evidence</th></tr></thead>"
-        f"<tbody>{rows}</tbody></table>"
+        '<div class="table-wrap"><table><thead><tr><th>Axis</th><th>Result</th>'
+        '<th>Evidence</th></tr></thead>'
+        f"<tbody>{rows}</tbody></table></div>"
         + (f'<h2>Screenshots</h2><div class="shots">{shots}</div>' if shots else "")
         + review
         + (f"<h2>What to check yourself</h2><ol>{check}</ol>" if check else "")
@@ -297,6 +306,8 @@ def build(
         "axes": axes,
         "screenshots": shots,
         "review": review or "",
+        "masking": {"status": "not run"},
+        "share": None,
         "check_yourself": (criteria or {}).get("check_yourself", []),
     }
     (out_dir / "report.json").write_text(json.dumps(report, indent=2))

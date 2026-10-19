@@ -25,4 +25,6 @@ Use the `build-verify-report` skill. In short:
 
 If an axis cannot be checked, the report says `NOT CONFIGURED` and why; never write PASS without evidence.
 
+4. Run the `share-report` skill: it prints the private link of the report, or says in one line why there is no link (the masking check must be clean).
+
 **Then stop at Gate 2.** Tell me the verdict and where the report is (it is already open), and ask me to check the result myself (the steps are in the report). Do not commit or run `/learn` until I say OK.
