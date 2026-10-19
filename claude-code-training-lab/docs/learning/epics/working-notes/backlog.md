@@ -60,7 +60,7 @@ Status: `done`, `next`, `ready` (can start now), `needs you` (waits for somethin
 | T18 | Before and after screenshots on the same demo data | | **done** |
 | T19 | Mask sensitive data in screenshots and logs, with an automatic scan that stops the run | list of sensitive fields | **done** |
 | T20 | Pull request draft with evidence: the skill, evidence link, local image folder, one worked example | | done |
-| T21 | Page on the flow with outside tools (Slack, Drive, Gmail, Calendar, GitHub) | which tools you really use | **next** |
+| T21 | Page on the flow with outside tools (Slack, Drive, Gmail, Calendar, GitHub) | which tools you really use | done (page: `docs/learning/outside-tools-flow.md`; tool list assumed) |
 | T22 | Skills base: layout, rulebook files, one example run and a test per skill | | ready |
 
 Optional, only if needed (each can be dropped with a written reason):
