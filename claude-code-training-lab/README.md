@@ -117,6 +117,7 @@ uv run pytest          # tests with coverage
 uv run coverage report --include="reviews/services.py,reviews/repositories.py" --fail-under=90   # coverage gate
 uv run pytest .claude/hooks/tests .claude/skills --no-cov   # tests of the hooks and the skills' scripts
 uv run python .claude/skills/check-in-browser/browser_check.py   # browser check (once: uv run playwright install chromium)
+uv run python .claude/skills/build-verify-report/build_report.py --title "<issue>" --browser   # every axis in one report
 ```
 
 Target: 90% coverage on the service layer. Mock external APIs; tests never use the network. The GitHub workflow runs the same checks on every push to `main` and on every pull request.

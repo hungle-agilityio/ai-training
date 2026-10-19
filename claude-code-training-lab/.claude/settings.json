@@ -22,7 +22,8 @@
       "Bash(gh auth status:*)",
       "Bash(python3 -I .claude/skills/create-issue/check_issue.py:*)",
       "Bash(uv run coverage:*)",
-      "Bash(uv run python .claude/skills/check-in-browser/browser_check.py:*)"
+      "Bash(uv run python .claude/skills/check-in-browser/browser_check.py:*)",
+      "Bash(uv run python .claude/skills/build-verify-report/build_report.py:*)"
     ],
     "ask": [
       "Bash(git push:*)",

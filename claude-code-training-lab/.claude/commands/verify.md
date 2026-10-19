@@ -1,23 +1,28 @@
 ---
-description: Final verification, PASS / FAIL / NOT CONFIGURED per axis
-argument-hint: <issue number or folder>
+description: Final verification: one report with PASS / FAIL / NOT CONFIGURED per axis, opened for you
+argument-hint: <issue number or file>
 ---
 
 Verify the work for: $ARGUMENTS
 
-Give one line per axis, `PASS`, `FAIL` or `NOT CONFIGURED`, with the evidence:
+Use the `build-verify-report` skill. In short:
+
+1. Write the criteria file: check each "Done when" or acceptance criterion of the issue in the running app (use the `check-in-browser` skill) or with a test, and record `PASS`, `FAIL` or `NOT CONFIGURED` with the evidence; add the issue's "Steps to check the result" as the steps the user can try.
+2. If the review step ran, save its summary with `Status: PASS` or `Status: FAIL` on the first line.
+3. Run the report builder (add `--browser` when the issue changes what users see). It runs every axis, writes the report and opens it.
 
 | Axis | How |
 |---|---|
 | Lint | `uv run ruff check .` |
 | Types | `uv run mypy .` |
-| Tests | `uv run pytest -q --no-cov` |
-| Coverage | `uv run pytest`; 90% on services and repositories |
-| Issue | each "Done when" or acceptance criterion of the issue, checked in the running app or a test |
+| Tests | `uv run pytest -q` |
+| Coverage | 90% on services and repositories |
+| Skill and hook tests | `uv run pytest .claude/hooks/tests .claude/skills` |
+| Issue | each criterion of the issue, from the criteria file |
 | Query count | asserted for list and dashboard pages |
-| Browser | for an issue that changes what users see: the `check-in-browser` skill. PASS needs one screenshot per step and `console: 0 error(s), network: 0 failure(s)`; otherwise FAIL (with the lines) or NOT CONFIGURED (with the reason) |
-| Security | `.claude/rules/security.md`, no secrets in the diff |
+| Security | no secret-like string in the diff (`.claude/rules/security.md`) |
+| Browser | the `check-in-browser` skill: one screenshot per step, console and network clean |
 
-If an axis cannot be checked, write `NOT CONFIGURED` and why; never write PASS without evidence.
+If an axis cannot be checked, the report says `NOT CONFIGURED` and why; never write PASS without evidence.
 
-**Then stop at Gate 2.** Ask me to check the result myself (steps to try in the app when the issue is visible). Do not commit or run `/learn` until I say OK.
+**Then stop at Gate 2.** Tell me the verdict and where the report is (it is already open), and ask me to check the result myself (the steps are in the report). Do not commit or run `/learn` until I say OK.

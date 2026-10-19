@@ -106,6 +106,7 @@ Scale the workflow to the difficulty of the issue; the table and gates are in `r
 | `diagnose-bug` | Diagnose a bug from evidence, trace the call chain |
 | `grill-me` | Settle every decision with the user, in rounds with recommended answers, before `/plan` |
 | `check-in-browser` | Drive the pages in a headless browser, take screenshots, report console and network errors (the browser axis of `/verify`) |
+| `build-verify-report` | Run every verify axis and write one report page with the real numbers and screenshots, then open it (`/verify`) |
 
 ## Code templates
 
