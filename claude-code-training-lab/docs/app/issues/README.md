@@ -12,3 +12,6 @@ The issue number (ID) is the **GitHub issue number**, given when the issue is pu
 | 4 | draft (was GitLab #4) | Feature | `features/filter-reviews/` | Filter reviews by good or bad |
 | 5 | draft | Bug | `bugs/reply-wrong-language/` | Reply drafts come out in the wrong language |
 | 6 | draft | Feature | `features/reviews-page/` | Reviews page to show all reviews |
+| – | draft | Feature | `features/export-reviews.md` | [FEAT] Export reviews to a spreadsheet file |
+| – | draft | Feature | `features/location-score-trend.md` | [FEAT] Show which locations are getting better or worse |
+| – | draft | Feature | `features/search-review-text.md` | [FEAT] Search reviews by the words in their text |
