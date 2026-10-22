@@ -15,7 +15,6 @@ Write **one** file: `docs/app/issues/<type>/<name>.md`, the complete issue, buil
 |---|---|---|---|---|
 | `BUG` | Something that worked, or should work, is wrong: error, wrong value, slow, wrong text | `docs/app/templates/bug.md` | `bugs/<name>` | `bug/<id>-...` |
 | `FEAT` | Users get a new ability, or an existing page changes what users see | `docs/app/templates/feature.md` | `features/<name>` | `feat/<id>-...` |
-| `FEAT` pack | A rough request that a developer must build **without asking anything**: the issue must carry scope, scenarios, the exact spec and the open questions | `docs/app/templates/feature-pack.md` | `features/<name>` | `feat/<id>-...` |
 | `TASK` | Work with no new user-facing behaviour: cleanup, data update, configuration, document, investigation | `docs/app/templates/task.md` | `tasks/<name>` | `task/<id>-...` |
 | `EPIC` | A goal that needs between 3 and 10 issues | `docs/app/templates/epic.md` | `epics/<name>` | none (each child has its own) |
 
@@ -31,7 +30,7 @@ Write **one** file: `docs/app/issues/<type>/<name>.md`, the complete issue, buil
 1. **Gather.** The user's description, plus any existing files in the issue folder.
 2. **Investigate** according to section 4 (reproduce a bug, look at the app for a feature, check what is touched for a task).
 3. **Write** the issue file with everything you verified. What is still unknown is written as a `(proposal)` the reader can accept or change, never as a fact. Keep the label `needs-info` while anything is unconfirmed, and use `env: to confirm` when the environment is unknown.
-4. **Report back in your answer** (not in the file): the path, what you verified, what could not be reproduced or decided, and the numbered open questions for the reporter, each with your proposal. The file itself has no questions section, except a feature pack, which lists them under Open questions (see section 4).
+4. **Report back in your answer** (not in the file): the path, what you verified, what could not be reproduced or decided, and the numbered open questions for the reporter, each with your proposal. The file itself has no questions section.
 5. **When answers arrive,** update the issue file directly: fold each answer into the sections it changes, remove the `(proposal)` marks that were confirmed, and remove `needs-info` once nothing is left to ask. Never write an answer the reporter did not give.
 
 ## 3. Rules for every issue
@@ -49,10 +48,6 @@ Write **one** file: `docs/app/issues/<type>/<name>.md`, the complete issue, buil
 
 - **BUG:** Reproduce before you write. Run the app locally and follow your own steps. Before changing local data, back up `db.sqlite3` to the scratchpad and restore it afterwards. Fill Steps to reproduce, Expected result, Actual result and Environment with what you saw. If you could not reproduce it, say so and use the label `cannot-reproduce`. Never open files named `*DO-NOT-OPEN*`.
 - **FEAT:** Look at the app first (read it, run it) and describe what exists today as a person sees it. Turn every undefined rule (what "good" means, what a "week" is, time zone, one location or all, filters combined or not, what to show when there is nothing) into an acceptance criterion marked `(proposal)`. Write acceptance criteria as "When \<situation>, the screen must \<result>", including the empty case. Check for other issues that touch the same page and say how they relate.
-- **FEAT pack:** Use it when the request is rough, or when someone will build it without a chance to ask. Start from `feature-pack.md`; it is still a `FEAT`, so every section of `feature.md` is kept and the checker applies unchanged. Three rules on top of the FEAT rules:
-  - Acceptance criteria stay "When \<situation>, the screen must \<result>". Each criterion that needs exact data also gets a Scenario (Given the data and the page, When the user does this, Then the exact values and texts). The Spec holds the texts, messages, calculations and ordering a developer cannot guess.
-  - Scope and Not in scope are both filled. Anything a reader could reasonably expect and the issue does not deliver goes under Not in scope.
-  - **The no-questions test:** before you finish, read the pack as a developer who cannot ask anything. Every question you would have to ask goes under Open questions, with a proposal and an owner, and the label `needs-info` stays. Write "None" and remove `needs-info` only when nothing is left. When a developer asks a question after the pack was handed over, the pack was not done: add the answer to the section it belongs to.
 - **TASK:** Say exactly what is touched, or "nothing visible to users". If users see a change, it is a FEAT; if something is broken, it is a BUG. Every "Done when" item must be checkable by a non-technical person. State what is in and out of scope.
 
 ## 5. Git naming (only when asked to create a branch or commit)
