@@ -4,9 +4,10 @@ import pytest
 from django.core.management import call_command
 
 from reviews.models import Branch, Business, Review
+from reviews.search_text import normalize_for_search
 
 DEFAULT_BRANCHES = {"Airport", "Downtown", "Riverside"}
-DEFAULT_REVIEW_COUNT = 10
+DEFAULT_REVIEW_COUNT = 14
 
 
 def seed(*args: str) -> str:
@@ -16,7 +17,7 @@ def seed(*args: str) -> str:
 
 
 @pytest.mark.django_db
-def test_default_seed_creates_one_business_three_locations_and_ten_reviews() -> None:
+def test_default_seed_creates_one_business_three_locations_and_fourteen_reviews() -> None:
     seed()
 
     assert Business.objects.count() == 1
@@ -93,3 +94,24 @@ def test_seed_reports_how_many_locations_it_created() -> None:
     message = seed("--branches", "1", "--with-new-branch")
 
     assert "Seeded 5 branches." in message
+
+
+@pytest.mark.django_db
+def test_every_seeded_review_has_its_search_text() -> None:
+    seed("--branches", "1")
+
+    assert Review.objects.count() == DEFAULT_REVIEW_COUNT + 3
+    for review in Review.objects.all():
+        assert review.search_text == normalize_for_search(review.text)
+        assert review.search_text
+
+
+@pytest.mark.django_db
+def test_seed_has_vietnamese_reviews() -> None:
+    seed()
+
+    texts = set(Review.objects.values_list("text", flat=True))
+    accented = [text for text in texts if any(ord(char) > 127 for char in text)]
+    assert 3 <= len(accented) <= 5
+    assert "Đau chân đỡ hẳn, nhân viên thân thiện" in texts
+    assert "Dau dau khi cho doi" in texts
