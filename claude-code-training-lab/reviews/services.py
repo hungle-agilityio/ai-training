@@ -1,4 +1,6 @@
-from collections.abc import Sequence
+import csv
+import io
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -6,6 +8,7 @@ from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
 from django.core.paginator import Paginator
+from django.db.models import QuerySet
 
 from reviews import repositories
 from reviews.models import Review
@@ -15,6 +18,13 @@ TEXT_PREVIEW_LENGTH = 120
 # A week is Monday to Sunday in Vietnam time, whatever time zone is active
 VIETNAM_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
 RATING_RANGES: dict[str, tuple[int, int]] = {"good": (4, 5), "bad": (1, 2)}
+CSV_CHUNK_ROWS = 500
+CSV_CHUNK_BYTES = 64 * 1024
+CSV_HEADER = ("Location", "Rating", "Review text", "Date")
+# Excel needs the UTF-8 marker to show Vietnamese letters correctly
+CSV_BOM = "\ufeff"
+# A spreadsheet reads a cell starting with one of these as a formula
+CSV_FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
 
 
 @dataclass(frozen=True)
@@ -238,6 +248,7 @@ class ReviewsPage:
     week_label: str | None
     is_filtered: bool
     query_params: list[tuple[str, str]]
+    export_query: str
 
 
 def week_label(monday: date) -> str:
@@ -263,6 +274,77 @@ def page_href(params: list[tuple[str, str]], number: int) -> str:
     return "?" + urlencode([*params, ("page", str(number))])
 
 
+@dataclass(frozen=True)
+class ReviewSelection:
+    """The filters that really apply, after a wrong value has been ignored."""
+
+    branch_id: int | None
+    rating: str | None
+    week: WeekRange | None
+    day: date | None
+    params: list[tuple[str, str]]
+
+
+def resolve_selection(filters: ReviewFilters, branch_ids: set[int]) -> ReviewSelection:
+    branch_id = filters.branch_id if filters.branch_id in branch_ids else None
+    rating = filters.rating if filters.rating in RATING_RANGES else None
+    week = week_containing(filters.day) if filters.day else None
+
+    params: list[tuple[str, str]] = []
+    if branch_id is not None:
+        params.append(("location", str(branch_id)))
+    if rating is not None:
+        params.append(("rating", rating))
+    if filters.day is not None:
+        params.append(("week", filters.day.isoformat()))
+    return ReviewSelection(branch_id, rating, week, filters.day, params)
+
+
+def matching_reviews(selection: ReviewSelection) -> QuerySet[Review]:
+    return repositories.reviews_newest_first(
+        branch_id=selection.branch_id,
+        ratings=RATING_RANGES[selection.rating] if selection.rating else None,
+        created_range=(selection.week.start, selection.week.end) if selection.week else None,
+    )
+
+
+def csv_safe(value: str) -> str:
+    """Prefix a single quote so a spreadsheet shows the text as plain text, never a formula."""
+    return "'" + value if value.startswith(CSV_FORMULA_STARTS) else value
+
+
+def export_filename(now: datetime) -> str:
+    return f"reviews-{now.astimezone(VIETNAM_TZ):%Y-%m-%d}.csv"
+
+
+def reviews_csv(filters: ReviewFilters) -> Iterator[str]:
+    """The CSV of every matching review in chunks, so a long list never sits in memory at once."""
+    selection = resolve_selection(filters, {pk for pk, _ in repositories.branch_choices()})
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\r\n")
+
+    def flush() -> str:
+        chunk = buffer.getvalue()
+        buffer.seek(0)
+        buffer.truncate()
+        return chunk
+
+    writer.writerow(CSV_HEADER)
+    yield CSV_BOM + flush()
+    for review in matching_reviews(selection).iterator(chunk_size=CSV_CHUNK_ROWS):
+        writer.writerow(
+            (
+                csv_safe(review.branch.name),
+                review.rating,
+                csv_safe(review.text),
+                f"{review.created_at.astimezone(VIETNAM_TZ):%Y-%m-%d %H:%M}",
+            )
+        )
+        if buffer.tell() >= CSV_CHUNK_BYTES:
+            yield flush()
+    yield flush()
+
+
 def reviews_page(
     page: int | None,
     per_page: int = REVIEWS_PER_PAGE,
@@ -270,23 +352,9 @@ def reviews_page(
 ) -> ReviewsPage:
     filters = filters or ReviewFilters()
     choices = repositories.branch_choices()
-    branch_id = filters.branch_id if filters.branch_id in {pk for pk, _ in choices} else None
-    ratings = RATING_RANGES.get(filters.rating or "")
-    week = week_containing(filters.day) if filters.day else None
-
-    params: list[tuple[str, str]] = []
-    if branch_id is not None:
-        params.append(("location", str(branch_id)))
-    if ratings is not None and filters.rating:
-        params.append(("rating", filters.rating))
-    if filters.day is not None:
-        params.append(("week", filters.day.isoformat()))
-
-    reviews = repositories.reviews_newest_first(
-        branch_id=branch_id,
-        ratings=ratings,
-        created_range=(week.start, week.end) if week else None,
-    )
+    selection = resolve_selection(filters, {pk for pk, _ in choices})
+    branch_id, week, params = selection.branch_id, selection.week, selection.params
+    reviews = matching_reviews(selection)
     paginator = Paginator(reviews, per_page)
     current = paginator.get_page(page or 1)
     rows = [to_review_row(review) for review in current.object_list]
@@ -318,9 +386,10 @@ def reviews_page(
         next_href=page_href(params, next_number),
         branches=[BranchOption(pk, name, pk == branch_id) for pk, name in choices],
         branch_id=branch_id,
-        rating=filters.rating if ratings is not None and filters.rating else "",
-        week_value=filters.day.isoformat() if filters.day else "",
+        rating=selection.rating or "",
+        week_value=selection.day.isoformat() if selection.day else "",
         week_label=week.label if week else None,
         is_filtered=bool(params),
         query_params=params,
+        export_query=urlencode(params),
     )

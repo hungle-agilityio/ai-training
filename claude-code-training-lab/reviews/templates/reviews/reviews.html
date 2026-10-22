@@ -4,7 +4,12 @@
 {% block title %}Reviews · ReviewRadar{% endblock %}
 {% block heading %}Reviews{% endblock %}
 {% block subtitle %}Every customer review across all locations, newest first.{% endblock %}
-{% block actions %}{% endblock %}
+{% block actions %}
+<div class="export-action">
+  <a class="button" href="{% url 'reviews-export' %}{% if page.export_query %}?{{ page.export_query }}{% endif %}">Export CSV</a>
+  <p class="export-note">The file can contain customers' personal details.</p>
+</div>
+{% endblock %}
 
 {% block content %}
 <section class="panel">

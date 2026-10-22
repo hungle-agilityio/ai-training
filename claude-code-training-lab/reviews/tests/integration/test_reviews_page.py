@@ -168,9 +168,11 @@ def test_menu_links_to_reviews_and_marks_it_active() -> None:
 
 
 @pytest.mark.django_db
-def test_export_button_is_not_shown_on_reviews_page() -> None:
+def test_reviews_page_has_its_own_csv_export_instead_of_the_json_one() -> None:
     assert "Export JSON" in Client().get("/dashboard/").content.decode()
-    assert "Export JSON" not in Client().get("/reviews/").content.decode()
+    reviews = Client().get("/reviews/").content.decode()
+    assert "Export JSON" not in reviews
+    assert "Export CSV" in reviews
 
 
 @pytest.mark.django_db

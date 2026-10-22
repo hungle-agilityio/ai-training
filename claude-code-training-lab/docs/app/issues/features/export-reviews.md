@@ -1,5 +1,6 @@
 # [FEAT] Export reviews to a spreadsheet file
 
+- **GitHub:** #18
 - **Reporter:** Marcus, product owner
 - **Reported on:** 2026-10-22
 - **Type:** New feature
@@ -112,3 +113,10 @@ To be checked on the dev environment first.
 ## Attachments
 
 Sketch of the button position from the reporter, still to be added.
+
+## Implementation notes
+
+- The export is a streamed response (`StreamingHttpResponse`, rows read with `.iterator()`), so a long list never sits in memory and no background job is needed.
+- The Reviews page and the export share one filter rule (`resolve_selection`), so the file always holds what the table would show, without the paging.
+- The single quote rule also covers a text that starts with a tab or a carriage return, and it applies to the Location cell as well as the Review text.
+- Open questions 1 to 3 keep their assumptions until Marcus answers. Without a login, anyone who can open the Reviews page can download customers' personal details; this is the accepted risk behind the note next to the button.
