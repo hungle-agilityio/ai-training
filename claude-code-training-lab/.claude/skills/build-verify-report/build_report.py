@@ -2,7 +2,7 @@
 """Run every verify axis and write one report that a person can open and read.
 
 Usage: uv run python .claude/skills/build-verify-report/build_report.py --title "<issue>"
-       [--criteria FILE] [--review FILE] [--browser] [--no-open] [--out DIR]
+       [--criteria FILE] [--review FILE] [--browser [--spec FILE]] [--no-open] [--out DIR]
 
 The numbers in the report are read from the real output of each command by this program;
 nothing is retyped. It writes report.html (one self-contained page, screenshots embedded) and
@@ -249,8 +249,25 @@ CSS = (
     ".NOT\\ CONFIGURED,.INCOMPLETE{color:var(--warn);font-weight:700}"
     ".shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}"
     ".shots figure{margin:0;background:var(--card);padding:8px;border-radius:8px}"
-    ".shots img{width:100%;height:auto;border:1px solid var(--line)}"
+    ".shots img{width:100%;height:auto;border:1px solid var(--line);cursor:zoom-in}"
+    "[hidden]{display:none!important}"
+    "#lightbox{position:fixed;inset:0;z-index:20;overflow:auto;padding:16px;cursor:zoom-out;"
+    "background:rgba(0,0,0,.85)}"
+    "#lightbox img{display:block;margin:0 auto;max-width:none;background:var(--bg)}"
     "pre{background:var(--card);padding:12px;overflow:auto;white-space:pre-wrap}"
+)
+
+
+LIGHTBOX = (
+    '<div id="lightbox" hidden><img alt=""></div>'
+    "<script>(function(){var box=document.getElementById('lightbox');"
+    "var big=box.querySelector('img');"
+    "document.querySelectorAll('.shots img').forEach(function(img){"
+    "img.addEventListener('click',function(){big.src=img.src;big.alt=img.alt;"
+    "box.hidden=false;box.scrollTop=0;});});"
+    "box.addEventListener('click',function(){box.hidden=true;});"
+    "document.addEventListener('keydown',function(e){if(e.key==='Escape'){box.hidden=true;}});"
+    "})();</script>"
 )
 
 
@@ -279,7 +296,7 @@ def render_body(report: dict[str, Any]) -> str:
         '<div class="table-wrap"><table><thead><tr><th>Axis</th><th>Result</th>'
         "<th>Evidence</th></tr></thead>"
         f"<tbody>{rows}</tbody></table></div>"
-        + (f'<h2>Screenshots</h2><div class="shots">{shots}</div>' if shots else "")
+        + (f'<h2>Screenshots</h2><div class="shots">{shots}</div>{LIGHTBOX}' if shots else "")
         + review
         + (f"<h2>What to check yourself</h2><ol>{check}</ol>" if check else "")
         + "</main>"
@@ -327,6 +344,7 @@ def build(
     browser: bool,
     open_report: bool,
     plant: str | None = None,
+    spec: Path | None = None,
 ) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
     axes = run_checks(root, run)
@@ -341,6 +359,7 @@ def build(
         folder = out_dir / "browser"
         command = [sys.executable, str(script), "--out", str(folder)]
         command += ["--plant", plant] if plant else []
+        command += ["--spec", str(spec)] if spec else []
         code, text = run(command, root)
         axes.append(
             browser_axis(folder if (folder / "result.json").is_file() else None, code, text)
@@ -390,6 +409,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--criteria", type=Path, help="JSON: criteria with status, check_yourself")
     parser.add_argument("--review", type=Path, help="text file; first line Status: PASS or FAIL")
     parser.add_argument("--browser", action="store_true", help="run the browser check too")
+    parser.add_argument(
+        "--spec", type=Path, help="JSON steps for the browser check (default: the reviews pages)"
+    )
     parser.add_argument("--no-open", action="store_true", help="do not open the report")
     parser.add_argument("--plant", help="add a review with this text, to test the scan only")
     parser.add_argument("--out", type=Path, help="folder (default: out/verify/<time>)")
@@ -408,6 +430,7 @@ def main(argv: list[str]) -> int:
         args.browser,
         not args.no_open,
         args.plant,
+        args.spec,
     )
     for item in report["axes"]:
         print(f"{item['status']:<15} {item['name']:<22} {item['evidence']}")

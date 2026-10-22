@@ -14,6 +14,11 @@
 {% block content %}
 <section class="panel">
   <form class="filters" method="get" action="{% url 'reviews' %}" aria-label="Filter reviews">
+    <div class="field field-search">
+      <label for="filter-search">Search</label>
+      <input type="search" id="filter-search" name="search" value="{{ page.search_value }}" data-sensitive="search-term" aria-describedby="filter-search-hint{% if page.search_too_short %} filter-search-short{% endif %}">
+      <span class="field-hint field-hint-below" id="filter-search-hint">Words in the review</span>
+    </div>
     <div class="field">
       <label for="filter-location">Location</label>
       <select id="filter-location" name="location">
@@ -35,15 +40,18 @@
       <label for="filter-week">Week of</label>
       <input id="filter-week" type="date" name="week" value="{{ page.week_value }}" placeholder="YYYY-MM-DD">
     </div>
-    <button class="button" type="submit">Apply</button>
-    {% if page.is_filtered %}<a class="button" href="{% url 'reviews' %}">Clear</a>{% endif %}
+    <div class="filter-actions" role="group" aria-label="Filter actions">
+      <button class="button button-apply" type="submit">Apply</button>
+      {% if page.show_clear %}<a class="button button-clear" href="{% url 'reviews' %}">Clear</a>{% endif %}
+    </div>
   </form>
+  {% if page.search_too_short %}<p class="alert" id="filter-search-short" role="alert">Type at least 3 characters to search.</p>{% endif %}
   {% if page.week_label %}<p class="filter-week-label">Week: {{ page.week_label }}</p>{% endif %}
 
   {% if page.total == 0 and page.is_filtered %}
     <div class="empty">
       <h2>No reviews found</h2>
-      <p>No review matches these filters. Try another location, rating or week.</p>
+      <p>No review matches these filters. Try other words, another location, rating or week.</p>
     </div>
   {% elif page.total == 0 %}
     <div class="empty">

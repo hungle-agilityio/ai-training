@@ -6,6 +6,7 @@ from pytest_django.fixtures import DjangoAssertNumQueries
 from pytest_mock import MockerFixture
 
 from reviews.models import Branch, Business, Review
+from reviews.repositories import create_review
 
 
 def _export(query: str = "") -> tuple[str, str, str]:
@@ -74,3 +75,15 @@ def test_reviews_page_button_carries_the_filters_but_not_the_page() -> None:
 
     assert f'href="/reviews/export/?location={branch.id}&amp;rating=good"' in html
     assert "The file can contain customers' personal details." in html
+
+
+@pytest.mark.django_db
+def test_export_with_a_search_has_only_the_matching_reviews() -> None:
+    branch = Branch.objects.create(business=Business.objects.create(name="Demo"), name="Riverside")
+    created_at = datetime(2026, 10, 14, 2, 0, tzinfo=UTC)
+    create_review(branch=branch, rating=2, text="No parking nearby", created_at=created_at)
+    create_review(branch=branch, rating=5, text="Great doctor", created_at=created_at)
+
+    body, _, _ = _export("?search=PARKING")
+
+    assert [line.split(",")[2] for line in body.splitlines()[1:]] == ["No parking nearby"]

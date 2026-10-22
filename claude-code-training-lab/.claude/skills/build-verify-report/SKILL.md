@@ -15,6 +15,7 @@ uv run python .claude/skills/build-verify-report/build_report.py --title "<issue
 ```
 
 - `--browser` also runs the `check-in-browser` skill and puts its screenshots in the report. Use it for any issue that changes what users see.
+- `--spec <file>` (with `--browser`) gives the browser check the steps of the issue instead of the default reviews pages, so the screenshots in the report show the feature. In the report a click on a screenshot opens it full size; click again or press Escape to close it.
 - The report is `out/verify/<time>/report.html` (one self-contained page, git-ignored) and `report.json`. It opens by itself unless `--no-open` is given.
 - It takes about half a minute: it runs the same checks as the automatic checks on GitHub.
 

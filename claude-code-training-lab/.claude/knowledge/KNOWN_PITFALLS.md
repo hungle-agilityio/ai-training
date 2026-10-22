@@ -55,3 +55,21 @@ Reproducible gotchas. Add one entry per pitfall with the symptom, the cause and 
 - **Symptom:** the issue check says "Done when: it needs at least one checkbox item (- [ ])" for an issue that records finished work.
 - **Cause:** the check requires an open box.
 - **Fix:** add one real item that is still open (for example "the epics point to this issue"), publish, tick it and close the issue when it is true. Do not weaken the check.
+
+## Case-insensitive search on SQLite
+
+- **Symptom:** a search for `ĐAU CHÂN` does not find "Đau chân"; `NHÂN` does not find "nhân viên". `PARKING` finds "parking", so a test with plain English words passes.
+- **Cause:** SQLite `LIKE` (Django `icontains`) and `lower()` fold the case of ASCII letters only. A letter written in a different Unicode form (NFC or NFD, common when text is copied from a Mac) does not match either.
+- **Fix:** search a stored copy of the text made by `normalize_for_search` in `reviews/search_text.py` (NFC, casefold, NFC) and normalise the typed words the same way. Test with accented capital letters, not only English words. See ADR-007.
+
+## A stored copy that is out of date
+
+- **Symptom:** a review exists but a search never finds it.
+- **Cause:** `Review.search_text` is filled only by `create_review` in `reviews/repositories.py`. A review made with `Review.objects.create`, `bulk_create` or changed with `update()` keeps an empty or old copy. `test_review_create_paths.py` catches only `create`, `bulk_create` and `Review(`, not `get_or_create`, `update_or_create` or an edit of `text`.
+- **Fix:** create and change reviews only through the repository, and refresh `search_text` in any new edit path. Changing the normalisation rule needs a new backfill migration, because migration 0003 calls the live function.
+
+## A browser-check step that clicks Export
+
+- **Symptom:** a step fails with `net::ERR_ABORTED` and the expected text is not shown.
+- **Cause:** the selector `a.button` matches the first link with that class, the Export CSV link, which starts a download instead of changing the page.
+- **Fix:** scope the selector, for example `form.filters a.button` for Clear.
