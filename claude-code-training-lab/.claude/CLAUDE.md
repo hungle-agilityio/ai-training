@@ -18,9 +18,9 @@ Django app that collects customer reviews per branch (location), shows a score d
 
 `/understand` → `/plan` → Gate 1 → `/implement` → `/test` → `/review` → `/verify` → Gate 2 → `/learn` → `/commit`. Difficulty, triggers and gates: `rules/workflow.md`. Sub-agents `analyst`, `planner`, `implementer`, `reviewer`, `test-runner`; send wide searches to `Explore`. A new feature starts from `templates/layered-feature.md`.
 
-**Main way: a Claude Code Project** (claude.ai/code or the phone app, ADR-010). You talk to the project conversation; `grill-me`, the UI/UX confirmation, the issue and the pull request are done by its threads, following `.claude/project-instructions.md` and the root `../CLAUDE.md`. Cloud threads do not load skills, agents, hooks or `settings.json`, so those rules are text there. You press Merge it.
+**Two halves (ADR-011).** The **Claude Code Project** (claude.ai/code or the phone app, ADR-010) takes a request to an issue: analysis, `grill-me`, the UI/UX confirmation, your OK, then the issue labelled `agent:ready`, posted from the Mac mini through Remote Control so it carries no Claude attribution (`.claude/project-instructions.md`, root `../CLAUDE.md`). Its threads do not write code or open pull requests. Cloud threads do not load skills, agents, hooks or `settings.json`, so those rules are text there.
 
-**CLI loop (kept until the Project path is proven):** `REVIEWRADAR_LOOP=1 claude`, then `/loop 30m use the work-queue skill`. It takes issues labelled `agent:ready`, opens the pull request and never merges. ADR-008, ADR-009.
+The **CLI loop** on the Mac mini builds it: `REVIEWRADAR_LOOP=1 claude`, then `/loop 30m use the work-queue skill`. It takes issues labelled `agent:ready`, opens the pull request with the verify report and never merges. You merge on GitHub. ADR-008, ADR-009.
 
 ## Where things go
 
@@ -35,3 +35,4 @@ A rule: `rules/`. A decision: an ADR. A gotcha: `knowledge/KNOWN_PITFALLS.md`. Y
 | 2026-10-16 | Four-file issue folders for new issues | They were a learning exercise; one issue is one file | `docs/app/templates/`, ADR-003 |
 | 2026-10-16 | The words "ticket" and "merge request"; old skill and helper names | One naming standard | `rules/naming.md`, ADR-001 |
 | 2026-10-26 | `.claude/README.md`, `context/` (merged into `rules/` and this file), the skill, command, sub-agent and artifact tables, "Working with helpers", "A short request" | Repeated what the rules, the skills and the tool list already say | `rules/`, each `SKILL.md` |
+| 2026-10-26 | Cloud threads implementing and opening pull requests (ADR-010 step 4 to 6) | Claude attribution on every GitHub write from the cloud, and no verify report on PR #32 | ADR-010, ADR-011 |

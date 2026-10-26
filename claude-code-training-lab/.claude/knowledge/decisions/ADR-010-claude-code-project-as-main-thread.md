@@ -1,6 +1,6 @@
 # ADR-010: A Claude Code Project is the main thread
 
-- Status: Accepted
+- Status: Accepted, partly replaced by ADR-011 (threads no longer implement or open pull requests; the loop stays)
 - Date: 2026-10-26
 
 ## Context
