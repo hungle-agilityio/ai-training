@@ -3,7 +3,7 @@
 
 Runs as a Stop hook. Exit code 2 sends stderr back to Claude and keeps it working.
 Loop mode is on when REVIEWRADAR_LOOP=1; in an interactive session this hook does nothing.
-A second stop in a row is always allowed (stop_hook_active), so a stuck ticket ends in the
+A second stop in a row is always allowed (stop_hook_active), so a stuck issue ends in the
 report as failed instead of looping for ever.
 """
 
@@ -66,7 +66,7 @@ def main() -> int:
     if not problems:
         return 0
     print(
-        "Blocked by before-finish-check: fix these, or report the ticket as failed.\n"
+        "Blocked by before-finish-check: fix these, or report the issue as failed.\n"
         + "\n".join(problems),
         file=sys.stderr,
     )

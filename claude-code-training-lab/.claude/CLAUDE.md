@@ -115,7 +115,7 @@ Send wide searching to the `Explore` sub-agent and ask for the conclusion with t
 | `build-verify-report` | Run every verify axis and write one report page with the real numbers and screenshots, then open it (`/verify`) |
 | `share-report` | Share a verify report as a private link, only when the sharing gate allows (masking clean, standing approval on) |
 | `capture-before-after` | Capture the same browser steps before and after a change on the same demo data and pair the screenshots |
-| `work-queue` | Loop mode: take the next `agent:ready` issue to a verified local commit and report once |
+| `work-queue` | Loop mode: take the next `agent:ready` issue to a pull request with a verify report; merge on the owner's `/merge` |
 
 How a skill is built, where rulebooks live and the test pattern: `.claude/skills/README.md` (a layout test checks every skill).
 
@@ -164,4 +164,5 @@ Read this before bringing something back.
 | 2026-10-16 | `requirements.txt` | A fresh clone could not run `uv run`; dependencies are now locked | `pyproject.toml`, `uv.lock`, ADR-005 |
 | 2026-10-16 | Four-file issue folders for new issues | They were a learning exercise; one issue is one file | `docs/app/templates/`, ADR-003 |
 | 2026-10-16 | The words "ticket" and "merge request" | GitHub says issue and pull request | `rules/naming.md`, ADR-001 |
+| 2026-10-26 | Sections "Working with helpers" and "A short request" | Repeated what the rules and skills already say | `rules/workflow.md`, the skills |
 | 2026-10-16 | Old names: skills `git`, `gitlab`, `testing`, `debug`, `pr-review`, `write-ticket`; helpers `ticket-analyst`, `ticket-planner` | One naming standard | `rules/naming.md`, ADR-001 |

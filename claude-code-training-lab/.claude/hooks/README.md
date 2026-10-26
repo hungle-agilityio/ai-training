@@ -4,13 +4,13 @@ A hook is a small program that the harness runs before a shell command (or a too
 
 | Hook | Refuses |
 |---|---|
-| `before-github-command-check` | `gh`, `git`, `curl` and `ssh` commands that reach a GitHub repository other than the one in `github-allowed-repo.txt`; commands that manage repositories, accounts or secrets; reading or printing the token (`GH_TOKEN`, `printenv`, `env`) |
+| `before-github-command-check` | `gh`, `git`, `curl` and `ssh` commands that reach a GitHub repository other than the one in `github-allowed-repo.txt`; commands that manage repositories, accounts or secrets; reading or printing the token (`GH_TOKEN`, `printenv`, `env`); a force, delete or `main` push in any mode; and, outside loop mode, a push, a pull request or a merge without asking you. In loop mode `gh pr merge <n> --merge` runs only for an open issue branch with the owner's own `/merge` comment after the last commit |
 | `before-commit-check` | Staging the database file, secrets files and caches (also with `--force`); a commit with those staged, with a secret-like string in the staged lines, with an attribution line in the message (Co-Authored-By, Generated with), on `main`, or while lint or types fail |
 | `before-artifact-publish` | Publishing a file under `out/verify/` with the Artifact tool unless the sharing gate allows it (masking `clean`, standing approval `on`, size under the limit) |
-| `before-edit-check` | Loop mode only (`REVIEWRADAR_LOOP=1`): editing `.github/`, `.claude/` (except `knowledge/`), `.mcp.json`, and tests already on main (unless `ALLOW_TEST_EDIT=1`) |
+| `before-edit-check` | Loop mode only (`REVIEWRADAR_LOOP=1`), letter case ignored: editing `.github/`, `.claude/` (a new file in `knowledge/` is allowed), `.mcp.json`, `pyproject.toml`, `uv.lock`, `conftest.py`, and tests already on main (unless `ALLOW_TEST_EDIT=1`); fails closed |
 | `before-finish-check` | Loop mode only: stopping while lint, types or tests fail (a second stop is allowed) |
 
-All fail closed: if a hook cannot check a command that looks relevant, the command is blocked. Their tests are in `tests/` and run in the automatic checks.
+All fail closed: if a hook cannot check a command that looks relevant (or, in loop mode, an edit), it is blocked. Their tests are in `tests/` and run in the automatic checks.
 
 ## Each "never": where it is enforced
 
@@ -22,9 +22,10 @@ All fail closed: if a hook cannot check a command that looks relevant, the comma
 | Commit a secret | `before-commit-check` (known token shapes only) |
 | Commit while lint or types fail | `before-commit-check` |
 | Force-push, `--no-verify`, `reset --hard` | `permissions.deny` |
-| Push without approval | `permissions.ask` (`git push`) |
-| Open a pull request without approval | `permissions.ask` (`gh pr create`) |
-| Merge, approve or comment on a pull request, delete an issue or a repository | `permissions.deny` |
+| Push without approval (outside loop mode) | `before-github-command-check` (asks); the permission list allows it |
+| Open a pull request without approval (outside loop mode) | `before-github-command-check` (asks) |
+| Merge without the owner's `/merge` | `before-github-command-check` |
+| Approve or comment on a pull request, delete an issue or a repository | `permissions.deny` |
 | Publish a report that is not masked | `before-artifact-publish` and `.claude/skills/share-report/rules.md` |
 | Touch another GitHub repository | `before-github-command-check` and the limited token |
 | Read or print the token | `before-github-command-check` |

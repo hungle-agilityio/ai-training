@@ -9,7 +9,7 @@ The user wants to talk to Claude from a phone or another laptop and not type in 
 
 ## Decision
 
-A `/loop` session on the Mac mini runs the `work-queue` skill. Issue labelled `agent:ready` is taken, analysed, decided (grill-me answered with its own recommendations), built, tested, reviewed, verified, committed locally, and reported as an artifact. Every open point is decided and listed once at the end; nothing blocks an issue. Gate 1 is the label, Gate 2 is the report, Gate 3 (push, pull request) is unchanged.
+A `/loop` session on the Mac mini runs the `work-queue` skill. Issue labelled `agent:ready` is taken, analysed, decided (grill-me answered with its own recommendations), built, tested, reviewed, verified, committed locally, and reported as an artifact. Every open point is decided and listed once at the end; nothing blocks an issue. Gate 1 is the label, Gate 2 is the report, Gate 3 (push, pull request) was unchanged here; ADR-009 relaxes it for the loop's own branch.
 
 Rejected:
 - **Playbook Actions workflows** (`agent-build`, `agent-resume`, `release`, `monitor`): untested skeletons, need a runner service that reads the macOS login Keychain, and add a second trigger path. Revisit when the loop has run on 5 issues.
@@ -23,4 +23,4 @@ Rejected:
 - The loop shares the Pro usage limit with the user's own sessions; one loop at a time.
 - Decisions the user settled with `grill-me` travel in the issue and a `Decisions` comment; the loop only fills what is missing.
 - A decision made unattended can be wrong. The report lists the ones that could go the other way, and `/redo` reverses them on the same branch.
-- Still to do: register the two hooks and the loop's git permissions in `.claude/settings.json` (a person edits that file), review on pull requests, evals.
+- Done by a person: the two hooks and the loop's git permissions are in `.claude/settings.json`. Still to do: review on pull requests, evals.

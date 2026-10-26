@@ -20,10 +20,10 @@
 ## Gates
 
 - **Gate 1 (human check, after `/plan`):** Claude shows the plan and stops. The user reads it and says OK or asks for changes. Do not implement before that answer.
-- **Gate 2 (human check, after `/verify`):** Claude reports the evidence (lint, types, tests, issue checks, review findings) and stops. The user checks the result, in the running app when the issue is visible, and says OK or asks for changes. Claude does not commit, `/learn` or move on before that answer. Tests that belong to open bug issues are expected to fail; say so.
+- **Gate 2 (human check, after `/verify`):** Claude reports the evidence (lint, types, tests, issue checks, review findings) and stops. The user checks the result, in the running app when the issue is visible, and says OK or asks for changes. Claude does not commit, `/learn` or move on before that answer (loop mode is the exception, see Modes). Tests that belong to open bug issues are expected to fail; say so.
 - **Gate 3 (before push, issue or pull request):** the user approves that exact item.
 
-Gates 1 and 2 are always a human decision, never assumed. Gate 2 applies to every difficulty. Easy issues also stop for the human check after `/test`.
+Gates 1 and 2 are always a human decision, never assumed (in loop mode the label and the report are that decision). Gate 2 applies to every difficulty. Easy issues also stop for the human check after `/test`.
 
 ## Team principles
 
@@ -49,7 +49,7 @@ These hold in every mode.
 - **Plan mode** is the gate: anything that changes code or shared state is first approved as a plan (Gate 1).
 - **Background runs:** a long build or crawl is started in the background with a monitor and reports when it ends. Nobody watches a progress bar.
 - **Loop mode** (`work-queue`, ADR-008): the label `agent:ready` is Gate 1; the report is Gate 2, read after the work; the loop has already pushed and opened the pull request. Open points are decided and reported once, never asked mid-run. The user's `/merge` on a pull request is Gate 3 for the merge; the loop merges it (ADR-009).
-- Whatever the mode, the guardrails above and the Gate 3 approval for anything that leaves the machine still apply.
+- Whatever the mode, the guardrails above hold. Gate 3 holds too, except in loop mode for the loop's own issue branch, pull request and `/merge`d merge (ADR-009).
 
 ## Rules of the flow
 

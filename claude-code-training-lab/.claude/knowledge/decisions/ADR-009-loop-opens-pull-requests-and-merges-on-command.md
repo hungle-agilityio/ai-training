@@ -23,7 +23,8 @@ Rejected:
 
 ## Consequences
 
-- Interactive sessions keep the old rules: no merge, approval per push. Only loop mode, and only for its own branches, is exempt.
+- Interactive sessions keep the old rules in effect: the hook asks before every push, pull request and merge. Only loop mode, and only for its own branches, is exempt.
 - Checks cannot be required by GitHub, so the loop verifies them itself before it merges.
-- Two waiting pull requests can conflict; the later one is sent back as a redo.
-- `.claude/settings.json` still denies `gh pr merge` and asks for `git push` and `gh pr create`; a person must change that file (allow those three for the loop) before the loop can do this.
+- Two waiting pull requests can conflict. The loop does not rebase or merge `main` into a branch; it comments and the owner decides or sends `/redo`.
+- `.claude/settings.json` now allows `git push`, `gh pr create` and `gh pr merge`, because permissions cannot see the loop mode. The hook `before-github-command-check` is what limits them: outside loop mode it asks, a force, delete or `main` push is refused, and a merge needs the owner's own `/merge` comment (not one carrying the loop's marker) after the last commit.
+- An edited `/merge` comment is not told apart from an unedited one; the author check and the marker are the defence.
