@@ -87,3 +87,17 @@ def test_export_with_a_search_has_only_the_matching_reviews() -> None:
     body, _, _ = _export("?search=PARKING")
 
     assert [line.split(",")[2] for line in body.splitlines()[1:]] == ["No parking nearby"]
+
+
+@pytest.mark.django_db
+def test_export_with_star_count_has_only_that_rating() -> None:
+    business = Business.objects.create(name="Demo")
+    branch = Branch.objects.create(business=business, name="Airport")
+    when = datetime(2026, 10, 14, 5, 0, tzinfo=UTC)
+    for rating in (1, 3, 3, 5):
+        Review.objects.create(branch=branch, rating=rating, text=f"r{rating}", created_at=when)
+
+    body, _, _ = _export("?rating=3")
+
+    ratings = [line.split(",")[1] for line in body.splitlines()[1:]]
+    assert ratings == ["3", "3"]

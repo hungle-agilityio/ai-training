@@ -18,7 +18,12 @@ REVIEWS_PER_PAGE = 20
 TEXT_PREVIEW_LENGTH = 120
 # A week is Monday to Sunday in Vietnam time, whatever time zone is active
 VIETNAM_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
-RATING_RANGES: dict[str, tuple[int, int]] = {"good": (4, 5), "bad": (1, 2)}
+# Choices of the Rating filter: the good / bad bands, then one exact star count each.
+RATING_RANGES: dict[str, tuple[int, int]] = {
+    "good": (4, 5),
+    "bad": (1, 2),
+    **{str(stars): (stars, stars) for stars in (5, 4, 3, 2, 1)},
+}
 SEARCH_MIN_LENGTH = 3
 CSV_CHUNK_ROWS = 500
 CSV_CHUNK_BYTES = 64 * 1024
