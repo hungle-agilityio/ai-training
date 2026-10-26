@@ -96,11 +96,7 @@ Scale the workflow to the difficulty of the issue; the table and gates are in `r
 | `reviewer` | advisor | opus | re-derives correctness independently |
 | `test-runner` | runner | haiku | runs the checks and reports only what failed |
 
-## Working with helpers
-
-- Send wide searching (many files, many names) to the `Explore` sub-agent and ask for the conclusion with the file and line, not a dump of files. The main session keeps its context for decisions.
-- Keep the main session for judgement (plans, decisions, review) and give volume work to the cheaper models in the table above.
-- Ask for a conclusion, not a transcript: "find where X is configured and tell me the file and line".
+Send wide searching to the `Explore` sub-agent and ask for the conclusion with the file and line, not a dump.
 
 ## Available skills
 
@@ -119,6 +115,7 @@ Scale the workflow to the difficulty of the issue; the table and gates are in `r
 | `build-verify-report` | Run every verify axis and write one report page with the real numbers and screenshots, then open it (`/verify`) |
 | `share-report` | Share a verify report as a private link, only when the sharing gate allows (masking clean, standing approval on) |
 | `capture-before-after` | Capture the same browser steps before and after a change on the same demo data and pair the screenshots |
+| `work-queue` | Loop mode: take the next `agent:ready` issue to a verified local commit and report once |
 
 How a skill is built, where rulebooks live and the test pattern: `.claude/skills/README.md` (a layout test checks every skill).
 
@@ -147,15 +144,9 @@ Issue and pull request templates are a different thing: `docs/app/templates/` (t
 
 **Command or skill?** A command is a step you type, one lifecycle verb. A skill is a procedure Claude loads when the job matches. A command holds only the gate check and the order and calls the agent or skill that does the work; the rules live in the skill, never repeated in the command.
 
-## A short request
+## Loop mode (unattended)
 
-A few words are enough because this map, the rules and the skills say how.
-
-| You say | Claude does |
-|---|---|
-| `commit` | Checks Gate 2 (you said OK), then runs the `create-commit` skill: groups the changes, writes title and detail, and adds `Part of #N` only when an issue number exists |
-| `understand #12` | Runs `analyst`, then proposes `grill-me` when decisions are open |
-| `publish this issue` | Runs the issue checker, shows a preview and creates it with `gh` after your approval |
+`REVIEWRADAR_LOOP=1 claude`, then `/loop 30m use the work-queue skill`. It takes issues labelled `agent:ready` one at a time: analyse, decide, build, test, review, verify, commit on the issue branch, report as an artifact. It never waits for an answer: every open point is decided and listed once at the end. Push and pull requests still need a yes (Gate 3). Labels: `agent:ready` (you), `agent:running`, `agent:review`, `agent:failed`. To change something, comment `/redo <what>` on the issue. Why: ADR-008.
 
 ## MCP and permissions
 

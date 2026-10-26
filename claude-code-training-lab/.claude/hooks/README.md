@@ -7,6 +7,8 @@ A hook is a small program that the harness runs before a shell command (or a too
 | `before-github-command-check` | `gh`, `git`, `curl` and `ssh` commands that reach a GitHub repository other than the one in `github-allowed-repo.txt`; commands that manage repositories, accounts or secrets; reading or printing the token (`GH_TOKEN`, `printenv`, `env`) |
 | `before-commit-check` | Staging the database file, secrets files and caches (also with `--force`); a commit with those staged, with a secret-like string in the staged lines, with an attribution line in the message (Co-Authored-By, Generated with), on `main`, or while lint or types fail |
 | `before-artifact-publish` | Publishing a file under `out/verify/` with the Artifact tool unless the sharing gate allows it (masking `clean`, standing approval `on`, size under the limit) |
+| `before-edit-check` | Loop mode only (`REVIEWRADAR_LOOP=1`): editing `.github/`, `.claude/` (except `knowledge/`), `.mcp.json`, and tests already on main (unless `ALLOW_TEST_EDIT=1`) |
+| `before-finish-check` | Loop mode only: stopping while lint, types or tests fail (a second stop is allowed) |
 
 All fail closed: if a hook cannot check a command that looks relevant, the command is blocked. Their tests are in `tests/` and run in the automatic checks.
 
