@@ -82,6 +82,11 @@
       "Read(**/*DO-NOT-OPEN*)"
     ]
   },
+  "includeCoAuthoredBy": false,
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "env": {
     "GH_REPO": "hungle-agilityio/ai-training"
   },
