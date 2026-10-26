@@ -18,7 +18,9 @@ Django app that collects customer reviews per branch (location), shows a score d
 
 `/understand` → `/plan` → Gate 1 → `/implement` → `/test` → `/review` → `/verify` → Gate 2 → `/learn` → `/commit`. Difficulty, triggers and gates: `rules/workflow.md`. Sub-agents `analyst`, `planner`, `implementer`, `reviewer`, `test-runner`; send wide searches to `Explore`. A new feature starts from `templates/layered-feature.md`.
 
-**Loop mode:** you send a request, we run `grill-me` here (and confirm the UI/UX if users will see a change), you say OK, the issue is published with `Decisions` (and `Design`) comments and labelled `agent:ready`. `REVIEWRADAR_LOOP=1 claude`, then `/loop 30m use the work-queue skill`: it builds each issue, opens the pull request with a verify report and goes on, never waits and never merges (at most 5 pull requests wait). You merge from an interactive session or on GitHub; `/redo <what>` on a pull request sends it back. ADR-008, ADR-009.
+**Main way: a Claude Code Project** (claude.ai/code or the phone app, ADR-010). You talk to the project conversation; `grill-me`, the UI/UX confirmation, the issue and the pull request are done by its threads, following `.claude/project-instructions.md` and the root `../CLAUDE.md`. Cloud threads do not load skills, agents, hooks or `settings.json`, so those rules are text there. You press Merge it.
+
+**CLI loop (kept until the Project path is proven):** `REVIEWRADAR_LOOP=1 claude`, then `/loop 30m use the work-queue skill`. It takes issues labelled `agent:ready`, opens the pull request and never merges. ADR-008, ADR-009.
 
 ## Where things go
 
