@@ -10,9 +10,12 @@ If anything goes wrong while checking a command that looks relevant, the command
 from __future__ import annotations
 
 import json
+import os
 import re
 import shlex
+import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 ALLOWED_FILE = Path(__file__).with_name("github-allowed-repo.txt")
@@ -239,6 +242,179 @@ def read_allowed() -> str:
     raise ValueError("github-allowed-repo.txt has no repository")
 
 
+LOOP_ENV = "REVIEWRADAR_LOOP"
+LOOP_BRANCH = re.compile(r"^(?:bug|feat|task)/\d+-[a-z0-9][a-z0-9-]*$")
+FORCE_FLAGS = {"--mirror", "--delete", "--prune", "--all"}
+MAIN_NAMES = {"main", "master"}
+MERGE_FLAGS = {"--merge", "-m"}
+SHA = re.compile(r"^[0-9a-f]{7,40}$")
+API_MERGE = re.compile(r"(?:^|/)(?:pulls/\d+/merge|merges|git/refs)(?:/|$|\?)", re.I)
+API_WRITE = {"POST", "PUT", "PATCH"}
+MERGE_USAGE = "gh pr merge must be exactly: gh pr merge <number> --merge --match-head-commit <sha>"
+GitRunner = Callable[[list[str]], tuple[int, str]]
+
+
+def push_problems(args: list[str], run: GitRunner) -> list[str]:
+    """A push may never force, delete, push everything or reach main, in any mode."""
+    flags = [arg for arg in args if arg.startswith("-")]
+    positional = [arg for arg in args if not arg.startswith("-")]
+    problems: list[str] = []
+    for flag in flags:
+        short = set(flag[1:]) if not flag.startswith("--") else set()
+        if flag in FORCE_FLAGS or flag.startswith("--force") or short & {"f", "d"}:
+            problems.append(f"git push {flag} is not allowed (force, delete or everything)")
+    refspecs = positional[1:]
+    for spec in refspecs:
+        target = spec.split(":", 1)[-1].removeprefix("refs/heads/")
+        if spec.startswith(("+", ":")) or target in MAIN_NAMES:
+            problems.append(f"git push {spec} is not allowed (force, delete or main)")
+    if not refspecs or any(spec in ("HEAD", "@") for spec in refspecs):
+        code, branch = run(["git", "branch", "--show-current"])
+        if code != 0 or branch.strip() in MAIN_NAMES or not branch.strip():
+            problems.append("git push needs a current branch that is not main")
+    return problems
+
+
+def merge_problems(args: list[str], run: GitRunner) -> tuple[list[str], str]:
+    """A merge is exact, names the head commit the user saw, and is never the loop's own."""
+    number = sha = ""
+    merge = False
+    index = 0
+    while index < len(args):
+        token = args[index]
+        if token in MERGE_FLAGS:
+            merge = True
+        elif token == "--match-head-commit" and index + 1 < len(args):
+            sha = args[index + 1].lower()
+            index += 1
+        elif token.startswith("--match-head-commit="):
+            sha = token.split("=", 1)[1].lower()
+        elif not token.startswith("-") and not number and token.isdigit():
+            number = token
+        else:
+            return [MERGE_USAGE], ""
+        index += 1
+    if not (merge and number and SHA.match(sha)):
+        return [MERGE_USAGE], ""
+    fields = "state,headRefName,headRefOid,baseRefName,isCrossRepository"
+    code, out = run(["gh", "pr", "view", number, "--json", fields])
+    try:
+        data = json.loads(out) if code == 0 else None
+    except ValueError:
+        data = None
+    if not isinstance(data, dict):
+        return ["the pull request could not be read, so the merge cannot be checked"], ""
+    problems: list[str] = []
+    if data.get("state") != "OPEN":
+        problems.append("the pull request is not open")
+    if not LOOP_BRANCH.match(str(data.get("headRefName", ""))):
+        problems.append("only an issue branch (kind/number-description) may be merged here")
+    if data.get("baseRefName") != "main" or data.get("isCrossRepository"):
+        problems.append("only a same-repository pull request into main may be merged here")
+    if not str(data.get("headRefOid", "")).lower().startswith(sha):
+        problems.append("--match-head-commit is not the pull request's current head commit")
+    summary = f"gh pr merge {number} ({data.get('headRefName')}, head {sha[:7]})"
+    return problems, summary
+
+
+def api_problems(tokens: list[str], positional: list[str]) -> list[str]:
+    """gh api must not be a side door to merge or move a ref."""
+    if len(positional) < 2:
+        return []
+    method = "GET"
+    path = next((token for token in tokens if API_MERGE.search(token)), "")
+    for index, token in enumerate(tokens):
+        if token in ("-X", "--method") and index + 1 < len(tokens):
+            method = tokens[index + 1].upper()
+        elif token.startswith("--method="):
+            method = token.split("=", 1)[1].upper()
+        elif token in ("-f", "-F", "--field", "--raw-field", "--input") and method == "GET":
+            method = "POST"
+    if method in API_WRITE and path:
+        return [f"gh api {method} {path} would merge or move a ref; use gh pr merge"]
+    return []
+
+
+def check_publish(command: str, loop: bool, run: GitRunner) -> tuple[str, list[str]]:
+    """Decide push, pull request and merge: ('allow' | 'ask' | 'deny', reasons)."""
+    problems: list[str] = []
+    ask: list[str] = []
+    segments = [s.strip() for s in SEGMENT_SPLIT.split(without_inert_heredocs(command))]
+    segments = [segment for segment in segments if segment]
+    moves = any(re.match(r"^(?:cd|pushd)\b", segment) for segment in segments)
+    for segment in segments:
+        gh = GH_SEGMENT.match(segment)
+        git = None if gh else GIT_SEGMENT.match(segment)
+        if not gh and not git:
+            continue
+        rest = (gh or git).group(1)  # type: ignore[union-attr]
+        try:
+            tokens = shlex.split(rest)
+        except ValueError:
+            if re.search(r"\b(push|merge|create|api)\b", rest):
+                problems.append("the command could not be read safely")
+            continue
+        if git:
+            index = 0
+            while index < len(tokens) and tokens[index].startswith("-"):
+                index += 2 if tokens[index] in ("-C", "-c", "--git-dir", "--work-tree") else 1
+            if index < len(tokens) and tokens[index] == "push":
+                if index > 0 or moves:
+                    problems.append("git push must run in the current folder, without options")
+                problems.extend(push_problems(tokens[index + 1 :], run))
+                if not loop:
+                    ask.append("git push needs your approval outside loop mode")
+            continue
+        positional = [token for token in tokens if not token.startswith("-")]
+        if positional[:1] == ["api"]:
+            problems.extend(api_problems(tokens, positional))
+        elif positional[:2] == ["pr", "create"] and not loop:
+            ask.append("opening a pull request needs your approval outside loop mode")
+        elif positional[:2] == ["pr", "merge"]:
+            if loop:
+                problems.append("the loop never merges; the owner merges in an interactive session")
+            elif len(segments) > 1:
+                problems.append("gh pr merge must be the only command in the call")
+            else:
+                found, summary = merge_problems(tokens[tokens.index("merge") + 1 :], run)
+                problems.extend(found)
+                ask.append(f"merge: {summary}")
+    if problems:
+        return "deny", list(dict.fromkeys(problems))
+    return ("ask", ask) if ask else ("allow", [])
+
+
+def publish_gate(command: str, cwd: str) -> int:
+    def run(args: list[str]) -> tuple[int, str]:
+        try:
+            done = subprocess.run(
+                args, cwd=cwd, capture_output=True, text=True, timeout=30, check=False
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return 127, ""
+        return done.returncode, done.stdout
+
+    loop = os.environ.get(LOOP_ENV) == "1"
+    try:
+        decision, reasons = check_publish(command, loop, run)
+    except Exception as error:  # fail closed
+        decision, reasons = "deny", [f"the publish guard failed ({error})"]
+    if decision == "deny":
+        message = "; ".join(reasons)
+        print(f"Blocked by before-github-command-check: {message}.", file=sys.stderr)
+        return 2
+    if decision == "ask":
+        reply = {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "ask",
+                "permissionDecisionReason": "; ".join(reasons),
+            }
+        }
+        print(json.dumps(reply))
+    return 0
+
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
@@ -258,7 +434,7 @@ def main() -> int:
         problems = [f"the guard could not check this command ({error})"]
         allowed_name = "the allowed repository"
     if not problems:
-        return 0
+        return publish_gate(command, str(payload.get("cwd") or os.getcwd()))
     print(
         f"Blocked by before-github-command-check: {'; '.join(problems)}. "
         f"Only {allowed_name} may be reached from here (see .claude/rules/security.md).",

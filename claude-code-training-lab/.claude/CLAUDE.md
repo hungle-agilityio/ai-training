@@ -96,11 +96,7 @@ Scale the workflow to the difficulty of the issue; the table and gates are in `r
 | `reviewer` | advisor | opus | re-derives correctness independently |
 | `test-runner` | runner | haiku | runs the checks and reports only what failed |
 
-## Working with helpers
-
-- Send wide searching (many files, many names) to the `Explore` sub-agent and ask for the conclusion with the file and line, not a dump of files. The main session keeps its context for decisions.
-- Keep the main session for judgement (plans, decisions, review) and give volume work to the cheaper models in the table above.
-- Ask for a conclusion, not a transcript: "find where X is configured and tell me the file and line".
+Send wide searching to the `Explore` sub-agent and ask for the conclusion with the file and line, not a dump.
 
 ## Available skills
 
@@ -119,6 +115,7 @@ Scale the workflow to the difficulty of the issue; the table and gates are in `r
 | `build-verify-report` | Run every verify axis and write one report page with the real numbers and screenshots, then open it (`/verify`) |
 | `share-report` | Share a verify report as a private link, only when the sharing gate allows (masking clean, standing approval on) |
 | `capture-before-after` | Capture the same browser steps before and after a change on the same demo data and pair the screenshots |
+| `work-queue` | Loop mode: take the next `agent:ready` issue to a pull request with a verify report; it never merges |
 
 How a skill is built, where rulebooks live and the test pattern: `.claude/skills/README.md` (a layout test checks every skill).
 
@@ -147,15 +144,11 @@ Issue and pull request templates are a different thing: `docs/app/templates/` (t
 
 **Command or skill?** A command is a step you type, one lifecycle verb. A skill is a procedure Claude loads when the job matches. A command holds only the gate check and the order and calls the agent or skill that does the work; the rules live in the skill, never repeated in the command.
 
-## A short request
+## Loop mode (unattended)
 
-A few words are enough because this map, the rules and the skills say how.
+New request: you send it, we run `grill-me` here, confirm the UI/UX if users will see a change, you say OK, then the issue is published with a `Decisions` comment (and a `Design` comment) and labelled `agent:ready` (`write-issue` section 7).
 
-| You say | Claude does |
-|---|---|
-| `commit` | Checks Gate 2 (you said OK), then runs the `create-commit` skill: groups the changes, writes title and detail, and adds `Part of #N` only when an issue number exists |
-| `understand #12` | Runs `analyst`, then proposes `grill-me` when decisions are open |
-| `publish this issue` | Runs the issue checker, shows a preview and creates it with `gh` after your approval |
+`REVIEWRADAR_LOOP=1 claude`, then `/loop 30m use the work-queue skill`. It takes issues labelled `agent:ready` one at a time: analyse, decide, build, test, review, verify, commit on the issue branch, push, open the pull request, report as an artifact. It never waits for an answer, never merges, and keeps going while pull requests wait for you (at most 5). Every open point is decided and listed in the report. You read the pull requests together, then merge from an interactive session ("merge #N", you approve the prompt) or on GitHub; `/redo <what>` on a pull request sends it back. Labels: `agent:ready`, `agent:running`, `agent:review`, `agent:failed`. When the queue is empty you get one notification. Why: ADR-008, ADR-009.
 
 ## MCP and permissions
 
@@ -171,4 +164,5 @@ Read this before bringing something back.
 | 2026-10-16 | `requirements.txt` | A fresh clone could not run `uv run`; dependencies are now locked | `pyproject.toml`, `uv.lock`, ADR-005 |
 | 2026-10-16 | Four-file issue folders for new issues | They were a learning exercise; one issue is one file | `docs/app/templates/`, ADR-003 |
 | 2026-10-16 | The words "ticket" and "merge request" | GitHub says issue and pull request | `rules/naming.md`, ADR-001 |
+| 2026-10-26 | Sections "Working with helpers" and "A short request" | Repeated what the rules and skills already say | `rules/workflow.md`, the skills |
 | 2026-10-16 | Old names: skills `git`, `gitlab`, `testing`, `debug`, `pr-review`, `write-ticket`; helpers `ticket-analyst`, `ticket-planner` | One naming standard | `rules/naming.md`, ADR-001 |

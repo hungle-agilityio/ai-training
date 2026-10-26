@@ -35,4 +35,4 @@ How every skill in this folder is built, so a new one can be written the same wa
 | `create-issue` | `check_issue.py` | yes | the checker on an issue file |
 | `draft-pull-request` | `draft_pr.py` | yes | a draft from a verify report and a before and after run |
 | `share-report` | `share_gate.py` | yes | the gate on a report folder |
-| `create-commit`, `create-pull-request`, `diagnose-bug`, `grill-me`, `review-pull-request`, `write-issue`, `write-tests` | none | no | Procedures for Claude, with no exact computation to test; `create-commit` and `create-pull-request` are also guarded by the hooks (`.claude/hooks/tests`), `write-issue` by `check_issue.py` |
+| `create-commit`, `create-pull-request`, `diagnose-bug`, `grill-me`, `review-pull-request`, `work-queue`, `write-issue`, `write-tests` | none | no | Procedures for Claude, with no exact computation to test; `create-commit` and `create-pull-request` are also guarded by the hooks (`.claude/hooks/tests`), `write-issue` by `check_issue.py` |
