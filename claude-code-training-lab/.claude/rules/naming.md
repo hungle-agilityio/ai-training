@@ -1,6 +1,6 @@
 # Naming rules
 
-One pattern for every name in `.claude/`, so a new name can be guessed. Decided in epic problem P01; the renames are done.
+One pattern for every name in `.claude/`, so a new name can be guessed.
 
 ## Pattern
 
@@ -23,19 +23,3 @@ One pattern for every name in `.claude/`, so a new name can be guessed. Decided 
 
 - Say **issue** (not "ticket") and **pull request** (not "merge request"). Issues are grouped as bug, feature or task.
 - Names and text in the project are English.
-
-## Renames
-
-| Old | New | Status |
-|---|---|---|
-| skill `debug` | `diagnose-bug` | done |
-| skill `git` | `create-commit` | done |
-| skill `gitlab` | `create-issue` and `create-pull-request` | done |
-| skill `pr-review` | `review-pull-request` | done |
-| skill `testing` | `write-tests` | done |
-| skill `write-ticket` | `write-issue` | done |
-| agent `ticket-analyst` | `analyst` | done |
-| agent `ticket-planner` | `planner` | done |
-| agents `implementer`, `reviewer` | keep | done |
-| new | `grill-me` | done |
-| new | `test-runner` | done |
