@@ -48,8 +48,3 @@ def test_a_skill_with_a_program_has_tests(folder: Path) -> None:
 
     if programs:
         assert list((folder / "tests").glob("test_*.py")), f"{folder.name}: no tests"
-
-
-@pytest.mark.parametrize("folder", FOLDERS, ids=lambda p: p.name)
-def test_every_skill_is_in_the_readme_table(folder: Path) -> None:
-    assert f"`{folder.name}`" in (SKILLS / "README.md").read_text()

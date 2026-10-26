@@ -6,9 +6,9 @@ For each kind, first look in the project for an existing answer. Ask only when t
 
 | Kind | Typical decisions | Where the answer may already be |
 |---|---|---|
-| Definitions | What does "good", "bad", "week", "location" mean? | `context/domain.md`, `knowledge/BUSINESS_RULES.md` |
+| Definitions | What does "good", "bad", "week", "location" mean? | `rules/domain.md`, `knowledge/BUSINESS_RULES.md` |
 | Numbers | Rounding, decimals, what counts in the denominator, empty means no score or zero | `KNOWN_PITFALLS.md` (rounding) |
-| Dates and time | Time zone, week start, inclusive or exclusive ends | `context/domain.md` |
+| Dates and time | Time zone, week start, inclusive or exclusive ends | `rules/domain.md` |
 | Lists | Order and tie-break, page size, invalid page number, filters combined with AND or OR | `KNOWN_PITFALLS.md` (pagination) |
 | Empty and error cases | What the screen or output shows when there is nothing, or the input is wrong | the issue's acceptance criteria |
 | Scope | In, out, later; one issue or split | the issue or epic |
