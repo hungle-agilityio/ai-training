@@ -12,12 +12,14 @@ from django.db.models import QuerySet
 
 from reviews import repositories
 from reviews.models import Review
+from reviews.search_text import normalize_for_search, tidy_search_input
 
 REVIEWS_PER_PAGE = 20
 TEXT_PREVIEW_LENGTH = 120
 # A week is Monday to Sunday in Vietnam time, whatever time zone is active
 VIETNAM_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
 RATING_RANGES: dict[str, tuple[int, int]] = {"good": (4, 5), "bad": (1, 2)}
+SEARCH_MIN_LENGTH = 3
 CSV_CHUNK_ROWS = 500
 CSV_CHUNK_BYTES = 64 * 1024
 CSV_HEADER = ("Location", "Rating", "Review text", "Date")
@@ -210,6 +212,7 @@ class ReviewFilters:
     branch_id: int | None = None
     rating: str | None = None
     day: date | None = None
+    search: str = ""
 
 
 @dataclass(frozen=True)
@@ -246,6 +249,9 @@ class ReviewsPage:
     rating: str
     week_value: str
     week_label: str | None
+    search_value: str
+    search_too_short: bool
+    show_clear: bool
     is_filtered: bool
     query_params: list[tuple[str, str]]
     export_query: str
@@ -283,6 +289,17 @@ class ReviewSelection:
     week: WeekRange | None
     day: date | None
     params: list[tuple[str, str]]
+    search: str
+    search_words: tuple[str, ...]
+    search_too_short: bool
+
+
+def search_words(term: str) -> tuple[str, ...]:
+    """Words that must all appear in a review; empty when shorter than SEARCH_MIN_LENGTH."""
+    tidy = tidy_search_input(term)
+    if len(tidy) < SEARCH_MIN_LENGTH:
+        return ()
+    return tuple(dict.fromkeys(normalize_for_search(tidy).split()))
 
 
 def resolve_selection(filters: ReviewFilters, branch_ids: set[int]) -> ReviewSelection:
@@ -290,14 +307,22 @@ def resolve_selection(filters: ReviewFilters, branch_ids: set[int]) -> ReviewSel
     rating = filters.rating if filters.rating in RATING_RANGES else None
     week = week_containing(filters.day) if filters.day else None
 
+    typed = tidy_search_input(filters.search)
+    search_too_short = 0 < len(typed) < SEARCH_MIN_LENGTH
+    search = "" if search_too_short else typed
+
     params: list[tuple[str, str]] = []
+    if search:
+        params.append(("search", search))
     if branch_id is not None:
         params.append(("location", str(branch_id)))
     if rating is not None:
         params.append(("rating", rating))
     if filters.day is not None:
         params.append(("week", filters.day.isoformat()))
-    return ReviewSelection(branch_id, rating, week, filters.day, params)
+    return ReviewSelection(
+        branch_id, rating, week, filters.day, params, search, search_words(search), search_too_short
+    )
 
 
 def matching_reviews(selection: ReviewSelection) -> QuerySet[Review]:
@@ -305,6 +330,7 @@ def matching_reviews(selection: ReviewSelection) -> QuerySet[Review]:
         branch_id=selection.branch_id,
         ratings=RATING_RANGES[selection.rating] if selection.rating else None,
         created_range=(selection.week.start, selection.week.end) if selection.week else None,
+        words=selection.search_words,
     )
 
 
@@ -354,6 +380,7 @@ def reviews_page(
     choices = repositories.branch_choices()
     selection = resolve_selection(filters, {pk for pk, _ in choices})
     branch_id, week, params = selection.branch_id, selection.week, selection.params
+    search_value = tidy_search_input(filters.search)
     reviews = matching_reviews(selection)
     paginator = Paginator(reviews, per_page)
     current = paginator.get_page(page or 1)
@@ -389,6 +416,9 @@ def reviews_page(
         rating=selection.rating or "",
         week_value=selection.day.isoformat() if selection.day else "",
         week_label=week.label if week else None,
+        search_value=search_value,
+        search_too_short=selection.search_too_short,
+        show_clear=bool(params) or bool(search_value),
         is_filtered=bool(params),
         query_params=params,
         export_query=urlencode(params),

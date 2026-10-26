@@ -21,6 +21,8 @@ class Review(models.Model):
     rating = models.PositiveSmallIntegerField()
     text = models.TextField()
     created_at = models.DateTimeField()
+    # Normalised copy of `text` for searching; filled by `repositories.create_review`
+    search_text = models.TextField(default="", editable=False)
 
     def __str__(self) -> str:
         return f"{self.branch_id}: {self.rating}"

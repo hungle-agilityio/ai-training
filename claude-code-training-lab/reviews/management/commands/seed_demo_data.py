@@ -5,6 +5,7 @@ from django.core.management.base import BaseCommand, CommandParser
 from django.utils import timezone
 
 from reviews.models import Branch, Business, Review
+from reviews.repositories import create_review
 
 DEMO_REVIEWS: dict[str, list[tuple[int, str]]] = {
     "Airport": [
@@ -17,11 +18,15 @@ DEMO_REVIEWS: dict[str, list[tuple[int, str]]] = {
         (5, "Friendly staff, quick visit."),
         (4, "Clean and efficient."),
         (3, "Parking is expensive."),
+        (5, "Đau chân đỡ hẳn, nhân viên thân thiện"),
+        (3, "Dau dau khi cho doi"),
     ],
     "Riverside": [
         (4, "Good care, parking is hard."),
         (5, "Best clinic experience I've had."),
         (2, "Phone line always busy, could not book."),
+        (4, "Bác sĩ tận tâm, ĐAU LƯNG đã đỡ nhiều"),
+        (2, "Nhân viên lễ tân chưa nhiệt tình"),
     ],
 }
 
@@ -64,7 +69,7 @@ class Command(BaseCommand):
     ) -> None:
         branch = Branch.objects.create(business=business, name=name)
         for offset, (rating, text) in enumerate(items):
-            Review.objects.create(
+            create_review(
                 branch=branch,
                 rating=rating,
                 text=text,

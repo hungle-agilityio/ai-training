@@ -3,7 +3,7 @@
 - **Reporter:** Marcus, product owner
 - **Reported on:** 2026-10-22
 - **Type:** New feature
-- **Labels:** `feature`, `reviews-list`, `needs-info`
+- **Labels:** `feature`, `reviews-list`
 
 ## Summary
 
@@ -26,13 +26,12 @@ As a manager, I want to type a word into the Reviews page and see only the revie
 
 ## Acceptance criteria
 
-Items marked (proposal) are not yet confirmed by the reporter.
 - When a manager types a word and clicks Apply, the screen must show only the reviews whose text contains that word, newest first.
 - When a manager types a word in capital or small letters, the screen must find the same reviews regardless of the case, for every letter, including letters with accents (`NHÂN` finds "Nhân").
 - When a manager types two or more words, the screen must show only the reviews that contain every one of the words, in any order.
 - When a manager types a search while a location, a rating or a week is also chosen, the screen must show only the reviews that match the search and every chosen filter.
 - When a search is applied, the screen must show in the line under the table, for example "Showing 1-3 of 3 reviews", only the number of reviews that match.
-- When a manager goes to another page of the results, the screen must keep the search, and when the manager changes the search, the screen must start again from the first page. (proposal)
+- When a manager goes to another page of the results, the screen must keep the search, and when the manager changes the search, the screen must start again from the first page.
 - When no review matches, the screen must show "No reviews found" instead of an empty table, and when there are no reviews at all, it must keep showing "No reviews yet".
 - When the search box is left empty or holds only spaces, the screen must show the list as if no search had been made, without any message.
 - When the typed text has fewer than 3 characters (leading and trailing spaces not counted), the screen must show the message "Type at least 3 characters to search." and must not filter by the search, while the other chosen filters still apply.
@@ -82,11 +81,12 @@ Items marked (proposal) are not yet confirmed by the reporter.
 - Capital and small letters are the same for every letter, including letters with accents: `ĐAU`, `Đau` and `đau` give the same result, and so do `NHÂN` and `nhân`.
 - Letters with accents are different from letters without accents: `dau` does not find "đau".
 - Leading and trailing spaces are removed before searching. Several spaces between words count as one.
-- The shortest search is 3 characters, counted on the whole typed text after the spaces are removed (`an to` has 5). A shorter text shows the message `Type at least 3 characters to search.` under the Search box and is not used to filter.
+- The shortest search is 3 characters, counted on the whole typed text after the spaces are removed (`an to` has 5). A shorter text shows the message `Type at least 3 characters to search.` in a red alert box under the filter row (so the filter row keeps its shape) and is not used to filter.
 - A search is a search for text, not a pattern: characters such as `%` and `_` are searched as they are typed.
 - The typed search is part of the page address, like the other filters, so the next and previous page keep it.
 - The typed search can be a customer's name or phone number, so it must never be written to the logs.
 - The search box is labelled "Search" and has the hint "Words in the review". It is the first field of the filter area.
+- The filter row keeps all fields and buttons on one line, with the same height. Apply and Clear sit together as one group of two buttons of the same size: Apply is green and Clear is red.
 - Texts: "No reviews found" (nothing matches), "No reviews yet" (no reviews at all), "Showing 1-3 of 3 reviews" (the count), "Type at least 3 characters to search." (too short).
 - The Dashboard and the Sentiment column do not change.
 
@@ -113,10 +113,19 @@ Items marked (proposal) are not yet confirmed by the reporter.
 
 Only reviews whose text contains every typed word, and that also match every chosen filter, are shown, newest first, and their number under the table matches the real data.
 
-## Open questions
+## Decisions
 
-These are assumptions that nobody has vetoed yet. Marcus confirms or changes them.
-1. Is there a longest search? Assumption: 100 characters; anything longer is cut to the first 100. Owner: Marcus
+Decided with the reporter before the build.
+1. The longest search is 100 characters. A longer text is cut to its first 100 characters, without a message.
+2. The CSV export follows the search, like the other filters.
+3. The search stays in the page address. The app never writes it to its own logs; the server access logs are handled separately by the team.
+4. Clear shows whenever the search box is not empty, even if the text is too short to search.
+5. When nothing matches, the hint under "No reviews found" is: "No review matches these filters. Try other words, another location, rating or week."
+6. The app keeps a normalised copy of every review text (small letters, one Unicode form) for searching. It is filled for every new review and for the existing ones by a migration.
+7. The same normalisation (NFC or NFD input gives the same result) is applied to the typed search and to the stored text.
+8. The demo data has 3 to 5 Vietnamese reviews with accents.
+
+Assumptions: the page address uses the name `search`; a too-short text is not put in the page links or the export link (the box still shows what was typed on the current page); the 3 characters are counted after trimming, collapsing spaces and one Unicode form; an empty database with a search shows "No reviews found".
 
 ## Environment
 

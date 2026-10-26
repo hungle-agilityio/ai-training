@@ -249,6 +249,25 @@ a.pager-link:hover { border-color: var(--brand); color: var(--brand); }
 .filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; padding: 16px 20px; border-bottom: 1px solid var(--border); }
 .filters .field { display: flex; flex-direction: column; gap: 4px; }
 .filters label { color: var(--muted); font-size: 13px; font-weight: 600; }
-.filters select, .filters input { font: inherit; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+.filters select, .filters input { font: inherit; height: 40px; box-sizing: border-box; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+.filters .field-hint { color: var(--muted); font-size: 12.5px; }
+.filters { padding-bottom: 30px; }
+.filters .field-search { position: relative; }
+.filters .field-hint-below { position: absolute; top: 100%; left: 0; margin-top: 4px; white-space: nowrap; }
+.filter-actions { display: flex; gap: 8px; }
+.filter-actions .button {
+  box-sizing: border-box; width: 96px; height: 40px; padding: 0; border-radius: 8px; text-align: center;
+  font: inherit; font-weight: 600; line-height: 38px; cursor: pointer;
+}
+.filter-actions .button-apply, .filter-actions .button-apply:hover { background: var(--good); border-color: var(--good); color: var(--bg); }
+.filter-actions .button-clear, .filter-actions .button-clear:hover { background: var(--bad); border-color: var(--bad); color: var(--bg); }
+.filter-actions .button:hover { filter: brightness(.92); }
+.alert { margin: 12px 20px 0; padding: 10px 14px; border: 1px solid var(--bad); border-radius: 10px; background: var(--bad-soft); color: var(--bad); font-weight: 600; }
 .filter-week-label { margin: 0; padding: 10px 20px 0; color: var(--muted); font-size: 13.5px; }
-@media (max-width: 760px) { .filters .field, .filters select, .filters input { width: 100%; } }
+@media (max-width: 760px) {
+  .filters .field, .filters select, .filters input { width: 100%; }
+  .filters { padding-bottom: 16px; }
+  .filters .field-hint-below { position: static; }
+  .filter-actions { width: 100%; }
+  .filter-actions .button { flex: 1; width: auto; }
+}

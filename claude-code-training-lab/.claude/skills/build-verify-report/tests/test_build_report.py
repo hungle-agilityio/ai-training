@@ -256,3 +256,49 @@ def test_the_share_page_follows_the_artifact_page_contract(tmp_path: Path) -> No
     assert "<title>Verify report</title>" in page
     assert "max(16px,env(safe-area-inset-left,0px))" in page
     assert "data:image/png;base64," in page and 'data-theme="dark"' in page
+
+
+def test_a_screenshot_opens_full_size_inside_the_page(tmp_path: Path) -> None:
+    (tmp_path / "01-a.png").write_bytes(b"png")
+    report = {
+        "title": "Issue",
+        "verdict": "PASS",
+        "branch": "b",
+        "commit": "c",
+        "date": "d",
+        "axes": [],
+        "screenshots": [str(tmp_path / "01-a.png")],
+        "review": "",
+        "check_yourself": [],
+    }
+
+    for page in (BUILD.render_html(report), BUILD.render_share_html(report)):
+        assert 'id="lightbox"' in page and "<script>" in page
+        assert "[hidden]{display:none!important}" in page
+
+
+def test_the_page_has_no_lightbox_without_screenshots() -> None:
+    report = {"title": "I", "verdict": "PASS", "branch": "b", "commit": "c", "date": "d"}
+
+    assert 'id="lightbox"' not in BUILD.render_share_html({**report, "axes": []})
+
+
+def test_the_browser_check_gets_the_spec_of_the_issue(tmp_path: Path) -> None:
+    commands: list[list[str]] = []
+    inner = scripted()
+
+    def run(args: list[str], cwd: Path) -> tuple[int, str]:
+        commands.append(args)
+        return inner(args, cwd)
+
+    root = tmp_path / "project"
+    root.mkdir()
+    spec = tmp_path / "spec.json"
+
+    BUILD.build(root, tmp_path / "out", run, "I", None, None, True, False, spec=spec)
+    BUILD.build(root, tmp_path / "out2", run, "I", None, None, True, False)
+
+    browser = [c for c in commands if any("browser_check.py" in part for part in c)]
+    assert len(browser) == 2
+    assert browser[0][browser[0].index("--spec") + 1] == str(spec)
+    assert "--spec" not in browser[1]
