@@ -22,4 +22,4 @@ One file per decision: `ADR-001-short-title.md`, numbered in order. Write one fo
 - [ADR-005: Dependencies are locked with uv](ADR-005-dependencies-locked-with-uv.md)
 - [ADR-006: Project configuration lives in the lab folder](ADR-006-project-config-in-lab-folder.md)
 - [ADR-008: An unattended loop works GitHub issues and reports once](ADR-008-unattended-loop-from-github-issues.md)
-- [ADR-009: The loop opens pull requests and merges the ones the user marks](ADR-009-loop-opens-pull-requests-and-merges-on-command.md)
+- [ADR-009: The loop opens pull requests; the owner merges](ADR-009-loop-opens-pull-requests-owner-merges.md)

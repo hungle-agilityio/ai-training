@@ -118,3 +118,22 @@ def test_unreadable_call_is_blocked_in_loop_mode_only() -> None:
 def test_edit_call_without_a_path_is_blocked_in_loop_mode() -> None:
     payload = json.dumps({"tool_name": "Edit", "tool_input": {}})
     assert run_hook(payload, LOOP) == 2
+
+
+@pytest.mark.parametrize(
+    "rel",
+    ["ruff.toml", ".ruff.toml", "mypy.ini", ".mypy.ini", "setup.cfg", "pytest.ini", "tox.ini"]
+    + [".coveragerc"],
+)
+def test_tool_config_files_are_protected(lab: Path, rel: str) -> None:
+    assert check(lab, rel)
+
+
+def test_a_file_is_judged_in_its_own_checkout_not_the_sessions(lab: Path, tmp_path: Path) -> None:
+    other = tmp_path / "elsewhere"
+    other.mkdir()
+    git(other, "init", "-q", "-b", "main")
+    result: list[str] = EDIT.evaluate(
+        str(lab / "reviews/tests/unit/test_old.py"), other, LOOP, EDIT.real_run
+    )
+    assert result

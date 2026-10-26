@@ -115,7 +115,7 @@ Send wide searching to the `Explore` sub-agent and ask for the conclusion with t
 | `build-verify-report` | Run every verify axis and write one report page with the real numbers and screenshots, then open it (`/verify`) |
 | `share-report` | Share a verify report as a private link, only when the sharing gate allows (masking clean, standing approval on) |
 | `capture-before-after` | Capture the same browser steps before and after a change on the same demo data and pair the screenshots |
-| `work-queue` | Loop mode: take the next `agent:ready` issue to a pull request with a verify report; merge on the owner's `/merge` |
+| `work-queue` | Loop mode: take the next `agent:ready` issue to a pull request with a verify report; it never merges |
 
 How a skill is built, where rulebooks live and the test pattern: `.claude/skills/README.md` (a layout test checks every skill).
 
@@ -148,7 +148,7 @@ Issue and pull request templates are a different thing: `docs/app/templates/` (t
 
 New request: you send it, we run `grill-me` here, confirm the UI/UX if users will see a change, you say OK, then the issue is published with a `Decisions` comment (and a `Design` comment) and labelled `agent:ready` (`write-issue` section 7).
 
-`REVIEWRADAR_LOOP=1 claude`, then `/loop 30m use the work-queue skill`. It takes issues labelled `agent:ready` one at a time: analyse, decide, build, test, review, verify, commit on the issue branch, push, open the pull request, report as an artifact. It never waits for an answer, and keeps going while pull requests wait for you (at most 5). Every open point is decided and listed in the report. You answer on the pull request: `/merge` and the loop merges it, `/redo <what>` sends it back. Labels: `agent:ready`, `agent:running`, `agent:review`, `agent:failed`. When the queue is empty you get one notification. Why: ADR-008, ADR-009.
+`REVIEWRADAR_LOOP=1 claude`, then `/loop 30m use the work-queue skill`. It takes issues labelled `agent:ready` one at a time: analyse, decide, build, test, review, verify, commit on the issue branch, push, open the pull request, report as an artifact. It never waits for an answer, never merges, and keeps going while pull requests wait for you (at most 5). Every open point is decided and listed in the report. You read the pull requests together, then merge from an interactive session ("merge #N", you approve the prompt) or on GitHub; `/redo <what>` on a pull request sends it back. Labels: `agent:ready`, `agent:running`, `agent:review`, `agent:failed`. When the queue is empty you get one notification. Why: ADR-008, ADR-009.
 
 ## MCP and permissions
 

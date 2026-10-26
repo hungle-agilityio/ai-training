@@ -4,7 +4,7 @@ A hook is a small program that the harness runs before a shell command (or a too
 
 | Hook | Refuses |
 |---|---|
-| `before-github-command-check` | `gh`, `git`, `curl` and `ssh` commands that reach a GitHub repository other than the one in `github-allowed-repo.txt`; commands that manage repositories, accounts or secrets; reading or printing the token (`GH_TOKEN`, `printenv`, `env`); a force, delete or `main` push in any mode; and, outside loop mode, a push, a pull request or a merge without asking you. In loop mode `gh pr merge <n> --merge` runs only for an open issue branch with the owner's own `/merge` comment after the last commit |
+| `before-github-command-check` | `gh`, `git`, `curl` and `ssh` commands that reach a GitHub repository other than the one in `github-allowed-repo.txt`; commands that manage repositories, accounts or secrets; reading or printing the token (`GH_TOKEN`, `printenv`, `env`); a force, delete, all-branches or `main` push in any mode; `gh api` writes that merge or move a ref; and, outside loop mode, a push, a pull request or a merge without asking you. A merge must be exactly `gh pr merge <n> --merge --match-head-commit <sha>`, alone in the call, for an open same-repository issue branch into main whose head is that commit. In loop mode every merge is refused |
 | `before-commit-check` | Staging the database file, secrets files and caches (also with `--force`); a commit with those staged, with a secret-like string in the staged lines, with an attribution line in the message (Co-Authored-By, Generated with), on `main`, or while lint or types fail |
 | `before-artifact-publish` | Publishing a file under `out/verify/` with the Artifact tool unless the sharing gate allows it (masking `clean`, standing approval `on`, size under the limit) |
 | `before-edit-check` | Loop mode only (`REVIEWRADAR_LOOP=1`), letter case ignored: editing `.github/`, `.claude/` (a new file in `knowledge/` is allowed), `.mcp.json`, `pyproject.toml`, `uv.lock`, `conftest.py`, and tests already on main (unless `ALLOW_TEST_EDIT=1`); fails closed |
@@ -24,7 +24,7 @@ All fail closed: if a hook cannot check a command that looks relevant (or, in lo
 | Force-push, `--no-verify`, `reset --hard` | `permissions.deny` |
 | Push without approval (outside loop mode) | `before-github-command-check` (asks); the permission list allows it |
 | Open a pull request without approval (outside loop mode) | `before-github-command-check` (asks) |
-| Merge without the owner's `/merge` | `before-github-command-check` |
+| Merge by the loop, or without your approval | `before-github-command-check` (refuses in loop mode, asks otherwise) |
 | Approve or comment on a pull request, delete an issue or a repository | `permissions.deny` |
 | Publish a report that is not masked | `before-artifact-publish` and `.claude/skills/share-report/rules.md` |
 | Touch another GitHub repository | `before-github-command-check` and the limited token |

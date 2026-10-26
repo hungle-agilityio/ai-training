@@ -10,7 +10,8 @@ ignores it):
   - anything in a .github or .claude folder, on any path, and .mcp.json: the loop must not
     change its own rules, only a person does. In .claude/knowledge/ a new file is allowed, a
     file that already exists on main is not;
-  - pyproject.toml, uv.lock and conftest.py: they set the lint, type, test and coverage gates;
+  - pyproject.toml, uv.lock, conftest.py and the other tool config files (ruff.toml, mypy.ini,
+    pytest.ini, .coveragerc, ...): they set the lint, type, test and coverage gates;
   - a test file that already exists on main, unless ALLOW_TEST_EDIT=1: fix the code, not the test.
 """
 
@@ -28,7 +29,10 @@ Runner = Callable[[list[str], Path], tuple[int, str]]
 EDIT_TOOLS = {"Edit", "Write", "NotebookEdit", "MultiEdit"}
 PROTECTED_DIRS = {".github", ".claude"}
 PROTECTED_FILES = {".mcp.json"}
-GATE_FILES = {"pyproject.toml", "uv.lock", "conftest.py"}
+GATE_FILES = {
+    "pyproject.toml", "uv.lock", "conftest.py", "ruff.toml", ".ruff.toml", "mypy.ini",
+    ".mypy.ini", "setup.cfg", "pytest.ini", "tox.ini", ".coveragerc",
+}
 
 
 def real_run(args: list[str], cwd: Path) -> tuple[int, str]:
@@ -42,15 +46,21 @@ def real_run(args: list[str], cwd: Path) -> tuple[int, str]:
 
 
 def on_main(path: Path, project: Path, run: Runner) -> bool | None:
-    """True when the file is on main, False when it is not, None when that cannot be told."""
-    code, top = run(["git", "rev-parse", "--show-toplevel"], project)
+    """True when the file is on main, False when it is not, None when that cannot be told.
+
+    The repository is the one the file itself is in, not the one of the session.
+    """
+    folder = path.parent
+    while not folder.exists() and folder != folder.parent:
+        folder = folder.parent
+    code, top = run(["git", "rev-parse", "--show-toplevel"], folder)
     if code != 0 or not top.strip():
         return None
     root = Path(top.strip()).resolve()
     try:
         rel = path.relative_to(root).as_posix().casefold()
     except ValueError:
-        return False
+        return None
     for ref in ("origin/main", "main"):
         code, names = run(["git", "ls-tree", "-r", "--name-only", ref], root)
         if code == 0:
