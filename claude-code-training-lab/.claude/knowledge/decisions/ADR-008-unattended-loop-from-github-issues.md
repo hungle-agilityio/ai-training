@@ -21,5 +21,6 @@ Rejected:
 
 - Hooks `before-edit-check` and `before-finish-check` act only when `REVIEWRADAR_LOOP=1`, so interactive work is unchanged. They see edit tools, not what a shell command writes.
 - The loop shares the Pro usage limit with the user's own sessions; one loop at a time.
+- Decisions the user settled with `grill-me` travel in the issue and a `Decisions` comment; the loop only fills what is missing.
 - A decision made unattended can be wrong. The report lists the ones that could go the other way, and `/redo` reverses them on the same branch.
 - Still to do: register the two hooks and the loop's git permissions in `.claude/settings.json` (a person edits that file), review on pull requests, evals.

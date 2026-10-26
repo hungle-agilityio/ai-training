@@ -57,3 +57,10 @@ Follow `.claude/rules/git.md`: branch as in the table above, commit message `tit
 ## 6. Before you finish
 
 Re-read the issue as a person who has never seen the code: do they know where, what, and how to follow the steps and see the same result? Then give the user the summary described in step 4.
+
+## 7. Handing an issue to the loop (new request from the user)
+
+1. Propose `grill-me` and settle the decisions with the user in the session. Fold each answer into the section it changes, in plain words; number the "Done when" items `AC1`, `AC2`, ... so a report can name them.
+2. If users will see a change and the user wants it, build the UI/UX as a private artifact (states: normal, empty, error, narrow screen; demo data only, `data-sensitive` kept) and get the user's OK. No visible change: skip this step.
+3. After the user's OK on the issue preview, publish with `create-issue`, then post two comments as the owner: `Decisions` (the table: question, chosen, rejected, why) and, if there is a design, `Design` (the artifact link). Technical words are fine there. The issue file stays plain and standalone.
+4. Add the label `agent:ready` only when the user said OK to start; never otherwise. `work-queue` takes it from there.
