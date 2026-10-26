@@ -148,7 +148,7 @@ Issue and pull request templates are a different thing: `docs/app/templates/` (t
 
 New request: you send it, we run `grill-me` here, confirm the UI/UX if users will see a change, you say OK, then the issue is published with a `Decisions` comment (and a `Design` comment) and labelled `agent:ready` (`write-issue` section 7).
 
-`REVIEWRADAR_LOOP=1 claude`, then `/loop 30m use the work-queue skill`. It takes issues labelled `agent:ready` one at a time: analyse, decide, build, test, review, verify, commit on the issue branch, report as an artifact. It never waits for an answer: every open point is decided and listed once at the end. Push and pull requests still need a yes (Gate 3). Labels: `agent:ready` (you), `agent:running`, `agent:review`, `agent:failed`. To change something, comment `/redo <what>` on the issue. Why: ADR-008.
+`REVIEWRADAR_LOOP=1 claude`, then `/loop 30m use the work-queue skill`. It takes issues labelled `agent:ready` one at a time: analyse, decide, build, test, review, verify, commit on the issue branch, push, open the pull request, report as an artifact. It never waits for an answer, and keeps going while pull requests wait for you (at most 5). Every open point is decided and listed in the report. You answer on the pull request: `/merge` and the loop merges it, `/redo <what>` sends it back. Labels: `agent:ready`, `agent:running`, `agent:review`, `agent:failed`. When the queue is empty you get one notification. Why: ADR-008, ADR-009.
 
 ## MCP and permissions
 

@@ -1,6 +1,6 @@
 # ADR-008: An unattended loop works GitHub issues and reports once
 
-- Status: Accepted
+- Status: Accepted (the stop at a local commit is replaced by ADR-009)
 - Date: 2026-10-26
 
 ## Context

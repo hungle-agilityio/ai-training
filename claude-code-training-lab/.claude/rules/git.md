@@ -5,8 +5,8 @@ The step-by-step procedure is in the skills `create-commit`, `create-issue` and 
 ## Hard rules
 
 - Never commit directly to `main`. One branch per issue.
-- Nothing is pushed, published or created on GitHub without the user's approval for that item.
-- Claude never merges or approves a pull request.
+- Nothing is pushed, published or created on GitHub without the user's approval for that item. Exception, loop mode only (ADR-009): the loop pushes its own issue branch and opens its pull request.
+- Claude never approves a pull request. It merges one only when the user wrote `/merge` on it, in loop mode (ADR-009).
 - No `Co-Authored-By` or "Generated with" line in commits.
 
 ## Branches

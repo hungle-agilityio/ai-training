@@ -48,7 +48,7 @@ These hold in every mode.
 - **Auto mode** is for flow: reads, edits and scripts that the allow list lets through, without a prompt for each step.
 - **Plan mode** is the gate: anything that changes code or shared state is first approved as a plan (Gate 1).
 - **Background runs:** a long build or crawl is started in the background with a monitor and reports when it ends. Nobody watches a progress bar.
-- **Loop mode** (`work-queue`, ADR-008): the label `agent:ready` is Gate 1; the report is Gate 2, read after the work; a local commit on the issue branch is allowed before it. Open points are decided and reported once, never asked mid-run. Push and pull requests stay Gate 3.
+- **Loop mode** (`work-queue`, ADR-008): the label `agent:ready` is Gate 1; the report is Gate 2, read after the work; the loop has already pushed and opened the pull request. Open points are decided and reported once, never asked mid-run. The user's `/merge` on a pull request is Gate 3 for the merge; the loop merges it (ADR-009).
 - Whatever the mode, the guardrails above and the Gate 3 approval for anything that leaves the machine still apply.
 
 ## Rules of the flow
