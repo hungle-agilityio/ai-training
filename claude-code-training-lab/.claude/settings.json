@@ -35,8 +35,6 @@
       "Bash(gh pr create:*)",
       "Bash(gh pr merge:*)",
       "Bash(uv run python manage.py:*)",
-      "Bash(gh issue create:*)",
-      "Bash(gh issue comment:*)",
       "Bash(gh pr comment:*)"
     ],
     "ask": [
