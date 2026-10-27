@@ -34,7 +34,8 @@
       "Bash(git push:*)",
       "Bash(gh pr create:*)",
       "Bash(gh pr merge:*)",
-      "Bash(uv run python manage.py:*)"
+      "Bash(uv run python manage.py:*)",
+      "Bash(gh pr comment:*)"
     ],
     "ask": [
       "Bash(gh issue close:*)",
@@ -78,7 +79,6 @@
       "Bash(git push --no-verify:*)",
       "Edit(./.git/**)",
       "Bash(gh pr review:*)",
-      "Bash(gh pr comment:*)",
       "Read(**/*DO-NOT-OPEN*)"
     ]
   },
