@@ -225,13 +225,15 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
         tick.say(f"{key}: plan limit reached, paused 60 minutes")
         tick.notify(f"ReviewRadar loop paused 60 minutes: plan limit reached ({key})")
         return
-    if outcome == "0":
+    if outcome == "0" and kind == "pr":
         remove_worktree(tick, worktree)
         tick.say(f"{key}: ended normally")
         return
-    reason = {"timeout": "stopped after 45 minutes", "gone": "stopped with no exit code"}.get(
-        outcome, f"ended with error {outcome}"
-    )
+    reason = {
+        "0": "ended without a pull request",
+        "timeout": "stopped after 45 minutes",
+        "gone": "stopped with no exit code",
+    }.get(outcome, f"ended with error {outcome}")
     if kind == "pr":
         tick.say(f"{key}: {reason}; worktree kept")
         tick.notify(f"ReviewRadar build for pull request #{number} {reason}")
@@ -240,7 +242,8 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
     has_pr = any(closes(pr) == int(number) for pr in prs)
     if "agent:running" not in labels or has_pr:
         remove_worktree(tick, worktree)
-        tick.say(f"{key}: {reason}, but the build already handed over")
+        tick.say(f"{key}: ended normally" if outcome == "0" else
+                 f"{key}: {reason}, but the build already handed over")
         return
     ensure_label(tick, "agent:failed")
     tick.gh("issue", "edit", number, "--add-label", "agent:failed", "--remove-label",

@@ -500,7 +500,8 @@ def test_normal_end_removes_the_worktree_and_archives_the_run(home: Path) -> Non
     assert (home / "runs" / "done" / f"issue-1-{int(NOW)}" / "log.txt").exists()
 
 
-@pytest.mark.parametrize("outcome,reason", [("timeout", "stopped after 45 minutes"),
+@pytest.mark.parametrize("outcome,reason", [("0", "ended without a pull request"),
+                                            ("timeout", "stopped after 45 minutes"),
                                             ("1", "ended with error 1"),
                                             (None, "stopped with no exit code")])
 def test_failed_build_marks_the_issue_failed(home: Path, outcome: str | None,
@@ -516,6 +517,15 @@ def test_failed_build_marks_the_issue_failed(home: Path, outcome: str | None,
     assert "line 10\n" in body and "line 9\n" not in body
     assert not any(c[3:5] == ["worktree", "remove"] for c in host.calls)
     assert host.sent[0] == f"rr-test: ReviewRadar build for issue #1 failed: {reason}"
+
+
+def test_normal_end_after_handing_over_is_not_marked(home: Path) -> None:
+    add_run(home, "issue-1", 77, exit_text="0")
+    host = FakeHost(prs=[pull(20, "pr:ready-for-review", closes=1)],
+                    issues=[issue(1, "agent:review")])
+    log = agent_tick.tick_once(host, home)
+    assert "issue-1: ended normally" in log
+    assert host.gh_calls("issue", "comment") == []
 
 
 def test_failed_build_that_already_opened_a_pull_request_is_not_marked(home: Path) -> None:
