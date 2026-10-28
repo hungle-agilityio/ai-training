@@ -26,3 +26,4 @@ One file per decision: `ADR-001-short-title.md`, numbered in order. Write one fo
 - [ADR-009: The loop opens pull requests; the owner merges](ADR-009-loop-opens-pull-requests-owner-merges.md)
 - [ADR-010: A Claude Code Project is the main thread](ADR-010-claude-code-project-as-main-thread.md)
 - [ADR-011: The Project takes requests to an issue; the loop builds it](ADR-011-project-takes-requests-loop-builds.md)
+- [ADR-012: Gate 1 is a spec pull request; scripts drive the loop](ADR-012-spec-pull-request-and-scripted-loop.md)
