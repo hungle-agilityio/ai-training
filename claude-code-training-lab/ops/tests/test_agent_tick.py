@@ -75,6 +75,8 @@ class FakeHost:
         if args[0] != "gh":
             return 0, ""
         if args[1] == "api":
+            if "--repo" in args:
+                return 1, "unknown flag: --repo"
             number = int(args[2].split("/")[-2])
             return 0, f"someone\n{self.labeller.get(number, OWNER)}\n"
         return 0, json.dumps(self.answer(args[1:]))
@@ -463,6 +465,7 @@ def test_build_runs_claude_in_loop_mode_with_a_time_limit(
     assert seen["args"] == ["claude", "-p", "Use it for issue #1 only.", "--max-turns", "80"]
     assert seen["kwargs"]["env"]["REVIEWRADAR_LOOP"] == "1"
     assert seen["kwargs"]["cwd"] == tmp_path / "lab"
+    assert seen["kwargs"]["stdin"] == subprocess.DEVNULL
     assert seen["timeout"] == 45 * 60
     assert "dangerously" not in " ".join(seen["args"])
     assert (tmp_path / "exit").read_text() == "0"

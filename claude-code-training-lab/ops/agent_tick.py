@@ -299,7 +299,8 @@ def pr_needs_run(tick: Tick, pr: dict[str, Any], review_issues: set[int]) -> boo
 
 def labelled_by_owner(tick: Tick, number: int) -> bool:
     ready = '.[] | select(.event == "labeled" and .label.name == "agent:ready") | .actor.login'
-    code, out = tick.gh("api", f"repos/{REPO}/issues/{number}/events", "--paginate", "--jq", ready)
+    events = f"repos/{REPO}/issues/{number}/events"
+    code, out = tick.host.run(["gh", "api", events, "--paginate", "--jq", ready])
     logins = out.split()
     return code == 0 and bool(logins) and logins[-1] == OWNER
 
@@ -434,7 +435,9 @@ def run_build(run: Path, folder: Path, prompt: str) -> str:
     """The background wrapper: one `claude -p`, stopped after 45 minutes; writes the outcome."""
     env = {**os.environ, "REVIEWRADAR_LOOP": "1"}
     args = ["claude", "-p", prompt, "--max-turns", str(MAX_TURNS)]
-    child = subprocess.Popen(args, cwd=folder, env=env, start_new_session=True)
+    child = subprocess.Popen(
+        args, cwd=folder, env=env, stdin=subprocess.DEVNULL, start_new_session=True
+    )
     try:
         outcome = str(child.wait(timeout=RUN_LIMIT))
     except subprocess.TimeoutExpired:
