@@ -264,6 +264,7 @@ a.pager-link:hover { border-color: var(--brand); color: var(--brand); }
 .filter-actions .button:hover { filter: brightness(.92); }
 .alert { margin: 12px 20px 0; padding: 10px 14px; border: 1px solid var(--bad); border-radius: 10px; background: var(--bad-soft); color: var(--bad); font-weight: 600; }
 .filter-week-label { margin: 0; padding: 10px 20px 0; color: var(--muted); font-size: 13.5px; }
+.review-count { margin: 0; padding: 12px 20px 8px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 @media (max-width: 760px) {
   .filters .field, .filters select, .filters input { width: 100%; }
   .filters { padding-bottom: 16px; }

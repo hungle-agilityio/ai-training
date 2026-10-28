@@ -64,6 +64,7 @@
       <p>Reviews will appear here as soon as they are imported.</p>
     </div>
   {% else %}
+    <p class="review-count">{{ page.total|intcomma }} review{{ page.total|pluralize }}</p>
     <div class="table-wrap">
       <table class="table reviews-table">
         <thead>
