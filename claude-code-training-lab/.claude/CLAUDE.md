@@ -20,7 +20,7 @@ Django app that collects customer reviews per branch (location), shows a score d
 
 **Two halves (ADR-011, ADR-012).** The **Claude Code Project** (claude.ai/code or the phone app, ADR-010) takes a request to issues: analysis, `grill-me`, then a spec pull request (`specs/<feature>/`, templates in `docs/app/templates/spec/`) that you approve by saying "Merge PR spec", then one issue per task labelled `agent:ready` (or `agent:manual` when it changes `.claude/`). Easy work takes a fast lane: no spec pull request, the short spec goes in the issue and your "OK" is Gate 1. Every GitHub write goes from the Mac mini through Remote Control so it carries no Claude attribution (`.claude/project-instructions.md`, root `../CLAUDE.md`). Its threads do not write application code and open no pull request other than a spec pull request. Cloud threads do not load skills, agents, hooks or `settings.json`, so those rules are text there.
 
-The **CLI loop** on the Mac mini builds it: `REVIEWRADAR_LOOP=1 claude`, then `/loop 30m use the work-queue skill`. It takes issues labelled `agent:ready`, opens the pull request with the verify report and never merges. You merge on GitHub. ADR-008, ADR-009. ADR-012 plans to replace it with scripts that start one `claude -p` per issue.
+The **CLI loop** on the Mac mini builds it: `ops/start-loop.sh` runs a tick every 10 minutes in tmux (`ops/README.md`). Each tick starts up to `AGENT_CONCURRENCY` builds, one `claude -p` with `REVIEWRADAR_LOOP=1` per issue or pull request, each running `work-queue` in its own worktree. It takes issues labelled `agent:ready`, opens the pull request with the verify report and never merges. You merge on GitHub. ADR-008, ADR-009, ADR-014.
 
 ## Where things go
 
@@ -38,3 +38,5 @@ A rule: `rules/`. A decision: an ADR. A gotcha: `knowledge/KNOWN_PITFALLS.md`. Y
 | 2026-10-26 | Cloud threads implementing and opening pull requests (ADR-010 step 4 to 6) | Claude attribution on every GitHub write from the cloud, and no verify report on PR #32 | ADR-010, ADR-011 |
 | 2026-10-28 | Gate 1 as an "OK" in the chat for Medium and Hard work | The owner chose a spec pull request ("Merge PR spec") so the ACs are versioned; Easy work keeps the OK | ADR-012, `.claude/project-instructions.md` |
 | 2026-10-28 | The parallel-loop plan of 2026-10-27 (two sessions, `mkdir` lock); its issue was never posted | One tick script that starts several `claude -p` needs no lock | ADR-012, `/mnt/project-files/loop-parallel/` |
+| 2026-10-28 | The interactive loop session `REVIEWRADAR_LOOP=1 claude` with `/loop 30m use the work-queue skill` | One build at a time and no time limit; the tick in `ops/` runs several, each stopped after 45 minutes | ADR-014, `ops/README.md` |
+| 2026-10-28 | The loop's Review queue page and its `PushNotification` "queue empty" | Two builds at once would write one page; the `pr:*` labels show the state and the tick sends ntfy | ADR-009, ADR-014 |
