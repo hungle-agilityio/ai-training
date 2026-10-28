@@ -73,6 +73,7 @@ def branch_scores() -> list[BranchScore]:
 
 @dataclass(frozen=True)
 class BranchRow:
+    branch_id: int
     name: str
     review_count: int
     average_rating: float | None
@@ -158,6 +159,7 @@ def dashboard_overview(recent_limit: int = 6) -> DashboardOverview:
             # No reviews yet: no score, no bar, no status, and not "needs attention"
             rows.append(
                 BranchRow(
+                    branch_id=score.branch_id,
                     name=score.name,
                     review_count=score.review_count,
                     average_rating=None,
@@ -170,6 +172,7 @@ def dashboard_overview(recent_limit: int = 6) -> DashboardOverview:
         status, label = branch_status(score.average_rating)
         rows.append(
             BranchRow(
+                branch_id=score.branch_id,
                 name=score.name,
                 review_count=score.review_count,
                 average_rating=score.average_rating,
