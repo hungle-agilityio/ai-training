@@ -29,6 +29,6 @@ Output (default `out/pr-draft/<branch>/`, git-ignored): `pr-body.md`, `images/` 
 ## Rules
 
 - Only pages labelled `changed` or `did not exist before` are copied to `images/`; "no visible difference" is left out.
-- The report link is the private artifact link when the report was shared, else "not shared" with the local path.
+- The report link is the private artifact link when the report was shared. In loop mode it must be the artifact link: run `share-report` first, and with no link the loop opens no pull request (`work-queue` step 8; the hook refuses a loop body without it). "Not shared" with the local path stays allowed only in an interactive session.
 - Never invent an issue number. Create the issue first (`create-issue`), then run the draft again with `--issue`.
 - Images are dragged into the pull request by the user from `images/`; the description names the files.

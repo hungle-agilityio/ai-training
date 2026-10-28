@@ -54,7 +54,14 @@ Each open pull request of the loop has exactly one status label, on the pull req
 5. **Plan** with `planner` for Medium and Hard; Easy goes straight to build.
 6. **Build** with `implementer`, test first, only what the plan says. **Test** with `test-runner`.
 7. **Review** with `reviewer` when `rules/workflow.md` requires it, at most two rounds. A finding open after round two: label `agent:failed`, comment on the issue what is open (with the marker). The branch stays local; there is no pull request. Go to the next run.
-8. **Verify and hand over.** `build-verify-report` writes one report with the Decisions table and the ACs; `share-report` gates its private link. Commit with `create-commit` after PASS, `git push -u origin <branch>`, then open the pull request with the body from `draft-pull-request` (What, Why, How tested, Evidence, One concern, report link, `Closes #N`), starting with the marker. In loop mode the standing approval replaces those skills' preview; everything else in them holds.
+8. **Verify and hand over**, in this order:
+   1. `build-verify-report` writes one report with the Decisions table and the ACs.
+   2. `share-report` runs the gate and publishes the report as a private artifact (`Artifact` is in the allow list; the hook `before-artifact-publish` still checks it), then writes the link to `report.json` under `share.url`. In a `/redo` round it republishes to that same URL, so the link in the pull request stays valid.
+   3. **No link, no pull request.** When the gate says `BLOCKED`, or the publish fails or is refused, open no pull request: label the issue `agent:failed`, comment the reason on the issue (with the marker), and keep the branch local, as for a finding open after round two. Go to the next run.
+   4. Commit with `create-commit` after PASS, then `git push -u origin <branch>`.
+   5. Write the body with `draft-pull-request` (What, Why, How tested, Evidence, One concern, the "Verify report" line with the artifact link, `Closes #N`), starting with the marker, and open the pull request with `gh pr create --body-file <that file>`; the file must exist before the call. `before-github-command-check` refuses a loop `gh pr create` whose body has no `https://claude.ai/artifact/` link, and one with no body or an unreadable body file.
+
+   In loop mode the standing approval replaces those skills' preview; everything else in them holds.
 9. **Close the run.** Wait for CI and set the pull request's status label (Status labels, "After a push" and "Red CI"). Comment on the issue with the pull request and the decisions worth a second look; label `agent:review`. Update the **Review queue** page (one private artifact, updated in place; titles, links and verdicts only, never review text): per open pull request the verdict, report link, and decisions to confirm.
 
 ## 3. When nothing is left

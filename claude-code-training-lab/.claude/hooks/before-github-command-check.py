@@ -384,6 +384,65 @@ def check_publish(command: str, loop: bool, run: GitRunner) -> tuple[str, list[s
     return ("ask", ask) if ask else ("allow", [])
 
 
+REPORT_LINK = "https://claude.ai/artifact/"
+PR_CREATE = re.compile(r"\bgh\s+pr\s+create\b")
+COMMAND_END = {";", "&", "&&", "|", "||", "(", ")"}
+NO_REPORT_LINK = "a loop pull request needs the verify report link (share-report)"
+
+
+def pr_create_args(command: str, start: int) -> list[str] | None:
+    """The arguments of one gh pr create, up to the next shell operator; None if unreadable."""
+    lexer = shlex.shlex(command[start:], posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
+    args: list[str] = []
+    try:
+        for token in lexer:
+            if token in COMMAND_END:
+                break
+            args.append(token)
+    except ValueError:
+        return None
+    return args
+
+
+def pr_body(args: list[str], cwd: str) -> str | None:
+    """The body from --body / -b and --body-file / -F; None when missing or unreadable."""
+    body: str | None = None
+    for index, arg in enumerate(args):
+        name, _, inline = arg.partition("=")
+        if name not in ("--body", "-b", "--body-file", "-F"):
+            continue
+        if inline or "=" in arg:
+            value = inline
+        elif index + 1 < len(args):
+            value = args[index + 1]
+        else:
+            return None
+        if name in ("--body", "-b"):
+            body = (body or "") + value
+            continue
+        if value == "-":
+            return None
+        try:
+            body = (body or "") + (Path(cwd) / value).read_text()
+        except (OSError, UnicodeDecodeError):
+            return None
+    return body
+
+
+def report_link_problems(command: str, cwd: str) -> list[str]:
+    """In loop mode every gh pr create must carry the private artifact link of the verify report."""
+    if PR_CREATE.search(without_inert_heredocs(command)) is None:
+        return []
+    problems: list[str] = []
+    for match in PR_CREATE.finditer(command):
+        args = pr_create_args(command, match.end())
+        body = pr_body(args, cwd) if args is not None else None
+        if body is None or REPORT_LINK not in body:
+            problems.append(NO_REPORT_LINK)
+    return list(dict.fromkeys(problems))
+
+
 def publish_gate(command: str, cwd: str) -> int:
     def run(args: list[str]) -> tuple[int, str]:
         try:
@@ -397,6 +456,11 @@ def publish_gate(command: str, cwd: str) -> int:
     loop = os.environ.get(LOOP_ENV) == "1"
     try:
         decision, reasons = check_publish(command, loop, run)
+        if loop:
+            link_problems = report_link_problems(command, cwd)
+            if link_problems:
+                kept = reasons if decision == "deny" else []
+                decision, reasons = "deny", kept + link_problems
     except Exception as error:  # fail closed
         decision, reasons = "deny", [f"the publish guard failed ({error})"]
     if decision == "deny":
