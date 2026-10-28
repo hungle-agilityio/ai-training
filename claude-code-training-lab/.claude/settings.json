@@ -37,7 +37,9 @@
       "Bash(uv run python manage.py:*)",
       "Bash(gh pr comment:*)",
       "Artifact",
-      "Bash(gh pr edit:*)"
+      "Bash(gh pr edit:*)",
+      "Edit(./reviews/**)",
+      "Edit(./reviewradar/**)"
     ],
     "ask": [
       "Bash(gh issue close:*)",
