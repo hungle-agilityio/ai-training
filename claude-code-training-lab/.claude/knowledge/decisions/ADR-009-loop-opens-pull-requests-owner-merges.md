@@ -1,6 +1,6 @@
 # ADR-009: The loop opens pull requests; the owner merges
 
-- Status: Accepted
+- Status: Accepted (parts changed by ADR-012)
 - Date: 2026-10-26
 
 ## Context

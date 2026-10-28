@@ -1,6 +1,6 @@
 # ADR-011: The Project takes requests to an issue; the loop builds it
 
-- Status: Accepted (changes part of ADR-010)
+- Status: Accepted (changes part of ADR-010; parts changed by ADR-012)
 - Date: 2026-10-26
 
 ## Context

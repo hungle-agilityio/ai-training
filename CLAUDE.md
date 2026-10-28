@@ -14,7 +14,7 @@ The project is `claude-code-training-lab/` (ReviewRadar, a Django app). Cloud se
 
 Skills, agents, commands, hooks and `settings.json` of the repository are not loaded in a cloud thread, so nothing enforces the rules above. Follow them yourself:
 
-- A Project thread analyses, designs and writes the issue; it does not write code or open a pull request unless the owner asks for that in the thread. The CLI loop on the Mac mini builds `agent:ready` issues (ADR-011).
+- A Project thread analyses, writes the spec and the issues; it does not write application code. The only pull request it opens and merges is a spec pull request (changes only `specs/` and `design/`, merged after the owner says "Merge PR spec"), and it does that through the Mac mini, never the Claude GitHub App. Other code or pull requests only when the owner asks for that in the thread. The CLI loop on the Mac mini builds `agent:ready` issues (ADR-011, ADR-012).
 - No Claude attribution on GitHub or in commits. Post issues and comments through a Remote Control session on the Mac mini (`gh` with the owner's login); if it cannot be reached, write the exact texts to `/mnt/project-files/<task>/` for the owner to post.
 - Start with `cd claude-code-training-lab && uv sync`. Before a pull request: `uv run ruff check .`, `uv run mypy .`, `uv run pytest -q`; paste the real output in the pull request.
 - Work on `<kind>/<issue-number>-<short-description>` (`bug`, `feat`, `task`), never on `main`; tests first; one issue per branch.
