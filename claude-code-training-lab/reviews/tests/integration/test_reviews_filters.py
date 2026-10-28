@@ -5,6 +5,7 @@ from django.test import Client
 from pytest_django.fixtures import DjangoAssertNumQueries
 
 from reviews.models import Branch, Business, Review
+from reviews.repositories import create_review
 
 WEEK = "2026-10-14"  # week 12 to 18 October 2026, Vietnam time
 
@@ -187,3 +188,107 @@ def test_last_page_of_a_filtered_list_is_used_for_a_page_beyond_the_end(
         )
 
     assert "Showing 21-25 of 25 reviews" in _get("?rating=bad&page=9999")
+
+
+@pytest.mark.django_db
+def test_rating_dropdown_lists_good_bad_then_five_to_one_stars(seeded: dict[str, Branch]) -> None:
+    content = _get()
+
+    labels = [
+        "All ratings",
+        "Good (4-5 stars)",
+        "Bad (1-2 stars)",
+        "5 stars",
+        "4 stars",
+        "3 stars",
+        "2 stars",
+        "1 star",
+    ]
+    positions = [content.index(f">{label}</option>") for label in labels]
+    assert positions == sorted(positions)
+    assert content.count('name="rating"') == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("stars", [1, 2, 3, 4, 5])
+def test_star_count_shows_only_reviews_with_exactly_that_rating(
+    seeded: dict[str, Branch], stars: int
+) -> None:
+    content = _get(f"?rating={stars}")
+
+    shown = _shown(content, *ALL)
+    expected = {f"airport-{stars}"} | ({"downtown-1", "airport-old"} if stars == 1 else set())
+    assert shown == expected
+    assert f'<option value="{stars}" selected>' in content
+
+
+@pytest.mark.django_db
+def test_star_count_line_counts_only_matching_reviews(seeded: dict[str, Branch]) -> None:
+    assert "Showing 1-3 of 3 reviews" in _get("?rating=1")
+
+
+@pytest.mark.django_db
+def test_good_and_bad_links_keep_working(seeded: dict[str, Branch]) -> None:
+    assert _shown(_get("?rating=good"), *ALL) == {"airport-4", "airport-5"}
+    assert _shown(_get("?rating=bad"), *ALL) == {
+        "airport-1",
+        "airport-2",
+        "downtown-1",
+        "airport-old",
+    }
+
+
+@pytest.mark.django_db
+def test_star_count_combines_with_location_and_week(seeded: dict[str, Branch]) -> None:
+    downtown = seeded["Downtown"].id
+
+    content = _get(f"?rating=1&location={downtown}&week={WEEK}")
+
+    assert _shown(content, *ALL) == {"downtown-1"}
+
+
+@pytest.mark.django_db
+def test_star_count_with_no_match_says_no_reviews_found(seeded: dict[str, Branch]) -> None:
+    newtown = seeded["Newtown"].id
+
+    content = _get(f"?rating=3&location={newtown}")
+
+    assert "No reviews found" in content
+    assert "No review matches these filters" in content
+    assert _shown(content, *ALL) == set()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("value", ["7", "0", "6", "-1", "abc"])
+def test_unknown_rating_value_is_ignored(seeded: dict[str, Branch], value: str) -> None:
+    content = _get(f"?rating={value}")
+
+    assert _shown(content, *ALL) == set(ALL)
+    assert '<option value="" selected>All ratings</option>' in content
+
+
+@pytest.mark.django_db
+def test_star_count_survives_paging(branches: dict[str, Branch]) -> None:
+    when = datetime(2026, 10, 14, 5, 0, tzinfo=UTC)
+    for index in range(30):
+        _review(branches["Airport"], 4, f"four-{index}", when)
+    _review(branches["Airport"], 2, "two-only", when)
+
+    content = _get("?rating=4&page=2")
+
+    assert '<option value="4" selected>' in content
+    assert 'href="?rating=4&amp;page=1"' in content
+    assert "two-only" not in content
+
+
+@pytest.mark.django_db
+def test_star_count_combines_with_search(branches: dict[str, Branch]) -> None:
+    when = datetime(2026, 10, 14, 5, 0, tzinfo=UTC)
+    for rating, text in ((1, "parking was awful"), (1, "billing mistake"), (3, "parking was fine")):
+        create_review(branch=branches["Airport"], rating=rating, text=text, created_at=when)
+
+    content = _get("?rating=1&search=parking")
+
+    assert "parking was awful" in content
+    assert "billing mistake" not in content
+    assert "parking was fine" not in content
