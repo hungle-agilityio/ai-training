@@ -183,3 +183,81 @@ def test_review_text_on_the_reviews_page_is_marked_as_personal_data() -> None:
     content = Client().get("/reviews/").content.decode()
 
     assert 'data-sensitive="review-text"' in content
+
+
+def _count_line(content: str) -> str | None:
+    marker = 'class="review-count"'
+    if marker not in content:
+        return None
+    start = content.index(marker)
+    return content[content.index(">", start) + 1 : content.index("</p>", start)].strip()
+
+
+@pytest.mark.django_db
+def test_count_line_shows_total_above_the_table() -> None:
+    _seed(branches=2, per_branch=7)
+
+    content = Client().get("/reviews/").content.decode()
+
+    assert _count_line(content) == "14 reviews"
+    assert content.index('class="review-count"') < content.index('class="table-wrap"')
+    assert content.index('class="filters"') < content.index('class="review-count"')
+
+
+@pytest.mark.django_db
+def test_count_line_counts_only_filtered_reviews() -> None:
+    _seed(branches=2, per_branch=10)
+
+    content = Client().get("/reviews/?rating=3").content.decode()
+
+    assert _count_line(content) == "4 reviews"
+    assert "Showing 1-4 of 4 reviews" in content
+
+
+@pytest.mark.django_db
+def test_count_line_is_the_same_on_every_page() -> None:
+    _seed(branches=5, per_branch=9)
+
+    first = Client().get("/reviews/").content.decode()
+    last = Client().get("/reviews/?page=3").content.decode()
+
+    assert _count_line(first) == _count_line(last) == "45 reviews"
+
+
+@pytest.mark.django_db
+def test_count_line_is_singular_for_one_review() -> None:
+    _seed(branches=1, per_branch=1)
+
+    assert _count_line(Client().get("/reviews/").content.decode()) == "1 review"
+
+
+@pytest.mark.django_db
+def test_count_line_uses_a_thousands_separator() -> None:
+    _seed(branches=1, per_branch=1001)
+
+    assert _count_line(Client().get("/reviews/").content.decode()) == "1,001 reviews"
+
+
+@pytest.mark.django_db
+def test_count_line_is_hidden_when_there_are_no_reviews() -> None:
+    assert _count_line(Client().get("/reviews/").content.decode()) is None
+
+
+@pytest.mark.django_db
+def test_count_line_is_hidden_when_no_review_matches_the_filters() -> None:
+    _seed(branches=1, per_branch=1)
+
+    content = Client().get("/reviews/?search=nothing").content.decode()
+
+    assert _count_line(content) is None
+    assert "No reviews found" in content
+
+
+@pytest.mark.django_db
+def test_count_line_does_not_add_a_query(
+    django_assert_max_num_queries: DjangoAssertNumQueries,
+) -> None:
+    _seed(branches=5, per_branch=9)
+
+    with django_assert_max_num_queries(3):
+        Client().get("/reviews/")
