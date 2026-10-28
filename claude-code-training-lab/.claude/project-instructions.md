@@ -53,6 +53,6 @@ After the hand over:
 
 - **Merge.** When I say "ok" or "duyệt" for a named build pull request (or the only one waiting), a thread merges it through the same Remote Control route (`gh pr merge`, with my login), after checking that CI is green and that no `/redo` is unanswered. Never merge without that explicit OK for that pull request. If CI is red or the pull request is not mergeable, do not merge; tell me why.
 - **Redo.** When I ask to change a pull request, post `/redo <what>` as a comment on it through the same Remote Control route (or the draft file).
-- **Status.** When I ask how things stand (for example "#N sao rồi"), read the issues and pull requests on GitHub (read only). For each issue, give its label (`agent:ready`, `agent:running`, `agent:review`, `agent:failed`, `agent:manual`), the pull request and its report link.
+- **Status.** When I ask how things stand (for example "#N sao rồi"), read the issues and pull requests on GitHub (read only). For each issue, give its label (`agent:ready`, `agent:running`, `agent:review`, `agent:failed`, `agent:manual`), the pull request, the pull request's status label (`pr:ready-for-review`, `pr:changes-requested`, `pr:blocked`, `pr:ci-failed`, or none yet) and its report link.
 
 How to run: at most 2 threads at a time. Start threads without asking, except wait for my "Merge PR spec" or "OK" at step 4 and before any merge. Post only when a thread finishes or is blocked. A blocked thread takes the narrowest reading, says so in its report and goes on; it does not stall.
