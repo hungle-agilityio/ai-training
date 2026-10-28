@@ -38,4 +38,4 @@ jobs:
       - name: Coverage gate, 90 percent on services and repositories
         run: uv run coverage report --include="reviews/services.py,reviews/repositories.py" --fail-under=90
       - name: Hook and skill tests
-        run: uv run pytest .claude/hooks/tests .claude/skills -q --no-cov -p no:cacheprovider
+        run: uv run pytest .claude/hooks/tests .claude/skills ops/tests -q --no-cov -p no:cacheprovider
