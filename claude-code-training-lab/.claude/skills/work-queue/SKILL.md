@@ -1,13 +1,22 @@
 ---
 name: work-queue
-description: Work the GitHub queue unattended. Redo the pull requests the owner sent back with /redo, tidy the ones the owner merged, then take the next issue labelled agent:ready to a pushed pull request with a verify report, deciding every open point itself. The loop never merges. Use inside /loop (session started with REVIEWRADAR_LOOP=1), or when the user says to work the queue.
+description: Work the GitHub queue unattended. Redo the pull requests the owner sent back with /redo, tidy the ones the owner merged, then take the next issue labelled agent:ready to a pushed pull request with a verify report, deciding every open point itself. The loop never merges. Use inside a build started by the tick (`claude -p "Use the work-queue skill for issue #N only."` with REVIEWRADAR_LOOP=1), or when the user says to work the queue.
 ---
 
 # Work the queue
 
-One run: first the owner's answers (redo, merged), then **one new issue**, then end; `/loop` calls it again. Nothing waits for the user: pull requests pile up for review while the loop keeps going. Standing approvals and why: ADR-008, ADR-009.
+One run: first the owner's answers (redo, merged), then **one new issue**, then end. Nothing waits for the user: pull requests pile up for review while the loop keeps going. Standing approvals and why: ADR-008, ADR-009, ADR-014.
 
-Start with `REVIEWRADAR_LOOP=1 claude`, then `/loop 30m use the work-queue skill`. In that mode `before-edit-check` (rules, gates and existing tests are read-only) and `before-finish-check` (lint, types, tests must pass) are active, and `before-github-command-check` lets only a clean push and a pull request through and refuses every merge. Start the run on a clean tree on `main` (`git status`); if it is not clean, stop and say so.
+The tick (`ops/agent_tick.py`, started by `ops/start-loop.sh`) starts each run as `claude -p "Use the work-queue skill for issue #N only."` (or "pull request #N") with `REVIEWRADAR_LOOP=1`, in its own worktree. In that mode `before-edit-check` (rules, gates and existing tests are read-only) and `before-finish-check` (lint, types, tests must pass) are active, and `before-github-command-check` lets only a clean push and a pull request through and refuses every merge. Start the run on a clean tree (`git status`); if it is not clean, stop and say so.
+
+## One target (from the tick)
+
+When the prompt names one issue or one pull request, work on that one only; the tick has already picked it, claimed it and checked the cap (ADR-014).
+
+- **Pull request #N:** section 1 for that pull request only, then end. The current folder is a worktree on its branch.
+- **Issue #N:** section 2 from step 3 (Analyse) on, for that issue only, then end. The current folder is a worktree detached at `origin/main`: first create the branch there, `git switch -c <kind>/<N>-<short-description>` (`rules/git.md`). Do not pick, claim, check the cap or look at other issues.
+- Every other rule holds: the status labels, waiting for CI up to 15 minutes, two CI fix attempts per round, and "no link, no pull request" (step 8).
+- No target in the prompt (an interactive "work the queue"): the whole skill as written, starting on `main`.
 
 ## Whose words count
 
@@ -47,7 +56,7 @@ Each open pull request of the loop has exactly one status label, on the pull req
 
 ## 2. One new issue
 
-1. **Pick.** `gh issue list --label agent:ready --state open`, oldest first. Skip `agent:running`, `agent:review`, `agent:failed`, and any issue with `Depends on #M` while #M is still open. Stop here if 5 of the loop's pull requests are open. Nothing to pick: section 3.
+1. **Pick.** `gh issue list --label agent:ready --state open`, oldest first. Skip `agent:running`, `agent:review`, `agent:failed`, and any issue with `Depends on #M` while #M is still open. Stop here if the loop's open pull requests plus `agent:running` issues reach 3 (ADR-012). Nothing to pick: section 3.
 2. **Claim.** Label `agent:running` (`gh label create` it first if missing). Branch `<kind>/<id>-<short-description>` from `origin/main` (`rules/git.md`).
 3. **Analyse.** `analyst`: evidence first, difficulty. Its questions are not sent to the user.
 4. **Decide.** First read what the owner settled: the issue body (its "Done when" items are `AC1..ACn`) and the owner's comments titled `Decisions` and `Design`. Those are final. For each `grill-me` question still open, take the recommended option. Keep one `Decisions` table: question, chosen, rejected, why, from the user or from you. A requirement is never changed: on a conflict take the narrowest reading and list it. A `Design` link is the UI to build; `capture-before-after` compares the real screens with it.
@@ -62,11 +71,11 @@ Each open pull request of the loop has exactly one status label, on the pull req
    5. Write the body with `draft-pull-request` (What, Why, How tested, Evidence, One concern, the "Verify report" line with the artifact link, `Closes #N`), starting with the marker, and open the pull request with `gh pr create --body-file <that file>`; the file must exist before the call. `before-github-command-check` refuses a loop `gh pr create` whose body has no `https://claude.ai/artifact/` link, and one with no body or an unreadable body file.
 
    In loop mode the standing approval replaces those skills' preview; everything else in them holds.
-9. **Close the run.** Wait for CI and set the pull request's status label (Status labels, "After a push" and "Red CI"). Comment on the issue with the pull request and the decisions worth a second look; label `agent:review`. Update the **Review queue** page (one private artifact, updated in place; titles, links and verdicts only, never review text): per open pull request the verdict, report link, and decisions to confirm.
+9. **Close the run.** Wait for CI and set the pull request's status label (Status labels, "After a push" and "Red CI"). Comment on the issue with the pull request and the decisions worth a second look; label `agent:review`.
 
 ## 3. When nothing is left
 
-No issue is `agent:ready` (or the cap of 5 is reached) and nothing to redo: send one notification with the `PushNotification` tool, "queue empty, N pull requests waiting for your review", with the Review queue link. Send it again only when something changed.
+No issue is `agent:ready` (or the cap is reached) and nothing to redo: end the run. The tick sends the "queue empty" message (ntfy). The loop's open pull requests, by status label (one shows there once its label is set): <https://github.com/hungle-agilityio/ai-training/pulls?q=is%3Apr+is%3Aopen+label%3A%22pr%3Aready-for-review%22%2C%22pr%3Achanges-requested%22%2C%22pr%3Ablocked%22%2C%22pr%3Aci-failed%22>.
 
 ## How a pull request gets merged (not by the loop)
 
