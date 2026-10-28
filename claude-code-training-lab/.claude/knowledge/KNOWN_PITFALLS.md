@@ -73,3 +73,9 @@ Reproducible gotchas. Add one entry per pitfall with the symptom, the cause and 
 - **Symptom:** a step fails with `net::ERR_ABORTED` and the expected text is not shown.
 - **Cause:** the selector `a.button` matches the first link with that class, the Export CSV link, which starts a download instead of changing the page.
 - **Fix:** scope the selector, for example `form.filters a.button` for Clear.
+
+## A tool the unattended loop never calls
+
+- **Symptom:** the loop's pull request says the verify report is "not shared", although the share gate said `ALLOWED`; `out/artifact-publish.log` has no line for that run (seen on PR #41).
+- **Cause:** an unattended session can only use a tool that is in `permissions.allow` of `.claude/settings.json`. A tool that needs a permission prompt is skipped, because nobody answers the prompt.
+- **Fix:** put the tool in the allow list and keep a hook as the real gate (`Artifact` is allowed, `before-artifact-publish` still checks every report). A `claude -p` run needs the same tool in `--allowedTools`.
