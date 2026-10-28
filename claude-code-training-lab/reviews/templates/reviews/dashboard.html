@@ -55,7 +55,7 @@
           <tbody>
             {% for row in overview.branches %}
               <tr>
-                <th scope="row">{{ row.name }}</th>
+                <th scope="row"><a class="row-link" href="/reviews/?location={{ row.branch_id }}">{{ row.name }}</a></th>
                 <td class="num">{{ row.review_count }}</td>
                 {% if row.average_rating is None %}
                   <td><span class="muted">No reviews yet</span></td>
