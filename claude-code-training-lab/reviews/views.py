@@ -26,11 +26,12 @@ def dashboard_api(request: HttpRequest) -> JsonResponse:
 
 
 def reviews_export(request: HttpRequest) -> StreamingHttpResponse:
+    filters = ReviewFilterForm(request.GET).filters()
     response = StreamingHttpResponse(
-        services.reviews_csv(ReviewFilterForm(request.GET).filters()),
+        services.reviews_csv(filters),
         content_type="text/csv; charset=utf-8",
     )
     response["Content-Disposition"] = (
-        f'attachment; filename="{services.export_filename(timezone.now())}"'
+        f'attachment; filename="{services.export_filename_for(filters, timezone.now())}"'
     )
     return response

@@ -81,6 +81,10 @@ def create_review(*, branch: Branch, rating: int, text: str, created_at: datetim
     )
 
 
+def branch_name(pk: int) -> str | None:
+    return Branch.objects.filter(pk=pk).values_list("name", flat=True).first()
+
+
 def branch_choices() -> list[tuple[int, str]]:
     return [
         (pk, name) for pk, name in Branch.objects.order_by("name", "id").values_list("id", "name")
