@@ -60,6 +60,14 @@ The tick does not start a ready issue (ADR-015):
 
 The log lines are in the tmux window and in the tick's output.
 
+## Self-repair
+
+- **Pull `main`.** After taking the lock, the tick fast-forwards the main checkout (`git fetch origin main`, `git merge --ff-only origin/main`) when it is on `main` with no tracked changes; the new code runs from the next tick. Another branch, tracked changes or a failed fetch or fast-forward: no pull and one ntfy per reason.
+- **Only the owner's pull requests.** A pull request from a fork, or opened by another login, is never the loop's, even with the marker.
+- **Plan limit.** Recognised also as `extra_usage`, `usage_limit` and "hit your ... limit", whatever the exit code, as long as the build had not handed over: the issue goes back to `agent:ready` and builds pause 60 minutes.
+- **Handed over.** An open issue with `agent:ready` and `agent:review` loses `agent:ready`, so a closed pull request is not rebuilt; add `agent:ready` again to rebuild it. `agent:failed` keeps `agent:ready`.
+- **`archive/` branches.** When a kept worktree is moved aside, its branch (and, for an issue, every local `bug/<n>-`, `feat/<n>-`, `task/<n>-` branch) is renamed `archive/<branch>-<unix time>`. Nothing is deleted.
+
 ## Phone messages (ntfy)
 
 Sent only when `NTFY_TOPIC` is set.
@@ -72,6 +80,8 @@ Sent only when `NTFY_TOPIC` is set.
 | `ReviewRadar build for pull request #<p> <reason>` | a pull request build failed or timed out |
 | `ReviewRadar loop paused 60 minutes: plan limit reached (<key>)` | the Claude plan limit was reached |
 | `main is red at <sha>: <run url>` | the latest completed `Checks` run on `main` is not green; once per commit |
+| `ReviewRadar main checkout not updated: <reason>` | the tick could not pull `main`; once per reason until a pull succeeds |
+| `ReviewRadar build for <issue #n \| pull request #n> did not start: <step> failed` | a start failed; once per key and step until that key starts |
 | `ReviewRadar queue empty, <w> pull requests waiting` | nothing to start and nothing running; again only when the text changes |
 
 The loop's open pull requests with their status labels: <https://github.com/hungle-agilityio/ai-training/pulls?q=is%3Apr+is%3Aopen+%22work-queue%22+in%3Abody>
