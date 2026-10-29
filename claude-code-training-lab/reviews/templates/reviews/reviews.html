@@ -1,5 +1,5 @@
 {% extends "reviews/base.html" %}
-{% load humanize %}
+{% load humanize review_dates %}
 
 {% block title %}Reviews · ReviewRadar{% endblock %}
 {% block heading %}Reviews{% endblock %}
@@ -91,7 +91,7 @@
                 {% endif %}
               </td>
               <td><span class="badge badge-{{ row.sentiment }}">{{ row.sentiment_label }}</span></td>
-              <td class="nowrap"><time datetime="{{ row.created_at|date:'c' }}">{{ row.created_at|date:"M j, Y" }}</time></td>
+              <td class="nowrap"><time datetime="{{ row.created_at|date:'c' }}" title="{{ row.created_at|full_review_date }}">{{ row.created_at|relative_review_date }}</time></td>
             </tr>
           {% endfor %}
         </tbody>
