@@ -1,5 +1,7 @@
 import csv
 import io
+import re
+import unicodedata
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
@@ -347,8 +349,26 @@ def csv_safe(value: str) -> str:
     return "'" + value if value.startswith(CSV_FORMULA_STARTS) else value
 
 
-def export_filename(now: datetime) -> str:
-    return f"reviews-{now.astimezone(VIETNAM_TZ):%Y-%m-%d}.csv"
+def location_slug(name: str, pk: int) -> str:
+    """Lower case ASCII words joined by one dash; `location-<id>` when nothing is left."""
+    plain = unicodedata.normalize("NFD", name.replace("đ", "d").replace("Đ", "D"))
+    ascii_name = "".join(ch for ch in plain if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]+", "-", ascii_name.lower()).strip("-") or f"location-{pk}"
+
+
+def export_filename(now: datetime, location: str | None = None) -> str:
+    day = f"{now.astimezone(VIETNAM_TZ):%Y-%m-%d}"
+    return f"reviews-{location}-{day}.csv" if location else f"reviews-{day}.csv"
+
+
+def export_filename_for(filters: ReviewFilters, now: datetime) -> str:
+    """The export name carries the filtered location; a missing or unknown one is left out."""
+    if filters.branch_id is None:
+        return export_filename(now)
+    name = repositories.branch_name(filters.branch_id)
+    if name is None:
+        return export_filename(now)
+    return export_filename(now, location_slug(name, filters.branch_id))
 
 
 def reviews_csv(filters: ReviewFilters) -> Iterator[str]:
