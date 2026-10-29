@@ -1,6 +1,11 @@
 # Tasks: <feature>
 
-<!-- Copy to specs/<feature>/tasks.md. One task becomes one issue. Tasks meant to run in parallel never share a file. Keep each task under about 400 lines of diff. -->
+<!-- Copy to specs/<feature>/tasks.md. One task becomes one issue. Tasks meant to run in parallel never share a file. Keep each task under about 400 lines of diff.
+     Every issue body gets a `## Files likely touched` section with one backticked path per bullet line, for example:
+       ## Files likely touched
+       - `reviews/services.py`
+       - `reviews/tests/unit/test_<name>.py` (NEW)
+     The tick reads it: an issue waits while a running or in-review issue lists the same file, and an issue with no paths runs alone (ADR-015). -->
 
 ## T1: <short title>
 

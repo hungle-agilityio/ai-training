@@ -14,7 +14,7 @@ A `/loop` session on the Mac mini runs the `work-queue` skill. Issue labelled `a
 Rejected:
 - **Playbook Actions workflows** (`agent-build`, `agent-resume`, `release`, `monitor`): untested skeletons, need a runner service that reads the macOS login Keychain, and add a second trigger path. Revisit when the loop has run on 5 issues.
 - **API key in secrets**: Pro login is enough; a key would be one more secret.
-- **Branch protection / required reviews**: needs a paid plan. Replaced by the hooks and by Gate 3.
+- **Branch protection / required reviews**: needs a paid plan. Replaced by the hooks and by Gate 3. (Replaced by ADR-015: the repository is public, so a ruleset on `main` is free.)
 - **`REVIEW.md`, gitleaks, evals, Makefile**: `reviewer` and the commit hook already cover review and secrets; evals wait for real runs.
 
 ## Consequences
