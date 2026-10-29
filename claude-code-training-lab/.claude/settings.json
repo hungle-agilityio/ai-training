@@ -39,7 +39,8 @@
       "Artifact",
       "Bash(gh pr edit:*)",
       "Edit(./reviews/**)",
-      "Edit(./reviewradar/**)"
+      "Edit(./reviewradar/**)",
+      "Edit(./out/**)"
     ],
     "ask": [
       "Bash(gh issue close:*)",

@@ -52,6 +52,10 @@ REPO_IN_URL = re.compile(r"(?<![\w.-])github\.com[/:]+([\w.-]+)/([\w.-]+)")
 REPO_IN_API = re.compile(r"(?:^|[\s'\"/])repos/([\w.-]+)/([\w.-]+)")
 API_HOST_PATH = re.compile(r"api\.github\.com(/[^\s'\"]*)")
 GH_REPO_ENV = re.compile(r"\bGH_REPO=['\"]?([^\s'\"]+)")
+REPO_FLAG = re.compile(r"(?:^|\s)(?:-R|--repo)(?:=|\s+)['\"]?([^\s'\"]+)")
+LEADING_WORDS = re.compile(r"\s*([A-Za-z][\w-]*)(?:\s+([A-Za-z][\w-]*))?")
+GH_UNSPLIT_OK = {"issue", "pr", "label"}
+GIT_REMOTE_SUBS = GIT_NETWORK | {"clone", "remote", "config"}
 
 
 def normalise(owner: str, name: str) -> str:
@@ -88,11 +92,31 @@ def foreign_urls(urls: list[str], allowed: str) -> list[str]:
     return [f"it reaches {repo_of_url(u) or u}" for u in urls if repo_of_url(u) != allowed]
 
 
+def leading_words(rest: str) -> list[str]:
+    """The first one or two plain words of a command, before any option."""
+    match = LEADING_WORDS.match(rest)
+    return [word for word in match.groups() if word] if match else []
+
+
+def check_gh_unsplit(rest: str, allowed: str) -> list[str]:
+    """A body with an apostrophe or several lines cannot be split: scan the raw text instead."""
+    problems = [
+        f"it targets {repo_from_value(value)}"
+        for value in REPO_FLAG.findall(rest)
+        if repo_from_value(value) != allowed
+    ]
+    words = leading_words(rest)
+    if not words or words[0] not in GH_UNSPLIT_OK:
+        problems.append("the gh command could not be read safely")
+    problems.extend(foreign_in_text(rest, allowed))
+    return problems
+
+
 def check_gh(rest: str, allowed: str) -> list[str]:
     try:
         tokens = shlex.split(rest)
     except ValueError:
-        return ["the gh command could not be read safely"]
+        return check_gh_unsplit(rest, allowed)
     problems: list[str] = []
     for index, token in enumerate(tokens):
         value = ""
@@ -143,8 +167,11 @@ def check_git(rest: str, allowed: str) -> list[str]:
     try:
         tokens = shlex.split(rest)
     except ValueError:
-        if re.search(r"\b(push|pull|fetch|clone|ls-remote|remote)\b", rest):
-            return ["the git command could not be read safely"]
+        words = leading_words(rest)
+        if words and words[0] not in GIT_REMOTE_SUBS:
+            return []
+        if words or re.search(r"\b(push|pull|fetch|clone|ls-remote|remote)\b", rest):
+            return foreign_in_text(rest, allowed) or ["the git command could not be read safely"]
         return []
     index = 0
     while index < len(tokens) and tokens[index].startswith("-"):
@@ -335,6 +362,16 @@ def api_problems(tokens: list[str], positional: list[str]) -> list[str]:
     return []
 
 
+def unsplit_publishes(rest: str, gh: bool) -> bool:
+    """Whether a command that cannot be split may push, open a pull request, merge or call api."""
+    words = leading_words(rest)
+    if not words:
+        return re.search(r"\b(push|merge|create|api)\b", rest) is not None
+    if gh:
+        return words[0] not in GH_UNSPLIT_OK or words[:2] in (["pr", "create"], ["pr", "merge"])
+    return words[0] == "push"
+
+
 def check_publish(command: str, loop: bool, run: GitRunner) -> tuple[str, list[str]]:
     """Decide push, pull request and merge: ('allow' | 'ask' | 'deny', reasons)."""
     problems: list[str] = []
@@ -351,7 +388,7 @@ def check_publish(command: str, loop: bool, run: GitRunner) -> tuple[str, list[s
         try:
             tokens = shlex.split(rest)
         except ValueError:
-            if re.search(r"\b(push|merge|create|api)\b", rest):
+            if unsplit_publishes(rest, bool(gh)):
                 problems.append("the command could not be read safely")
             continue
         if git:
