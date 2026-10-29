@@ -46,6 +46,15 @@ OPEN_PRS_URL = (
     "+in%3Abody"
 )
 NEEDS_YOU = ("pr:blocked", "pr:ci-failed")
+APPROVALS = {
+    "/merge", "merge", "lgtm", "approved", "approve", "looks good", "look good", "ok", "duyệt",
+    "ship it",
+}
+REDO_CONFLICT = "/redo merge origin/main into this branch and fix the conflict"
+UPDATE_FROM_MAIN = "Merge branch 'main'"
+DONE_MARKS = {"rocket", "confused"}
+GREEN_CHECKS = {"SUCCESS", "NEUTRAL", "SKIPPED"}
+COMMENT_ID = re.compile(r"(?:issuecomment-|discussion_r)(\d+)")
 DEPENDS_LINE = re.compile(r"^\W*Depends on\b(.*)$", re.IGNORECASE | re.MULTILINE)
 FILES_HEADING = re.compile(r"^##\s+Files likely touched\s*$", re.IGNORECASE | re.MULTILINE)
 BULLET_PATH = re.compile(r"^\s*[-*]\s+[^`\n]*`([^`\n]+)`", re.MULTILINE)
@@ -129,11 +138,24 @@ class Target:
 
 
 @dataclass
+class Remark:
+    """An owner comment on a loop pull request, on its issue, or on one of its lines (#80)."""
+
+    kind: str  # "conversation", "inline" or "issue"
+    id: int | None
+    body: str
+    created: str
+    has_summary_mark: bool
+    marked: bool | None = None
+
+
+@dataclass
 class Tick:
     host: Host
     home: Path
     settings: Settings
     log: list[str] = field(default_factory=list)
+    remarks: dict[int, list[Remark]] = field(default_factory=dict)
     main_red: bool = False
     pull_problem: str = ""
     open_issues: list[dict[str, Any]] | None = None
@@ -222,7 +244,7 @@ def is_loop_pr(pr: dict[str, Any]) -> bool:
 
 def loop_pull_requests(tick: Tick) -> list[dict[str, Any]]:
     fields = ("number,state,body,labels,headRefName,commits,comments,statusCheckRollup,"
-              "author,isCrossRepository")
+              "author,isCrossRepository,createdAt,isDraft,mergeStateStatus,headRefOid")
     found = tick.gh_json("pr", "list", "--state", "all", "--limit", "40", "--json", fields)
     return [pr for pr in found if is_loop_pr(pr)]
 
@@ -351,25 +373,113 @@ def ensure_label(tick: Tick, label: str) -> None:
         tick.gh("label", "create", label, "--color", color, "--description", description)
 
 
-def owner_redo_after(comments: list[dict[str, Any]], since: str) -> bool:
-    return any(
-        (c.get("author") or {}).get("login") == OWNER
-        and (c.get("body") or "").startswith("/redo")
-        and MARKER not in (c.get("body") or "")
-        and (c.get("createdAt") or "") > since
-        for c in comments
-    )
+def is_approval(body: str) -> bool:
+    """#80 AC1: the whole comment is one of the approval words."""
+    return body.strip().lower().rstrip(".!,:;").strip() in APPROVALS
+
+
+def summary_mark(comment: dict[str, Any]) -> bool:
+    """A rocket or confused in the reaction summary (gh's reactionGroups or REST reactions)."""
+    for group in comment.get("reactionGroups") or []:
+        if str(group.get("content", "")).lower() in DONE_MARKS and (
+            (group.get("users") or {}).get("totalCount", 0) > 0
+        ):
+            return True
+    reactions = comment.get("reactions") or {}
+    return any(int(reactions.get(mark) or 0) > 0 for mark in DONE_MARKS)
+
+
+def remark_of(kind: str, comment: dict[str, Any]) -> Remark | None:
+    login = (comment.get("author") or comment.get("user") or {}).get("login")
+    body = comment.get("body") or ""
+    if login != OWNER or MARKER in body:
+        return None
+    number: int | None = comment["id"] if isinstance(comment.get("id"), int) else None
+    match = COMMENT_ID.search(comment.get("url") or comment.get("html_url") or "")
+    if number is None and match:
+        number = int(match.group(1))
+    created = comment.get("createdAt") or comment.get("created_at") or ""
+    return Remark(kind, number, body, created, summary_mark(comment))
+
+
+def remarks_of(tick: Tick, pr: dict[str, Any]) -> list[Remark]:
+    """Owner comments of a loop pull request: conversation, line comments, /redo on its issue."""
+    number = pr["number"]
+    if number in tick.remarks:
+        return tick.remarks[number]
+    found = [r for c in pr.get("comments") or [] if (r := remark_of("conversation", c))]
+    code, out = tick.host.run(["gh", "api", f"repos/{REPO}/pulls/{number}/comments",
+                               "--paginate"])
+    try:
+        inline = json.loads(out) if code == 0 else []
+    except ValueError:
+        inline = []
+    if isinstance(inline, list):
+        found += [r for c in inline if isinstance(c, dict) and (r := remark_of("inline", c))]
+    issue = closes(pr)
+    if issue is not None:
+        comments = tick.gh_json("issue", "view", str(issue), "--json", "comments")["comments"]
+        found += [r for c in comments if (r := remark_of("issue", c))]
+    tick.remarks[number] = found
+    return found
+
+
+def done_by_owner(tick: Tick, remark: Remark) -> bool:
+    """#80 AC6, AC7: a rocket or confused by the owner; reactions are read only when summed."""
+    if remark.marked is None:
+        remark.marked = False
+        if remark.has_summary_mark and remark.id is not None:
+            path = "pulls/comments" if remark.kind == "inline" else "issues/comments"
+            code, out = tick.host.run(["gh", "api", f"repos/{REPO}/{path}/{remark.id}/reactions",
+                                       "--paginate"])
+            try:
+                reactions = json.loads(out) if code == 0 else []
+            except ValueError:
+                reactions = []
+            remark.marked = any(
+                isinstance(r, dict) and (r.get("user") or {}).get("login") == OWNER
+                and r.get("content") in DONE_MARKS
+                for r in reactions if isinstance(reactions, list)
+            )
+    return remark.marked
+
+
+def last_commit_date(pr: dict[str, Any], skip_updates: bool = False) -> str:
+    commits = pr.get("commits") or []
+    if skip_updates:
+        commits = [c for c in commits
+                   if not str(c.get("messageHeadline") or "").startswith(UPDATE_FROM_MAIN)]
+    return str(commits[-1].get("committedDate", "")) if commits else ""
+
+
+def open_requests(tick: Tick, pr: dict[str, Any]) -> list[Remark]:
+    """#80 AC6: owner comments with no done mark, created after the pull request was opened.
+
+    A comment without an id cannot carry a mark; it counts only as an owner /redo newer than
+    the last commit, as before.
+    """
+    opened = pr.get("createdAt") or ""
+    since = last_commit_date(pr)
+    found = []
+    for remark in remarks_of(tick, pr):
+        if remark.created <= opened:
+            continue
+        if remark.kind == "conversation" and is_approval(remark.body):
+            continue
+        if remark.kind == "issue" and not remark.body.startswith("/redo"):
+            continue
+        if remark.id is None:
+            if remark.body.startswith("/redo") and remark.created > since:
+                found.append(remark)
+            continue
+        if not done_by_owner(tick, remark):
+            found.append(remark)
+    return sorted(found, key=lambda r: r.created)
 
 
 def redo_count(tick: Tick, pr: dict[str, Any]) -> int:
-    """#78 AC1: the owner's /redo comments newer than the last commit (until #80)."""
-    commits = pr.get("commits") or []
-    since = commits[-1].get("committedDate", "") if commits else ""
-    comments = list(pr.get("comments") or [])
-    issue = closes(pr)
-    if issue is not None:
-        comments += tick.gh_json("issue", "view", str(issue), "--json", "comments")["comments"]
-    return sum(1 for c in comments if owner_redo_after([c], since))
+    """#78 AC1: the open change requests of a pull request."""
+    return len(open_requests(tick, pr))
 
 
 def pr_needs_run(tick: Tick, pr: dict[str, Any], review_issues: set[int]) -> bool:
@@ -377,13 +487,7 @@ def pr_needs_run(tick: Tick, pr: dict[str, Any], review_issues: set[int]) -> boo
     labels = names(pr)
     if pr["state"] != "OPEN":
         return bool(labels & PR_LABELS) or closes(pr) in review_issues
-    commits = pr.get("commits") or []
-    last_commit = commits[-1].get("committedDate", "") if commits else ""
-    comments = list(pr.get("comments") or [])
-    issue = closes(pr)
-    if issue is not None:
-        comments += tick.gh_json("issue", "view", str(issue), "--json", "comments")["comments"]
-    if owner_redo_after(comments, last_commit):
+    if open_requests(tick, pr):
         return True
     if "pr:blocked" in labels:
         return False
@@ -660,6 +764,16 @@ def needs_you(tick: Tick, prs: list[dict[str, Any]]) -> None:
     seen_file.write_text("\n".join(sorted(seen)))
 
 
+def announce_one(tick: Tick, pr: dict[str, Any]) -> None:
+    head = f"ReviewRadar PR #{pr['number']} merged (#{closes(pr)})"
+    if tick.pull_problem:
+        tick.notify(f"{head}; main checkout not updated: {tick.pull_problem}")
+    else:
+        code, sha = tick.host.run(["git", "-C", str(REPO_ROOT), "rev-parse", "--short", "HEAD"])
+        tick.notify(f"{head}; main is now {sha.strip() if code == 0 else 'unknown'}")
+    tick.say(f"pr-{pr['number']}: merged, announced")
+
+
 def announce_merged(tick: Tick, prs: list[dict[str, Any]]) -> None:
     """#78 AC4: each merged loop pull request once, after the pull of main of this tick."""
     record = tick.home / "announced-merged"
@@ -669,18 +783,104 @@ def announce_merged(tick: Tick, prs: list[dict[str, Any]]) -> None:
         return
     done = set(record.read_text().split())
     for pr in merged:
-        if str(pr["number"]) in done:
-            continue
-        done.add(str(pr["number"]))
-        head = f"ReviewRadar PR #{pr['number']} merged (#{closes(pr)})"
-        if tick.pull_problem:
-            tick.notify(f"{head}; main checkout not updated: {tick.pull_problem}")
-        else:
-            code, sha = tick.host.run(["git", "-C", str(REPO_ROOT), "rev-parse", "--short",
-                                       "HEAD"])
-            tick.notify(f"{head}; main is now {sha.strip() if code == 0 else 'unknown'}")
-        tick.say(f"pr-{pr['number']}: merged, announced")
+        if str(pr["number"]) not in done:
+            done.add(str(pr["number"]))
+            announce_one(tick, pr)
     record.write_text("\n".join(sorted(done)))
+
+
+def check_state(check: dict[str, Any]) -> str:
+    """'green', 'running' or 'red' for one entry of statusCheckRollup."""
+    status = str(check.get("status") or "").upper()
+    conclusion = str(check.get("conclusion") or "").upper()
+    state = str(check.get("state") or "").upper()
+    if status and status != "COMPLETED":
+        return "running"
+    if conclusion:
+        return "green" if conclusion in GREEN_CHECKS else "red"
+    if state:
+        return "green" if state == "SUCCESS" else "running" if state in (
+            "PENDING", "EXPECTED") else "red"
+    return "running"
+
+
+def newest_approval(tick: Tick, pr: dict[str, Any]) -> Remark | None:
+    """#80 AC1, AC5: the newest owner approval on the conversation without a done mark."""
+    opened = pr.get("createdAt") or ""
+    found = [r for r in remarks_of(tick, pr)
+             if r.kind == "conversation" and r.id is not None and is_approval(r.body)
+             and r.created > opened and not done_by_owner(tick, r)]
+    return max(found, key=lambda r: r.created) if found else None
+
+
+def react(tick: Tick, remark: Remark, content: str) -> None:
+    tick.host.run(["gh", "api", "-X", "POST",
+                   f"repos/{REPO}/issues/comments/{remark.id}/reactions", "-f",
+                   f"content={content}"])
+    remark.marked = True
+
+
+def refuse_merge(tick: Tick, pr: dict[str, Any], approval: Remark, reason: str) -> None:
+    """#80 AC4, AC5: no merge, 😕 on the approval, one message per pull request and reason."""
+    number = pr["number"]
+    react(tick, approval, "confused")
+    tick.say(f"pr-{number}: not merged, {reason}")
+    record = tick.home / "not-merged"
+    seen = set(record.read_text().splitlines()) if record.exists() else set()
+    key = f"{number}:{reason}"
+    if key not in seen:
+        seen.add(key)
+        record.write_text("\n".join(sorted(seen)))
+        tick.notify(f"ReviewRadar PR #{number} not merged: {reason}")
+
+
+def merge_approved(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> None:
+    """#80 AC2 to AC5: merge an open loop pull request on the owner's approval comment."""
+    for pr in prs:
+        number = pr["number"]
+        if pr["state"] != "OPEN":
+            continue
+        approval = newest_approval(tick, pr)
+        if approval is None or approval.created <= last_commit_date(pr, skip_updates=True):
+            continue
+        checks = [check_state(c) for c in pr.get("statusCheckRollup") or []]
+        if pr.get("isDraft") or "pr:ready-for-review" not in names(pr) or not checks:
+            tick.say(f"pr-{number}: approved, waiting for pr:ready-for-review and checks")
+            continue
+        if "running" in checks or open_requests(tick, pr) or f"pr-{number}" in running:
+            tick.say(f"pr-{number}: approved, waiting for CI, change requests or a run")
+            continue
+        if "red" in checks:
+            refuse_merge(tick, pr, approval, "a check is red")
+            continue
+        status = str(pr.get("mergeStateStatus") or "")
+        if status == "BEHIND":
+            code, out = tick.gh("pr", "update-branch", str(number))
+            if code == 0:
+                tick.say(f"pr-{number}: approved but behind main; branch updated")
+            elif "conflict" in out.lower():
+                tick.gh("pr", "comment", str(number), "--body", REDO_CONFLICT)
+                refuse_merge(tick, pr, approval, "conflict with main; /redo posted")
+            else:
+                refuse_merge(tick, pr, approval, "the update from main failed")
+            continue
+        if status in ("DIRTY", "BLOCKED"):
+            refuse_merge(tick, pr, approval, f"merge state is {status}")
+            continue
+        code, out = tick.gh("pr", "merge", str(number), "--merge", "--delete-branch",
+                            "--match-head-commit", str(pr.get("headRefOid") or ""))
+        if code != 0:
+            first = (out.strip().splitlines() or ["no output"])[0]
+            refuse_merge(tick, pr, approval, f"the merge failed: {first}")
+            continue
+        react(tick, approval, "rocket")
+        pr["state"] = "MERGED"
+        tick.say(f"pr-{number}: merged on the owner's approval")
+        pull_main(tick)
+        record = tick.home / "announced-merged"
+        done = set(record.read_text().split()) if record.exists() else set()
+        record.write_text("\n".join(sorted(done | {str(number)})))
+        announce_one(tick, pr)
 
 
 def queue_empty(tick: Tick, prs: list[dict[str, Any]]) -> None:
@@ -721,6 +921,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
         finish_runs(tick, prs)
         needs_you(tick, prs)
         running = running_keys(tick)
+        merge_approved(tick, prs, running)
         tick.main_red = main_is_red(tick)
         if paused(tick):
             tick.say("paused after the plan limit; no build started")
