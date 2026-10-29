@@ -49,6 +49,19 @@ All under `~/.reviewradar/`:
 - An issue labelled `risk:high`, or whose body names `migrations/` or `models.py`, runs alone.
 - A build that times out or fails before its pull request: the issue gets `agent:failed` and a comment with the last 20 log lines; the worktree stays. The plan limit: the issue goes back to `agent:ready` and new builds pause for 60 minutes.
 
+## Phone messages (ntfy)
+
+Sent only when `NTFY_TOPIC` is set.
+
+| Message | When |
+|---|---|
+| `ReviewRadar PR #<p> opened for #<n> (<status label>)`, the pull request link, `Report: <link>` | an issue build ended and an open loop pull request closes that issue (also after an error or a timeout that came after the pull request) |
+| `ReviewRadar PR #<p> updated for #<n> (<status label>)`, the same two links | a pull request build (a `/redo` or a CI fix) ended normally and the pull request is still open |
+| `ReviewRadar build for issue #<n> failed: <reason>` | an issue build ended without a pull request |
+| `ReviewRadar build for pull request #<p> <reason>` | a pull request build failed or timed out |
+| `ReviewRadar loop paused 60 minutes: plan limit reached (<key>)` | the Claude plan limit was reached |
+| `ReviewRadar queue empty, <w> pull requests waiting` | nothing to start and nothing running; again only when the text changes |
+
 The loop's open pull requests with their status labels: <https://github.com/hungle-agilityio/ai-training/pulls?q=is%3Apr+is%3Aopen+%22work-queue%22+in%3Abody>
 
 ## Tests

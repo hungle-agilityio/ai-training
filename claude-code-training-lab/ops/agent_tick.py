@@ -192,6 +192,30 @@ def names(item: dict[str, Any]) -> set[str]:
     return {label["name"] for label in item.get("labels") or []}
 
 
+def report_link(pr: dict[str, Any]) -> str:
+    match = re.search(r"https://claude\.ai/artifact/\S+", pr.get("body") or "")
+    return match.group(0).rstrip(").,") if match else "no link in the pull request"
+
+
+def status_label(pr: dict[str, Any]) -> str:
+    found = sorted(names(pr) & PR_LABELS)
+    return found[0] if found else "no status label yet"
+
+
+def pr_message(pr: dict[str, Any], verb: str) -> str:
+    """#68: one message with the pull request and report links, from the list already read."""
+    number = pr["number"]
+    return (
+        f"ReviewRadar PR #{number} {verb} for #{closes(pr)} ({status_label(pr)})\n"
+        f"https://github.com/{REPO}/pull/{number}\nReport: {report_link(pr)}"
+    )
+
+
+def newest_open_pr(prs: list[dict[str, Any]], issue: int) -> dict[str, Any] | None:
+    found = [pr for pr in prs if pr["state"] == "OPEN" and closes(pr) == issue]
+    return max(found, key=lambda pr: pr["number"]) if found else None
+
+
 def finish_runs(tick: Tick, prs: list[dict[str, Any]]) -> None:
     """AC10: handle every build that ended since the last tick, then archive its run folder."""
     if not tick.runs.exists():
@@ -228,6 +252,9 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
     if outcome == "0" and kind == "pr":
         remove_worktree(tick, worktree)
         tick.say(f"{key}: ended normally")
+        pr = next((p for p in prs if p["number"] == int(number)), None)
+        if pr is not None and pr["state"] == "OPEN":
+            tick.notify(pr_message(pr, "updated"))
         return
     reason = {
         "0": "ended without a pull request",
@@ -240,10 +267,13 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
         return
     labels = names(tick.gh_json("issue", "view", number, "--json", "labels"))
     has_pr = any(closes(pr) == int(number) for pr in prs)
+    opened = newest_open_pr(prs, int(number))
     if "agent:running" not in labels or has_pr:
         remove_worktree(tick, worktree)
         tick.say(f"{key}: ended normally" if outcome == "0" else
                  f"{key}: {reason}, but the build already handed over")
+        if opened is not None:
+            tick.notify(pr_message(opened, "opened"))
         return
     ensure_label(tick, "agent:failed")
     tick.gh("issue", "edit", number, "--add-label", "agent:failed", "--remove-label",
