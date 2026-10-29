@@ -49,6 +49,17 @@ All under `~/.reviewradar/`:
 - An issue labelled `risk:high`, or whose body names `migrations/` or `models.py`, runs alone.
 - A build that times out or fails before its pull request: the issue gets `agent:failed` and a comment with the last 20 log lines; the worktree stays. The plan limit: the issue goes back to `agent:ready` and new builds pause for 60 minutes.
 
+## Guards
+
+The tick does not start a ready issue (ADR-015):
+
+- while any issue named on a `Depends on` line is still open (every `#number` on the line counts);
+- while one of its files (the backticked paths in the bullets of `## Files likely touched`) is also a file of an open `agent:running` or `agent:review` issue, or of an issue chosen earlier in the same tick: the log says `issue-<n>: waits for #<m>, which also touches <path>`;
+- with other builds, when its body lists no file: it runs alone, like `risk:high`;
+- in a tick where the latest completed `Checks` run on `main` is not green: pull request runs still start, and ntfy says `main is red at <sha>: <run url>` once per commit. An unreadable run counts as green, with a log line.
+
+The log lines are in the tmux window and in the tick's output.
+
 ## Phone messages (ntfy)
 
 Sent only when `NTFY_TOPIC` is set.
@@ -60,6 +71,7 @@ Sent only when `NTFY_TOPIC` is set.
 | `ReviewRadar build for issue #<n> failed: <reason>` | an issue build ended without a pull request |
 | `ReviewRadar build for pull request #<p> <reason>` | a pull request build failed or timed out |
 | `ReviewRadar loop paused 60 minutes: plan limit reached (<key>)` | the Claude plan limit was reached |
+| `main is red at <sha>: <run url>` | the latest completed `Checks` run on `main` is not green; once per commit |
 | `ReviewRadar queue empty, <w> pull requests waiting` | nothing to start and nothing running; again only when the text changes |
 
 The loop's open pull requests with their status labels: <https://github.com/hungle-agilityio/ai-training/pulls?q=is%3Apr+is%3Aopen+%22work-queue%22+in%3Abody>
