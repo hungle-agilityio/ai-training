@@ -2,7 +2,11 @@
 name = "reviewradar"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = ["Django>=5.0,<6.0"]
+dependencies = [
+    "Django>=5.0,<6.0",
+    "gunicorn>=26",
+    "whitenoise>=6",
+]
 
 [dependency-groups]
 dev = [
