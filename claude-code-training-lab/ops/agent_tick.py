@@ -39,6 +39,10 @@ LABEL_COLORS = {
     "agent:failed": ("D93F0B", "The loop could not finish this issue; see the comment"),
 }
 REPO_ROOT = Path(__file__).resolve().parents[2]
+DEPENDS_LINE = re.compile(r"^\W*Depends on\b(.*)$", re.IGNORECASE | re.MULTILINE)
+FILES_HEADING = re.compile(r"^##\s+Files likely touched\s*$", re.IGNORECASE | re.MULTILINE)
+BULLET_PATH = re.compile(r"^\s*[-*]\s+[^`\n]*`([^`\n]+)`", re.MULTILINE)
+LAB_PREFIX = "claude-code-training-lab/"
 
 
 class Host(Protocol):
@@ -108,6 +112,7 @@ class Tick:
     home: Path
     settings: Settings
     log: list[str] = field(default_factory=list)
+    main_red: bool = False
 
     @property
     def runs(self) -> Path:
@@ -338,9 +343,59 @@ def labelled_by_owner(tick: Tick, number: int) -> bool:
     return code == 0 and bool(logins) and logins[-1] == OWNER
 
 
+def depends_on(body: str) -> set[int]:
+    """Every #number on each line that starts with 'Depends on'."""
+    found: set[int] = set()
+    for rest in DEPENDS_LINE.findall(body):
+        found |= {int(n) for n in re.findall(r"#(\d+)", rest)}
+    return found
+
+
+def files_of(body: str) -> set[str]:
+    """The backticked paths of the bullet lines under '## Files likely touched'."""
+    heading = FILES_HEADING.search(body)
+    if heading is None:
+        return set()
+    section = body[heading.end():]
+    following = re.search(r"^##\s", section, re.MULTILINE)
+    section = section[: following.start()] if following else section
+    paths = set()
+    for path in BULLET_PATH.findall(section):
+        path = path.strip().removeprefix("./").removeprefix(LAB_PREFIX)
+        if path:
+            paths.add(path)
+    return paths
+
+
 def runs_alone(issue: dict[str, Any]) -> bool:
+    """risk:high, a migration or model change, or no files listed (an empty body is not checked)."""
     body = issue.get("body") or ""
-    return "risk:high" in names(issue) or any(word in body for word in ALONE_WORDS)
+    no_files = bool(body.strip()) and not files_of(body)
+    return "risk:high" in names(issue) or any(word in body for word in ALONE_WORDS) or no_files
+
+
+def main_is_red(tick: Tick) -> bool:
+    """#70 AC5: the latest completed Checks run on main; unreadable counts as green."""
+    code, out = tick.gh("run", "list", "--workflow", "checks.yml", "--branch", "main",
+                        "--status", "completed", "--limit", "1",
+                        "--json", "conclusion,headSha,url")
+    try:
+        runs = json.loads(out) if code == 0 else None
+    except ValueError:
+        runs = None
+    if not isinstance(runs, list) or not runs or not isinstance(runs[0], dict):
+        tick.say("main checks could not be read; going on as if main were green")
+        return False
+    run = runs[0]
+    if run.get("conclusion") == "success":
+        return False
+    sha = str(run.get("headSha") or "")[:7]
+    last = tick.home / "last-red"
+    if not (last.exists() and last.read_text() == sha):
+        last.write_text(sha)
+        tick.notify(f"main is red at {sha}: {run.get('url')}")
+    tick.say(f"main is red at {sha}; no new issue starts")
+    return True
 
 
 def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> list[Target]:
@@ -357,10 +412,15 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         if len(chosen) < free and key not in running and pr_needs_run(tick, pr, review_issues):
             prompt = f"Use the work-queue skill for pull request #{pr['number']} only."
             chosen.append(Target(key, pr["number"], prompt, branch=pr["headRefName"]))
-    if any(running.values()):
+    if any(running.values()) or tick.main_red:
         return chosen
     issues = tick.gh_json("issue", "list", "--state", "open", "--limit", "200",
                           "--json", "number,body,labels,createdAt")
+    busy: dict[str, int] = {}
+    for item in issues:
+        if names(item) & {"agent:running", "agent:review"}:
+            for path in files_of(item.get("body") or ""):
+                busy.setdefault(path, item["number"])
     open_numbers = {item["number"] for item in issues}
     waiting = sum(1 for pr in prs if pr["state"] == "OPEN")
     waiting += sum(1 for item in issues if "agent:running" in names(item))
@@ -370,8 +430,13 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         if len(chosen) >= free or waiting >= WAITING_CAP:
             break
         key = f"issue-{issue['number']}"
-        depends = {int(n) for n in re.findall(r"Depends on #(\d+)", issue.get("body") or "")}
+        depends = depends_on(issue.get("body") or "")
         if key in running or names(issue) & SKIP_LABELS or depends & open_numbers:
+            continue
+        files = files_of(issue.get("body") or "")
+        shared = sorted(path for path in files if path in busy)
+        if shared:
+            tick.say(f"{key}: waits for #{busy[shared[0]]}, which also touches {shared[0]}")
             continue
         if not labelled_by_owner(tick, issue["number"]):
             tick.say(f"{key}: agent:ready was not added by {OWNER}; skipped")
@@ -383,6 +448,8 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
             chosen.append(Target(key, issue["number"], prompt, alone=True))
             break
         chosen.append(Target(key, issue["number"], prompt))
+        for path in files:
+            busy.setdefault(path, issue["number"])
         waiting += 1
     return chosen
 
@@ -451,6 +518,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
         prs = loop_pull_requests(tick)
         finish_runs(tick, prs)
         running = running_keys(tick)
+        tick.main_red = main_is_red(tick)
         if paused(tick):
             tick.say("paused after the plan limit; no build started")
             return tick.log
