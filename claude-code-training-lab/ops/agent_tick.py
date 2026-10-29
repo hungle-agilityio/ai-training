@@ -41,6 +41,11 @@ LABEL_COLORS = {
     "agent:failed": ("D93F0B", "The loop could not finish this issue; see the comment"),
 }
 REPO_ROOT = Path(__file__).resolve().parents[2]
+OPEN_PRS_URL = (
+    "https://github.com/hungle-agilityio/ai-training/pulls?q=is%3Apr+is%3Aopen+%22work-queue%22"
+    "+in%3Abody"
+)
+NEEDS_YOU = ("pr:blocked", "pr:ci-failed")
 DEPENDS_LINE = re.compile(r"^\W*Depends on\b(.*)$", re.IGNORECASE | re.MULTILINE)
 FILES_HEADING = re.compile(r"^##\s+Files likely touched\s*$", re.IGNORECASE | re.MULTILINE)
 BULLET_PATH = re.compile(r"^\s*[-*]\s+[^`\n]*`([^`\n]+)`", re.MULTILINE)
@@ -92,11 +97,25 @@ class RealHost:
         except OSError as error:
             print(f"ntfy failed: {error}")
 
+    def slack(self, url: str, message: str) -> bool:
+        """Post to a Slack Incoming Webhook; the URL is a secret and is never printed."""
+        data = json.dumps({"text": message}).encode()
+        request = urllib.request.Request(
+            url, data=data, headers={"Content-Type": "application/json"}
+        )
+        try:
+            urllib.request.urlopen(request, timeout=10).close()
+        except (OSError, ValueError) as error:
+            print(f"Slack post failed ({type(error).__name__})")
+            return False
+        return True
+
 
 @dataclass(frozen=True)
 class Settings:
     concurrency: int
     ntfy_topic: str
+    slack_url: str = ""
 
 
 @dataclass(frozen=True)
@@ -106,6 +125,7 @@ class Target:
     prompt: str
     branch: str = ""
     alone: bool = False
+    message: str = ""
 
 
 @dataclass
@@ -115,6 +135,8 @@ class Tick:
     settings: Settings
     log: list[str] = field(default_factory=list)
     main_red: bool = False
+    pull_problem: str = ""
+    open_issues: list[dict[str, Any]] | None = None
 
     @property
     def runs(self) -> Path:
@@ -125,8 +147,13 @@ class Tick:
         print(line)
 
     def notify(self, message: str) -> None:
+        """ntfy when NTFY_TOPIC is set, Slack when SLACK_WEBHOOK_URL is set (#78 AC6)."""
         if self.settings.ntfy_topic:
             self.host.notify(self.settings.ntfy_topic, message)
+        if self.settings.slack_url:
+            post = getattr(self.host, "slack", None)
+            if post is None or not post(self.settings.slack_url, message):
+                self.say("Slack post failed")
 
     def gh(self, *args: str) -> tuple[int, str]:
         return self.host.run(["gh", *args, "--repo", REPO])
@@ -150,7 +177,8 @@ def read_settings(path: Path) -> Settings:
     raw = values.get("AGENT_CONCURRENCY", "1")
     if raw not in {"1", "2", "3"}:
         raise SystemExit(f"AGENT_CONCURRENCY in {path} must be 1, 2 or 3, not {raw!r}")
-    return Settings(concurrency=int(raw), ntfy_topic=values.get("NTFY_TOPIC", ""))
+    return Settings(concurrency=int(raw), ntfy_topic=values.get("NTFY_TOPIC", ""),
+                    slack_url=values.get("SLACK_WEBHOOK_URL", ""))
 
 
 def take_lock(host: Host, lock: Path) -> bool:
@@ -333,6 +361,17 @@ def owner_redo_after(comments: list[dict[str, Any]], since: str) -> bool:
     )
 
 
+def redo_count(tick: Tick, pr: dict[str, Any]) -> int:
+    """#78 AC1: the owner's /redo comments newer than the last commit (until #80)."""
+    commits = pr.get("commits") or []
+    since = commits[-1].get("committedDate", "") if commits else ""
+    comments = list(pr.get("comments") or [])
+    issue = closes(pr)
+    if issue is not None:
+        comments += tick.gh_json("issue", "view", str(issue), "--json", "comments")["comments"]
+    return sum(1 for c in comments if owner_redo_after([c], since))
+
+
 def pr_needs_run(tick: Tick, pr: dict[str, Any], review_issues: set[int]) -> bool:
     """AC4: the cases of work-queue section 1."""
     labels = names(pr)
@@ -431,11 +470,16 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         key = f"pr-{pr['number']}"
         if len(chosen) < free and key not in running and pr_needs_run(tick, pr, review_issues):
             prompt = f"Use the work-queue skill for pull request #{pr['number']} only."
-            chosen.append(Target(key, pr["number"], prompt, branch=pr["headRefName"]))
+            count = redo_count(tick, pr)
+            what = f"{count} change requests open" if count else "CI"
+            message = f"ReviewRadar working on PR #{pr['number']} ({what})"
+            chosen.append(Target(key, pr["number"], prompt, branch=pr["headRefName"],
+                                 message=message))
     if any(running.values()) or tick.main_red:
         return chosen
     issues = tick.gh_json("issue", "list", "--state", "open", "--limit", "200",
-                          "--json", "number,body,labels,createdAt")
+                          "--json", "number,title,body,labels,createdAt")
+    tick.open_issues = issues
     busy: dict[str, int] = {}
     for item in issues:
         if names(item) & {"agent:running", "agent:review"}:
@@ -462,12 +506,14 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
             tick.say(f"{key}: agent:ready was not added by {OWNER}; skipped")
             continue
         prompt = f"Use the work-queue skill for issue #{issue['number']} only."
+        title = issue.get("title") or ""
+        message = f"ReviewRadar started #{issue['number']}: {title}" if title else ""
         if runs_alone(issue):
             if running or chosen:
                 break
-            chosen.append(Target(key, issue["number"], prompt, alone=True))
+            chosen.append(Target(key, issue["number"], prompt, alone=True, message=message))
             break
-        chosen.append(Target(key, issue["number"], prompt))
+        chosen.append(Target(key, issue["number"], prompt, message=message))
         for path in files:
             busy.setdefault(path, issue["number"])
         waiting += 1
@@ -510,6 +556,8 @@ def start(tick: Tick, target: Target) -> bool:
     pid = tick.host.spawn(wrapper, run / "log.txt")
     (run / "pid").write_text(str(pid))
     tick.say(f"{target.key}: started (pid {pid})")
+    if target.message:
+        tick.notify(target.message)
     return True
 
 
@@ -554,6 +602,7 @@ def pull_main(tick: Tick) -> None:
     branch = branch.strip()
     if code != 0 or not branch:
         tick.say("main checkout: the branch could not be read; not updated")
+        tick.pull_problem = "the branch could not be read"
         return
     reason = ""
     if branch != "main":
@@ -566,6 +615,7 @@ def pull_main(tick: Tick) -> None:
             reason = "git fetch failed"
         elif tick.host.run([*git, "merge", "--ff-only", "origin/main"])[0] != 0:
             reason = "the fast-forward failed"
+    tick.pull_problem = reason
     last = tick.home / "last-pull-problem"
     if not reason:
         last.unlink(missing_ok=True)
@@ -592,10 +642,61 @@ def paused(tick: Tick) -> bool:
     return flag.exists() and float(flag.read_text().strip() or 0) > tick.host.now()
 
 
+def needs_you(tick: Tick, prs: list[dict[str, Any]]) -> None:
+    """#78 AC2: pr:blocked or pr:ci-failed, once per pull request, label and head commit."""
+    seen_file = tick.home / "needs-you"
+    seen = set(seen_file.read_text().split()) if seen_file.exists() else set()
+    for pr in prs:
+        if pr["state"] != "OPEN":
+            continue
+        commits = pr.get("commits") or []
+        head = (commits[-1].get("oid") or commits[-1].get("committedDate", "")) if commits else ""
+        for label in NEEDS_YOU:
+            key = f"{pr['number']}:{label}:{head}"
+            if label in names(pr) and key not in seen:
+                seen.add(key)
+                tick.notify(f"ReviewRadar PR #{pr['number']} needs you: {label}\n"
+                            f"https://github.com/{REPO}/pull/{pr['number']}")
+    seen_file.write_text("\n".join(sorted(seen)))
+
+
+def announce_merged(tick: Tick, prs: list[dict[str, Any]]) -> None:
+    """#78 AC4: each merged loop pull request once, after the pull of main of this tick."""
+    record = tick.home / "announced-merged"
+    merged = [pr for pr in prs if pr["state"] == "MERGED"]
+    if not record.exists():
+        record.write_text("\n".join(str(pr["number"]) for pr in merged))
+        return
+    done = set(record.read_text().split())
+    for pr in merged:
+        if str(pr["number"]) in done:
+            continue
+        done.add(str(pr["number"]))
+        head = f"ReviewRadar PR #{pr['number']} merged (#{closes(pr)})"
+        if tick.pull_problem:
+            tick.notify(f"{head}; main checkout not updated: {tick.pull_problem}")
+        else:
+            code, sha = tick.host.run(["git", "-C", str(REPO_ROOT), "rev-parse", "--short",
+                                       "HEAD"])
+            tick.notify(f"{head}; main is now {sha.strip() if code == 0 else 'unknown'}")
+        tick.say(f"pr-{pr['number']}: merged, announced")
+    record.write_text("\n".join(sorted(done)))
+
+
 def queue_empty(tick: Tick, prs: list[dict[str, Any]]) -> None:
-    """AC12: one 'queue empty' message, again only after something changed."""
+    """AC12: 'queue empty', or #78 AC3 'waiting' when ready issues wait on the cap."""
     waiting = sum(1 for pr in prs if pr["state"] == "OPEN")
-    message = f"ReviewRadar queue empty, {waiting} pull requests waiting"
+    issues = tick.open_issues
+    if issues is None:
+        issues = tick.gh_json("issue", "list", "--state", "open", "--limit", "200",
+                              "--json", "number,title,body,labels,createdAt")
+    ready = [i for i in issues if "agent:ready" in names(i) and not names(i) & SKIP_LABELS]
+    if ready:
+        waiting += sum(1 for item in issues if "agent:running" in names(item))
+        message = (f"ReviewRadar waiting: {waiting} pull requests open (limit {WAITING_CAP}), "
+                   f"{len(ready)} ready issues not started\n{OPEN_PRS_URL}")
+    else:
+        message = f"ReviewRadar queue empty, {waiting} pull requests waiting"
     last = tick.home / "last-empty"
     if last.exists() and last.read_text() == message:
         return
@@ -616,7 +717,9 @@ def tick_once(host: Host, home: Path) -> list[str]:
         pull_main(tick)
         prs = loop_pull_requests(tick)
         tidy_ready(tick)
+        announce_merged(tick, prs)
         finish_runs(tick, prs)
+        needs_you(tick, prs)
         running = running_keys(tick)
         tick.main_red = main_is_red(tick)
         if paused(tick):

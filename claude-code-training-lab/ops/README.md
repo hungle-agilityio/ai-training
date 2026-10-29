@@ -68,12 +68,19 @@ The log lines are in the tmux window and in the tick's output.
 - **Handed over.** An open issue with `agent:ready` and `agent:review` loses `agent:ready`, so a closed pull request is not rebuilt; add `agent:ready` again to rebuild it. `agent:failed` keeps `agent:ready`.
 - **`archive/` branches.** When a kept worktree is moved aside, its branch (and, for an issue, every local `bug/<n>-`, `feat/<n>-`, `task/<n>-` branch) is renamed `archive/<branch>-<unix time>`. Nothing is deleted.
 
-## Phone messages (ntfy)
+## Phone messages (ntfy and Slack)
 
-Sent only when `NTFY_TOPIC` is set.
+Every message goes to ntfy when `NTFY_TOPIC` is set and to Slack when `SLACK_WEBHOOK_URL` is set (both, one or none). A failed Slack post writes the log line `Slack post failed` and does not stop the tick.
+
+**Slack, once:** create a Slack app (api.slack.com/apps, From scratch), turn on **Incoming Webhooks**, **Add New Webhook to Workspace** and pick a channel, copy the webhook URL into `~/.reviewradar/agent.env` as `SLACK_WEBHOOK_URL=...` (never into the repository), then set that channel's notifications to **All new messages** in the Slack app on the phone.
 
 | Message | When |
 |---|---|
+| `ReviewRadar started #<n>: <issue title>` | the tick started an issue build |
+| `ReviewRadar working on PR #<p> (<k> change requests open)`, or `(CI)` | the tick started a pull request run; `<k>` counts the owner's `/redo` comments newer than the last commit |
+| `ReviewRadar PR #<p> needs you: <pr:blocked or pr:ci-failed>` and the link | once per pull request, label and head commit |
+| `ReviewRadar PR #<p> merged (#<n>); main is now <sha>`, or `...; main checkout not updated: <reason>` | a loop pull request was merged (by anyone), announced once after the tick pulled `main`; the first run only records the merged ones |
+| `ReviewRadar waiting: <w> pull requests open (limit 5), <k> ready issues not started` and the link | nothing started or running while ready issues wait; again only when the text changes |
 | `ReviewRadar PR #<p> opened for #<n> (<status label>)`, the pull request link, `Report: <link>` | an issue build ended and an open loop pull request closes that issue (also after an error or a timeout that came after the pull request) |
 | `ReviewRadar PR #<p> updated for #<n> (<status label>)`, the same two links | a pull request build (a `/redo` or a CI fix) ended normally and the pull request is still open |
 | `ReviewRadar build for issue #<n> failed: <reason>` | an issue build ended without a pull request |
