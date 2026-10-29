@@ -11,12 +11,12 @@ ADR-008 stopped the loop at a local commit and asked the user before every push.
 
 The user decided (2026-10-26) that the loop stops at the pull request:
 - The loop pushes its own issue branch and opens the pull request with the verify report link; no preview. At most 5 wait at once; an issue with `Depends on #M` waits until #M is closed.
-- **The loop never merges.** The owner merges from an interactive session (a phone works through Remote Control): "merge #N" runs `gh pr merge N --merge --match-head-commit <sha>`, and the hook shows a prompt naming the branch and commit. The owner's tap is the approval; the loop cannot answer it. Merging on GitHub works too.
+- **The loop never merges.** Replaced by ADR-016: Claude builds never merge; the tick merges on the owner's approval comment (ADR-016). Merging on GitHub works too.
 - `/redo <what>` on a pull request sends it back. It can only cause more work, so a forged one is harmless.
 - One private "Review queue" artifact lists the waiting pull requests; a push notification says when the queue is empty.
 
 Rejected:
-- **`/merge` comment as the signal:** forgeable with the shared token (above).
+- **`/merge` comment as the signal:** forgeable with the shared token (above). Revisited in ADR-016: the tick, plain Python that no issue text can steer, reads it, and Claude builds still never merge.
 - **A second GitHub account for the loop:** would make `/merge` a real signal, but adds an account to manage and a collaborator on a private repo. Revisit if the one-tap merge becomes a bottleneck.
 - **GitHub "Approve":** the pull request is opened with the owner's token, and GitHub does not let an author approve their own pull request; `gh pr review` is also denied.
 

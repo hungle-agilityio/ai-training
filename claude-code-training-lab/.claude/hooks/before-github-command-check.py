@@ -112,7 +112,7 @@ def check_gh_unsplit(rest: str, allowed: str) -> list[str]:
     return problems
 
 
-def check_gh(rest: str, allowed: str) -> list[str]:
+def check_gh(rest: str, allowed: str, loop: bool = False) -> list[str]:
     try:
         tokens = shlex.split(rest)
     except ValueError:
@@ -140,12 +140,123 @@ def check_gh(rest: str, allowed: str) -> list[str]:
         elif len(positional) > 2 and repo_from_value(positional[2]) != allowed:
             problems.append(f"it targets {repo_from_value(positional[2])}")
     elif top == "api":
-        problems.extend(check_api(tokens, positional, allowed))
+        problems.extend(check_api(tokens, positional, allowed, loop))
     problems.extend(foreign_in_text(rest, allowed))
     return problems
 
 
-def check_api(tokens: list[str], positional: list[str], allowed: str) -> list[str]:
+API_VALUE_FLAGS = {"-X", "--method", "-f", "-F", "--field", "--raw-field"}
+API_FIELD_FLAGS = {"-f", "-F", "--field", "--raw-field"}
+API_PLAIN_FLAGS = {"--silent"}
+MARK_REACTIONS = {"eyes", "rocket", "confused"}
+RESOLVE_THREAD = re.compile(
+    r"mutation\w*(?:\([^)]*\))?\{resolveReviewThread\(input:\{threadId:"
+    r"(?:\"[\w-]+\"|\$\w+)\}\)\{thread\{[\w{}]*\}\}\}"
+)
+
+
+def thread_query(allowed: str) -> re.Pattern[str]:
+    """The one GraphQL read the loop may make: the review threads of a pull request here."""
+    owner, name = (re.escape(part) for part in allowed.split("/", 1))
+    return re.compile(
+        rf"query\w*(?:\([^)]*\))?\{{repository\(owner:\"{owner}\",name:\"{name}\"\)"
+        r"\{pullRequest\(number:(?:\d+|\$\w+)\)\{reviewThreads\(first:\d+\)"
+        r"\{nodes\{[\w{}():,]*\}\}\}\}\}",
+        re.I,
+    )
+
+
+def api_parts(tokens: list[str]) -> tuple[str, str, dict[str, str]] | None:
+    """Method, path and fields of a gh api call; None when it uses any other option."""
+    method = ""
+    path = ""
+    fields: dict[str, str] = {}
+    args = tokens[tokens.index("api") + 1 :] if "api" in tokens else []
+    index = 0
+    while index < len(args):
+        token = args[index]
+        name, eq, inline = token.partition("=")
+        if token.startswith("-") and name in API_VALUE_FLAGS:
+            if eq:
+                value = inline
+            elif index + 1 < len(args):
+                value = args[index + 1]
+                index += 1
+            else:
+                return None
+            if name in API_FIELD_FLAGS:
+                key, sep, field = value.partition("=")
+                if not sep:
+                    return None
+                fields[key] = field
+            else:
+                method = value.upper()
+        elif token in API_PLAIN_FLAGS:
+            pass
+        elif not token.startswith("-") and not path:
+            path = token.lstrip("/").lower()
+        else:
+            return None
+        index += 1
+    return (method or ("POST" if fields else "GET")), path, fields
+
+
+API_FLAGS_WITH_VALUE = API_VALUE_FLAGS | {
+    "-H", "--header", "-q", "--jq", "-t", "--template", "--input", "--hostname", "-p",
+    "--preview", "--cache",
+}
+
+
+def api_path(tokens: list[str]) -> str:
+    """The endpoint of a gh api call, skipping the values of its options (-X POST, -f a=b)."""
+    args = tokens[tokens.index("api") + 1 :] if "api" in tokens else []
+    index = 0
+    while index < len(args):
+        token = args[index]
+        if token in API_FLAGS_WITH_VALUE:
+            index += 2
+            continue
+        if not token.startswith("-"):
+            return token.lstrip("/").lower()
+        index += 1
+    return ""
+
+
+def mark_path(path: str, allowed: str) -> str:
+    """'reaction', 'reply' or 'resolve' when a gh api path is one the loop's review marks use."""
+    base = f"repos/{allowed}/"
+    if re.fullmatch(rf"{re.escape(base)}(?:issues|pulls)/comments/\d+/reactions", path):
+        return "reaction"
+    if re.fullmatch(rf"{re.escape(base)}pulls/\d+/comments/\d+/replies", path):
+        return "reply"
+    return "resolve" if path == "graphql" else ""
+
+
+def review_mark_call(tokens: list[str], allowed: str) -> str:
+    """The kind of an exact review-mark call (reaction, reply, resolve, threads), or ''."""
+    parts = api_parts(tokens)
+    if parts is None:
+        return ""
+    method, path, fields = parts
+    kind = mark_path(path, allowed)
+    if method != "POST" or not kind:
+        return ""
+    if kind == "reaction":
+        ok = set(fields) == {"content"} and fields["content"] in MARK_REACTIONS
+    elif kind == "reply":
+        ok = set(fields) == {"body"}
+    else:
+        query = re.sub(r"\s+", "", fields.get("query", ""))
+        if thread_query(allowed).fullmatch(query) and not set(fields) - {"query", "number"}:
+            return "threads"
+        extra = set(fields) - {"query", "threadId"}
+        ok = not extra and RESOLVE_THREAD.fullmatch(query) is not None
+    return kind if ok else ""
+
+
+def check_api(
+    tokens: list[str], positional: list[str], allowed: str, loop: bool = False
+) -> list[str]:
     problems: list[str] = []
     for index, token in enumerate(tokens):
         method = ""
@@ -155,11 +266,13 @@ def check_api(tokens: list[str], positional: list[str], allowed: str) -> list[st
             method = token.split("=", 1)[1]
         if method.upper() == "DELETE":
             problems.append("gh api with DELETE is not allowed")
-    if len(positional) < 2:
+    path = api_path(tokens)
+    if not path:
         return problems
-    path = positional[1].lstrip("/").lower()
+    if path == "graphql" and loop and review_mark_call(tokens, allowed) in ("resolve", "threads"):
+        return problems
     if not (path.startswith(f"repos/{allowed}") or path in ("user", "rate_limit")):
-        problems.append(f"gh api path {positional[1]} is outside {allowed}")
+        problems.append(f"gh api path {path} is outside {allowed}")
     return problems
 
 
@@ -235,7 +348,7 @@ def check_fetch_tool(segment: str, allowed: str) -> list[str]:
     return problems
 
 
-def check_command(command: str, allowed: str) -> list[str]:
+def check_command(command: str, allowed: str, loop: bool = False) -> list[str]:
     """Return the reasons to block a command, or an empty list when it may run."""
     command = without_inert_heredocs(command)
     problems: list[str] = []
@@ -251,7 +364,7 @@ def check_command(command: str, allowed: str) -> list[str]:
             if repo_from_value(env_value) != allowed:
                 problems.append(f"GH_REPO points to {repo_from_value(env_value)}")
         if match := GH_SEGMENT.match(text):
-            problems.extend(check_gh(match.group(1), allowed))
+            problems.extend(check_gh(match.group(1), allowed, loop))
         elif match := GIT_SEGMENT.match(text):
             problems.extend(check_git(match.group(1), allowed))
         elif FETCH_SEGMENT.match(text):
@@ -372,10 +485,14 @@ def unsplit_publishes(rest: str, gh: bool) -> bool:
     return words[0] == "push"
 
 
-def check_publish(command: str, loop: bool, run: GitRunner) -> tuple[str, list[str]]:
-    """Decide push, pull request and merge: ('allow' | 'ask' | 'deny', reasons)."""
+def check_publish(
+    command: str, loop: bool, run: GitRunner, allowed: str | None = None
+) -> tuple[str, list[str]]:
+    """Decide push, pull request, merge and gh api: ('allow' | 'ask' | 'deny', reasons)."""
+    allowed = allowed or read_allowed()
     problems: list[str] = []
     ask: list[str] = []
+    marks: list[str] = []
     segments = [s.strip() for s in SEGMENT_SPLIT.split(without_inert_heredocs(command))]
     segments = [segment for segment in segments if segment]
     moves = any(re.match(r"^(?:cd|pushd)\b", segment) for segment in segments)
@@ -405,6 +522,16 @@ def check_publish(command: str, loop: bool, run: GitRunner) -> tuple[str, list[s
         positional = [token for token in tokens if not token.startswith("-")]
         if positional[:1] == ["api"]:
             problems.extend(api_problems(tokens, positional))
+            kind = review_mark_call(tokens, allowed)
+            if not loop:
+                ask.append("gh api needs your approval outside loop mode")
+            elif kind:
+                marks.append(f"review mark: {kind}")
+            elif mark_path(api_path(tokens), allowed):
+                problems.append(
+                    "in loop mode a review mark is exactly a POST of eyes, rocket or confused, "
+                    "a reply body, or the resolveReviewThread mutation"
+                )
         elif positional[:2] == ["pr", "create"] and not loop:
             ask.append("opening a pull request needs your approval outside loop mode")
         elif positional[:2] == ["pr", "merge"]:
@@ -418,7 +545,7 @@ def check_publish(command: str, loop: bool, run: GitRunner) -> tuple[str, list[s
                 ask.append(f"merge: {summary}")
     if problems:
         return "deny", list(dict.fromkeys(problems))
-    return ("ask", ask) if ask else ("allow", [])
+    return ("ask", ask) if ask else ("allow", marks)
 
 
 REPORT_LINK = "https://claude.ai/artifact/"
@@ -504,11 +631,11 @@ def publish_gate(command: str, cwd: str) -> int:
         message = "; ".join(reasons)
         print(f"Blocked by before-github-command-check: {message}.", file=sys.stderr)
         return 2
-    if decision == "ask":
+    if decision == "ask" or reasons:
         reply = {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
-                "permissionDecision": "ask",
+                "permissionDecision": decision,
                 "permissionDecisionReason": "; ".join(reasons),
             }
         }
@@ -529,7 +656,7 @@ def main() -> int:
     if RELEVANT.search(command) is None and TOKEN_USE.search(plain) is None:
         return 0
     try:
-        problems = check_command(command, read_allowed())
+        problems = check_command(command, read_allowed(), os.environ.get(LOOP_ENV) == "1")
         allowed_name = read_allowed()
     except Exception as error:  # fail closed for anything that looks relevant
         problems = [f"the guard could not check this command ({error})"]

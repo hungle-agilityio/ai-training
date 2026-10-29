@@ -30,3 +30,4 @@ One file per decision: `ADR-001-short-title.md`, numbered in order. Write one fo
 - [ADR-013: One status label on each loop pull request](ADR-013-pull-request-status-labels.md)
 - [ADR-014: A tick runs loop builds in parallel](ADR-014-tick-runs-builds-in-parallel.md)
 - [ADR-015: Guards for parallel pull requests](ADR-015-guards-for-parallel-pull-requests.md)
+- [ADR-016: The tick merges on the owner's approval comment](ADR-016-tick-merges-on-owner-approval.md)

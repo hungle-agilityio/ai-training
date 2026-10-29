@@ -40,12 +40,15 @@
       "Bash(gh pr edit:*)",
       "Edit(./reviews/**)",
       "Edit(./reviewradar/**)",
-      "Edit(./out/**)"
+      "Edit(./out/**)",
+      "Bash(gh api -X POST repos/hungle-agilityio/ai-training/issues/comments/*/reactions *)",
+      "Bash(gh api -X POST repos/hungle-agilityio/ai-training/pulls/comments/*/reactions *)",
+      "Bash(gh api -X POST repos/hungle-agilityio/ai-training/pulls/*/comments/*/replies *)",
+      "Bash(gh api graphql *)"
     ],
     "ask": [
       "Bash(gh issue close:*)",
       "Bash(gh issue reopen:*)",
-      "Bash(gh api:*)",
       "Bash(git remote add:*)",
       "Bash(git remote set-url:*)",
       "Bash(git rebase:*)"
