@@ -44,10 +44,19 @@ All under `~/.reviewradar/`:
 
 ## What a tick does
 
-- Pull requests of the loop that need a run go first (an owner `/redo`, merged or closed with a leftover label, no status label, ready but CI red), then the oldest `agent:ready` issues.
+- First, open loop pull requests with an owner approval comment are merged when the checks of ADR-016 hold (see Review from the phone).
+- Pull requests of the loop that need a run go first (an open change request, merged or closed with a leftover label, no status label, ready but CI red), then the oldest `agent:ready` issues.
 - An issue is skipped when it is `agent:running`, `agent:review`, `agent:failed` or `agent:manual`, when a `Depends on #M` is still open, or when `agent:ready` was added by anyone but `hungle-agilityio`. No new issue when waiting pull requests plus running issues reach 5.
 - An issue labelled `risk:high`, or whose body names `migrations/` or `models.py`, runs alone.
 - A build that times out or fails before its pull request: the issue gets `agent:failed` and a comment with the last 20 log lines; the worktree stays. The plan limit: the issue goes back to `agent:ready` and new builds pause for 60 minutes.
+
+## Review from the phone
+
+Review a loop pull request on GitHub like any other (ADR-016):
+
+- **Approve:** write a comment on the pull request whose whole text is one of `/merge`, `merge`, `lgtm`, `approved`, `approve`, `looks good`, `look good`, `ok`, `duyệt`, `ship it` (any case, a trailing `.!,:;` is fine). "lgtm but rename X" is a change request, not an approval. The tick merges at its next run when the approval is newer than the loop's last commit (an update from `main` does not count), the pull request has `pr:ready-for-review`, every check is green, no change request is open and no run of it is in progress. Behind `main`: it updates the branch and merges at a later tick. A conflict: it posts `/redo merge origin/main into this branch and fix the conflict` and you approve again after that round. Red CI, `DIRTY`, `BLOCKED` or a failed merge: no merge and one message "not merged: <reason>". After the project chat approves, a thread posts `/merge` and runs one tick.
+- **Ask for a change:** any other comment on the pull request, a comment on a line, or a comment starting with `/redo` on the issue. Only comments made after the pull request was opened count.
+- **Marks**, all made with your login: 👀 the loop is working on it; 🚀 done (a reply says `Done in <sha>: ...`), or on an approval, merged; 😕 the loop cannot do it (the reply says why), or on an approval, not merged, so approve again. Add 🚀 yourself to make the loop skip a comment.
 
 ## Guards
 
