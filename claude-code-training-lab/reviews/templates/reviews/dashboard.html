@@ -84,9 +84,11 @@
       <ul class="bars">
         {% for bar in overview.rating_bars %}
           <li>
-            <span class="bar-label">{{ bar.stars }} <span aria-hidden="true">★</span></span>
-            <span class="bar-track" role="presentation"><span class="bar-fill bar-{{ bar.stars }}" style="width: {{ bar.percent }}%"></span></span>
-            <span class="bar-count">{{ bar.count }}</span>
+            <a class="bar-link" href="/reviews/?rating={{ bar.stars }}" aria-label="Show {{ bar.stars }}-star reviews ({{ bar.count }})">
+              <span class="bar-label">{{ bar.stars }} <span aria-hidden="true">★</span></span>
+              <span class="bar-track" role="presentation"><span class="bar-fill bar-{{ bar.stars }}" style="width: {{ bar.percent }}%"></span></span>
+              <span class="bar-count">{{ bar.count }}</span>
+            </a>
           </li>
         {% endfor %}
       </ul>
