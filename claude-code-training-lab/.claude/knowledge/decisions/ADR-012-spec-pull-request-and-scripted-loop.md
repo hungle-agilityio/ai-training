@@ -19,7 +19,7 @@ The owner decided (2026-10-28):
 - **The Notion design is the target.** It replaces the two-session parallel plan of 2026-10-27. Parallel runs come from one tick script that starts several `claude -p`, so no lock between sessions is needed.
 - **Change requests stay `/redo` comments for now.** The loop opens pull requests with the owner's token, and GitHub does not let the author of a pull request request changes on it, so the Request changes review of the Notion design does not work yet. A separate machine GitHub account is deferred. The later loop issue adds from the design: at most 3 rounds, `/replan`, and a blocked `/redo` tried once.
 - **The Gate 2 report is a comment in the pull request** that links to the verify report (screenshots, masking check) built by `build-verify-report` and `share-report`.
-- **No branch protection.** A private repository needs a paid plan for it. The hooks keep blocking merges and pushes to `main` in loop mode.
+- **No branch protection.** A private repository needs a paid plan for it. The hooks keep blocking merges and pushes to `main` in loop mode. (Replaced by ADR-015: the repository is public, so a ruleset on `main` is free.)
 - **Fast lane for Easy work.** An Easy request (one task, `risk:low`, no new rule, no migration) skips the spec pull request. The short spec goes in the issue body and Gate 1 is the owner's "OK" in the Project. The owner wants the flow simple and easy to control.
 - **The spec pull request is opened and merged from the Mac mini** through Remote Control with `gh` and the owner's login, like issues and comments (ADR-011), so it carries no Claude attribution. The Project merges only a pull request that changes nothing outside `specs/` and `design/`, and only after the owner says "Merge PR spec".
 - **Names.** `REVIEWRADAR_LOOP=1` keeps its meaning (the hooks' loop mode). The number of parallel runs gets its own variable, `AGENT_CONCURRENCY` (default 1).
@@ -28,7 +28,7 @@ Rejected:
 - **Keep `work-queue` and add a few ideas:** limits, time-outs and the labeller check stay text that a session may skip.
 - **Two loop sessions with a lock (2026-10-27):** more moving parts than one script that starts runs.
 - **A machine account now:** deferred by the owner; `/redo` works with the current token.
-- **Branch protection with CODEOWNERS:** paid plan; the hooks already guard.
+- **Branch protection with CODEOWNERS:** paid plan; the hooks already guard. (Replaced by ADR-015: the repository is public, so a ruleset on `main` is free.)
 
 ### What it replaces
 

@@ -33,6 +33,7 @@ For every new request:
    - a link to the spec on `main` (full lane);
    - the labels `risk:low`, `risk:medium` or `risk:high`, plus `needs-ui` when users see a change;
    - `agent:ready`, or `agent:manual` when the task changes `.claude/`, which the loop may not edit;
+   - a `## Files likely touched` section with one backticked path per bullet line (for example ``- `reviews/services.py` ``), because the tick reads it to keep two builds off the same file;
    - assignee hungle-agilityio.
 
    It also adds a comment titled `Decisions` with the table question / chosen / rejected / why, and a comment titled `Design` with the link, if any. No Requester, Type or Labels lines in the body, and no Claude attribution anywhere. At the end, print a table: task → issue → depends on. Your work ends at the issues.
@@ -51,7 +52,8 @@ The Project and its threads do not write application code, and open no pull requ
 
 After the hand over:
 
-- **Merge.** When I say "ok" or "duyệt" for a named build pull request (or the only one waiting), a thread merges it through the same Remote Control route (`gh pr merge`, with my login), after checking that CI is green and that no `/redo` is unanswered. If the pull request is behind `main`, first run `gh pr update-branch <n>` through the same route, wait for CI on the new head, and merge only when it is green. Never merge without that explicit OK for that pull request. If CI is red or the pull request is not mergeable, do not merge; tell me why.
+- **Merge.** When I say "ok" or "duyệt" for a named build pull request (or the only one waiting), a thread merges it through the same Remote Control route (`gh pr merge`, with my login), after checking that CI is green and that no `/redo` is unanswered. Merge one build pull request at a time: finish one merge before the next update or merge starts. Before each merge, if the pull request is behind `main`, run `gh pr update-branch <n>` through the same route, wait for CI on the new head, and merge only when it is green. After a clean update, green CI is enough; the verify report is not built again. Never merge without that explicit OK for that pull request. If CI is red or the pull request is not mergeable, do not merge; tell me why.
+- **Conflict.** When `gh pr update-branch` fails because of a conflict, do not merge. Post on the pull request, through the same route, the comment `/redo merge origin/main into this branch and fix the conflict`, run one tick at once (`uv run python ops/agent_tick.py`), and tell me the pull request waits for the redo. My OK for that pull request is needed again after the redo.
 - **Redo.** When I ask to change a pull request, post `/redo <what>` as a comment on it through the same Remote Control route (or the draft file).
 - **Status.** When I ask how things stand (for example "#N sao rồi"), read the issues and pull requests on GitHub (read only). For each issue, give its label (`agent:ready`, `agent:running`, `agent:review`, `agent:failed`, `agent:manual`), the pull request, the pull request's status label (`pr:ready-for-review`, `pr:changes-requested`, `pr:blocked`, `pr:ci-failed`, or none yet) and its report link.
 

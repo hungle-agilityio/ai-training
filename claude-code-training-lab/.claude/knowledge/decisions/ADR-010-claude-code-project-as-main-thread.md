@@ -17,6 +17,6 @@ Kept, not extended: the CLI loop (`work-queue`, ADR-008, ADR-009), until a few r
 
 - Cloud threads load `CLAUDE.md` and `.claude/rules/` at the git root only. Skills, agents, commands, hooks and permissions in `settings.json` do not run there: the rules in `rules/` are text for them, not enforced. What still limits a thread: the Claude GitHub App installed on this repository only, the cloud environment's network access, and the user's Merge it.
 - This partly reverses ADR-006 (config in the lab folder): the root `CLAUDE.md` imports it, so there is one source. Whether `@import` works in a cloud thread is to be confirmed with the first thread.
-- The GitHub proxy rejects GraphQL, so `gh issue` and `gh pr` fail in a cloud thread (REST through `gh api` works), and it does not limit which branch a push updates: only the text keeps threads off `main`, since the free plan has no branch protection.
+- The GitHub proxy rejects GraphQL, so `gh issue` and `gh pr` fail in a cloud thread (REST through `gh api` works), and it does not limit which branch a push updates: only the text keeps threads off `main`, since the free plan has no branch protection (replaced by ADR-015: the repository is public, so a ruleset on `main` is free).
 - Threads run in auto mode and the Project uses the Pro limits faster (200 new threads a day at most).
 - If the Project path works, the loop machinery (`work-queue`, `before-edit-check`, `before-finish-check`, the publish guard) can be removed; decide after a few tasks.
