@@ -45,7 +45,7 @@ These hold in every mode.
 
 ## Modes
 
-- **Loop mode** (`work-queue`, ADR-008, ADR-009): the label `agent:ready` is Gate 1; the report is Gate 2, read after the work; the loop has already pushed and opened the pull request. Open points are decided and reported once, never asked mid-run. The loop never merges: the merge is the user's, approved in an interactive session or on GitHub.
+- **Loop mode** (`work-queue`, ADR-008, ADR-009): the label `agent:ready` is Gate 1; the report is Gate 2, read after the work; the loop has already pushed and opened the pull request. Open points are decided and reported once, never asked mid-run. Claude builds never merge; the tick merges on the owner's approval comment (ADR-016), or the owner clicks Merge on GitHub.
 - Whatever the mode, the guardrails above hold. Gate 3 holds too, except in loop mode for the loop's own issue branch and pull request (ADR-009).
 
 ## Rules of the flow

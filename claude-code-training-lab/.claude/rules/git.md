@@ -6,7 +6,7 @@ The step-by-step procedure is in the skills `create-commit`, `create-issue` and 
 
 - Never commit directly to `main`. One branch per issue.
 - Nothing is pushed, published or created on GitHub without the user's approval for that item. Exception, loop mode only (ADR-009): the loop pushes its own issue branch and opens its pull request.
-- Claude never approves a pull request. It merges one only in an interactive session, when the user says which pull request and approves the prompt; the loop never merges (ADR-009).
+- Claude never approves a pull request. Claude builds never merge; the tick merges on the owner's approval comment (ADR-016). A spec pull request is merged in an interactive session after the owner's "Merge PR spec".
 - No `Co-Authored-By` or "Generated with" line in commits.
 
 ## Branches
