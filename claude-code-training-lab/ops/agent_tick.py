@@ -33,7 +33,9 @@ SKIP_LABELS = {"agent:running", "agent:review", "agent:failed", "agent:manual"}
 PR_LABELS = {"pr:ready-for-review", "pr:changes-requested", "pr:blocked", "pr:ci-failed"}
 RED_CI = {"FAILURE", "ERROR", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE"}
 ALONE_WORDS = ("migrations/", "models.py")
-USAGE_LIMIT = re.compile(r"usage limit|limit reached|rate_limit", re.IGNORECASE)
+USAGE_LIMIT = re.compile(
+    r"usage limit|limit reached|rate_limit|extra_usage|usage_limit|hit your .*limit", re.IGNORECASE
+)
 LABEL_COLORS = {
     "agent:running": ("FBCA04", "The loop is building this issue"),
     "agent:failed": ("D93F0B", "The loop could not finish this issue; see the comment"),
@@ -182,10 +184,19 @@ def log_tail(run: Path) -> str:
     return "\n".join(lines[-LOG_TAIL:])
 
 
+def is_loop_pr(pr: dict[str, Any]) -> bool:
+    """The marker, from this repository, and not opened by another login (#74 AC1)."""
+    login = (pr.get("author") or {}).get("login")
+    if pr.get("isCrossRepository") or (login and login != OWNER):
+        return False
+    return MARKER in (pr.get("body") or "")
+
+
 def loop_pull_requests(tick: Tick) -> list[dict[str, Any]]:
-    fields = "number,state,body,labels,headRefName,commits,comments,statusCheckRollup"
+    fields = ("number,state,body,labels,headRefName,commits,comments,statusCheckRollup,"
+              "author,isCrossRepository")
     found = tick.gh_json("pr", "list", "--state", "all", "--limit", "40", "--json", fields)
-    return [pr for pr in found if MARKER in (pr.get("body") or "")]
+    return [pr for pr in found if is_loop_pr(pr)]
 
 
 def closes(pr: dict[str, Any]) -> int | None:
@@ -244,16 +255,7 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
     kind, number = key.split("-", 1)
     worktree = tick.home / "worktrees" / key
     tail = log_tail(run)
-    if USAGE_LIMIT.search(tail) and outcome != "0":
-        if kind == "issue":
-            tick.gh("issue", "edit", number, "--add-label", "agent:ready",
-                    "--remove-label", "agent:running")
-        remove_worktree(tick, worktree)
-        until = tick.host.now() + PAUSE_SECONDS
-        (tick.home / "paused-until").write_text(str(int(until)))
-        tick.say(f"{key}: plan limit reached, paused 60 minutes")
-        tick.notify(f"ReviewRadar loop paused 60 minutes: plan limit reached ({key})")
-        return
+    limit = USAGE_LIMIT.search(tail) is not None
     if outcome == "0" and kind == "pr":
         remove_worktree(tick, worktree)
         tick.say(f"{key}: ended normally")
@@ -266,6 +268,9 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
         "timeout": "stopped after 45 minutes",
         "gone": "stopped with no exit code",
     }.get(outcome, f"ended with error {outcome}")
+    if kind == "pr" and limit:
+        pause_for_limit(tick, key, number, worktree)
+        return
     if kind == "pr":
         tick.say(f"{key}: {reason}; worktree kept")
         tick.notify(f"ReviewRadar build for pull request #{number} {reason}")
@@ -280,6 +285,9 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
         if opened is not None:
             tick.notify(pr_message(opened, "opened"))
         return
+    if limit:
+        pause_for_limit(tick, key, number, worktree)
+        return
     ensure_label(tick, "agent:failed")
     tick.gh("issue", "edit", number, "--add-label", "agent:failed", "--remove-label",
             "agent:running")
@@ -288,6 +296,18 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
     tick.gh("issue", "comment", number, "--body", body)
     tick.say(f"{key}: {reason}; agent:failed, worktree kept")
     tick.notify(f"ReviewRadar build for issue #{number} failed: {reason}")
+
+
+def pause_for_limit(tick: Tick, key: str, number: str, worktree: Path) -> None:
+    """#74 AC5: a build stopped by the plan limit before its hand-over; any exit code."""
+    if key.startswith("issue-"):
+        tick.gh("issue", "edit", number, "--add-label", "agent:ready",
+                "--remove-label", "agent:running")
+    remove_worktree(tick, worktree)
+    until = tick.host.now() + PAUSE_SECONDS
+    (tick.home / "paused-until").write_text(str(int(until)))
+    tick.say(f"{key}: plan limit reached, paused 60 minutes")
+    tick.notify(f"ReviewRadar loop paused 60 minutes: plan limit reached ({key})")
 
 
 def remove_worktree(tick: Tick, worktree: Path) -> None:
@@ -462,6 +482,7 @@ def start(tick: Tick, target: Target) -> bool:
     if worktree.exists():
         aside = worktree.with_name(f"{target.key}-{int(tick.host.now())}")
         tick.host.run([*git, "worktree", "move", str(worktree), str(aside)])
+        archive_branches(tick, target, aside)
     tick.host.run([*git, "fetch", "origin", "main", *([target.branch] if target.branch else [])])
     if target.branch:
         add = [*git, "worktree", "add", "-B", target.branch, str(worktree),
@@ -472,8 +493,11 @@ def start(tick: Tick, target: Target) -> bool:
     for step, cwd in ((add, None), (["uv", "sync", "--frozen"], lab)):
         code, out = tick.host.run(step, cwd=cwd)
         if code != 0:
+            name = " ".join(step[:4]) if step[0] != "git" else " ".join(step[3:5])
             tick.say(f"{target.key}: not started, {' '.join(step[:4])} failed: {out.strip()}")
+            start_failed(tick, target, name)
             return False
+    (tick.home / "start-failed" / target.key).unlink(missing_ok=True)
     if target.key.startswith("issue-"):
         ensure_label(tick, "agent:running")
         tick.gh("issue", "edit", str(target.number), "--add-label", "agent:running")
@@ -487,6 +511,80 @@ def start(tick: Tick, target: Target) -> bool:
     (run / "pid").write_text(str(pid))
     tick.say(f"{target.key}: started (pid {pid})")
     return True
+
+
+def archive_branches(tick: Tick, target: Target, aside: Path) -> None:
+    """#74 AC7: free the branches of a kept worktree; rename to archive/, delete nothing."""
+    git = ["git", "-C", str(REPO_ROOT)]
+    stamp = int(tick.host.now())
+    found: list[str] = []
+    code, out = tick.host.run(["git", "-C", str(aside), "branch", "--show-current"])
+    if code == 0 and out.strip():
+        found.append(out.strip())
+    if target.key.startswith("issue-"):
+        patterns = [f"{kind}/{target.number}-*" for kind in ("bug", "feat", "task")]
+        code, out = tick.host.run([*git, "branch", "--list", *patterns,
+                                   "--format=%(refname:short)"])
+        if code == 0:
+            found += [line.strip() for line in out.splitlines() if line.strip()]
+    for branch in dict.fromkeys(found):
+        if branch.startswith("archive/"):
+            continue
+        tick.host.run([*git, "branch", "-m", branch, f"archive/{branch}-{stamp}"])
+        tick.say(f"{target.key}: branch {branch} renamed to archive/{branch}-{stamp}")
+
+
+def start_failed(tick: Tick, target: Target, step: str) -> None:
+    """#74 AC8: one ntfy per key and step until that key starts once."""
+    folder = tick.home / "start-failed"
+    folder.mkdir(exist_ok=True)
+    mark = folder / target.key
+    if mark.exists() and mark.read_text() == step:
+        return
+    mark.write_text(step)
+    what = f"issue #{target.number}" if target.key.startswith("issue-") else (
+        f"pull request #{target.number}")
+    tick.notify(f"ReviewRadar build for {what} did not start: {step} failed")
+
+
+def pull_main(tick: Tick) -> None:
+    """#74 AC2, AC3: fast-forward the main checkout when it is on main with no tracked change."""
+    git = ["git", "-C", str(REPO_ROOT)]
+    code, branch = tick.host.run([*git, "branch", "--show-current"])
+    branch = branch.strip()
+    if code != 0 or not branch:
+        tick.say("main checkout: the branch could not be read; not updated")
+        return
+    reason = ""
+    if branch != "main":
+        reason = f"the checkout is on {branch}"
+    else:
+        code, changes = tick.host.run([*git, "status", "--porcelain", "--untracked-files=no"])
+        if code != 0 or changes.strip():
+            reason = "it has tracked changes"
+        elif tick.host.run([*git, "fetch", "origin", "main"])[0] != 0:
+            reason = "git fetch failed"
+        elif tick.host.run([*git, "merge", "--ff-only", "origin/main"])[0] != 0:
+            reason = "the fast-forward failed"
+    last = tick.home / "last-pull-problem"
+    if not reason:
+        last.unlink(missing_ok=True)
+        tick.say("main checkout: pulled")
+        return
+    tick.say(f"main checkout not updated: {reason}")
+    if not (last.exists() and last.read_text() == reason):
+        last.write_text(reason)
+        tick.notify(f"ReviewRadar main checkout not updated: {reason}")
+
+
+def tidy_ready(tick: Tick) -> None:
+    """#74 AC6: an issue handed over (agent:review) loses agent:ready; agent:failed keeps it."""
+    found = tick.gh_json("issue", "list", "--state", "open", "--label", "agent:review",
+                         "--limit", "200", "--json", "number,labels")
+    for item in found:
+        if "agent:ready" in names(item):
+            tick.gh("issue", "edit", str(item["number"]), "--remove-label", "agent:ready")
+            tick.say(f"issue-{item['number']}: handed over, agent:ready removed")
 
 
 def paused(tick: Tick) -> bool:
@@ -515,7 +613,9 @@ def tick_once(host: Host, home: Path) -> list[str]:
         tick.say("another tick is running; nothing done")
         return tick.log
     try:
+        pull_main(tick)
         prs = loop_pull_requests(tick)
+        tidy_ready(tick)
         finish_runs(tick, prs)
         running = running_keys(tick)
         tick.main_red = main_is_red(tick)
