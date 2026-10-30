@@ -71,14 +71,17 @@ ReviewRadar is online at <https://reviewradar.onrender.com>, hosted on Render's 
 
 - The site sleeps after 15 minutes without visits. The first visit then waits about a minute.
 - Every start fills the database with the demo data again. Nothing typed online is kept.
-- A push to `main` is deployed only after the GitHub `Checks` are green. If a deploy fails, the previous version stays online.
+- A merge to `main` does not change the live site. A release does: the owner asks for one in the Project, and the Mac mini creates the branch `release/sprint-N` and the tag `vYYYY.MM.DD` from the green `main` and moves the branch `deploy`. Render follows `deploy` and deploys it after the GitHub `Checks` are green.
+- If a deploy fails, the previous version stays online.
+- A bad release is undone with Render's Rollback button, then fixed on `main` and released again.
 
 One-time steps for the owner:
 
-1. Sign in to render.com with GitHub and let Render read only `hungle-agilityio/ai-training`.
-2. New → Blueprint → choose this repository.
-3. Keep the generated `DJANGO_SECRET_KEY`.
-4. If the name `reviewradar` is taken, set `DJANGO_ALLOWED_HOSTS` to the address Render shows.
+1. Make the first release before creating the Blueprint: Render needs the branch `deploy` to exist.
+2. Sign in to render.com with GitHub and let Render read only `hungle-agilityio/ai-training`.
+3. New → Blueprint → choose this repository.
+4. Keep the generated `DJANGO_SECRET_KEY`.
+5. If the name `reviewradar` is taken, set `DJANGO_ALLOWED_HOSTS` to the address Render shows.
 
 ## Usage
 

@@ -5,7 +5,7 @@ services:
     plan: free
     region: singapore
     rootDir: claude-code-training-lab
-    branch: main
+    branch: deploy
     autoDeployTrigger: checksPass
     healthCheckPath: /dashboard/
     buildCommand: pip install uv && uv sync --frozen --no-dev && uv run --no-sync python manage.py collectstatic --noinput

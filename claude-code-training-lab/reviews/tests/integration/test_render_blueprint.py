@@ -26,7 +26,7 @@ def _value(text: str, key: str) -> str:
         ("plan", "free"),
         ("region", "singapore"),
         ("rootDir", "claude-code-training-lab"),
-        ("branch", "main"),
+        ("branch", "deploy"),
         ("autoDeployTrigger", "checksPass"),
         ("healthCheckPath", "/dashboard/"),
     ],
