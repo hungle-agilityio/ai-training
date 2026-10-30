@@ -16,6 +16,9 @@ if not DEBUG and SECRET_KEY in ("", DEV_SECRET_KEY):
 _extra_hosts = [
     host.strip() for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if host.strip()
 ]
+_render_host = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "").strip()
+if _render_host and _render_host not in _extra_hosts:
+    _extra_hosts.append(_render_host)
 ALLOWED_HOSTS: list[str] = [*LOCAL_HOSTS, *_extra_hosts]
 CSRF_TRUSTED_ORIGINS: list[str] = [f"https://{host}" for host in _extra_hosts]
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

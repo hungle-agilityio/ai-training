@@ -67,7 +67,7 @@ Time zone is `Asia/Ho_Chi_Minh`. Never commit `.env` or secrets.
 
 ## Deploy
 
-ReviewRadar is online at <https://reviewradar.onrender.com>, hosted on Render's free plan. `render.yaml` at the repository root describes the service.
+ReviewRadar is online at <https://reviewradar-zo3u.onrender.com>, hosted on Render's free plan. `render.yaml` at the repository root describes the service. The app also accepts the host Render reports in `RENDER_EXTERNAL_HOSTNAME`, so it works whatever name Render gives the service.
 
 - The site sleeps after 15 minutes without visits. The first visit then waits about a minute.
 - Every start fills the database with the demo data again. Nothing typed online is kept.
@@ -81,7 +81,6 @@ One-time steps for the owner:
 2. Sign in to render.com with GitHub and let Render read only `hungle-agilityio/ai-training`.
 3. New → Blueprint → choose this repository.
 4. Keep the generated `DJANGO_SECRET_KEY`.
-5. If the name `reviewradar` is taken, set `DJANGO_ALLOWED_HOSTS` to the address Render shows.
 
 ## Usage
 
