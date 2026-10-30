@@ -18,3 +18,4 @@ htmlcov/
 CLAUDE.local.md
 
 out/
+staticfiles/

@@ -1,11 +1,24 @@
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only-insecure-key")
+DEV_SECRET_KEY = "dev-only-insecure-key"
+LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
+
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", DEV_SECRET_KEY)
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
-ALLOWED_HOSTS: list[str] = ["localhost", "127.0.0.1", "[::1]"]
+if not DEBUG and SECRET_KEY in ("", DEV_SECRET_KEY):
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set to a real key when DJANGO_DEBUG=0")
+
+_extra_hosts = [
+    host.strip() for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if host.strip()
+]
+ALLOWED_HOSTS: list[str] = [*LOCAL_HOSTS, *_extra_hosts]
+CSRF_TRUSTED_ORIGINS: list[str] = [f"https://{host}" for host in _extra_hosts]
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
@@ -17,6 +30,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.common.CommonMiddleware",
 ]
 
@@ -32,6 +46,7 @@ TEMPLATES = [
 ]
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DATABASES = {
     "default": {
