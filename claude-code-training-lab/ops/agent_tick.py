@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import json
 import os
+import queue
 import re
 import signal
 import subprocess
 import sys
+import threading
+import time
 import urllib.request
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -27,6 +30,11 @@ LOCK_MAX_AGE = 15 * 60
 RUN_LIMIT = 45 * 60
 PAUSE_SECONDS = 60 * 60
 MAX_TURNS = 80
+STARTS = 3
+HINT = (
+    "If the Artifact tool is listed only as a deferred tool, load it with ToolSearch "
+    '(query "select:Artifact") before you decide that it is missing.'
+)
 WAITING_CAP = 10
 LOG_TAIL = 20
 SKIP_LABELS = {"agent:running", "agent:review", "agent:failed", "agent:manual"}
@@ -305,7 +313,7 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
     kind, number = key.split("-", 1)
     worktree = tick.home / "worktrees" / key
     tail = log_tail(run)
-    limit = USAGE_LIMIT.search(tail) is not None
+    limit = outcome != "no-artifact" and USAGE_LIMIT.search(tail) is not None
     if outcome == "0" and kind == "pr":
         remove_worktree(tick, worktree)
         tick.say(f"{key}: ended normally")
@@ -317,6 +325,7 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
         "0": "ended without a pull request",
         "timeout": "stopped after 45 minutes",
         "gone": "stopped with no exit code",
+        "no-artifact": f"started {STARTS} times without the Artifact tool",
     }.get(outcome, f"ended with error {outcome}")
     if kind == "pr" and limit:
         pause_for_limit(tick, key, number, worktree)
@@ -937,23 +946,91 @@ def tick_once(host: Host, home: Path) -> list[str]:
 
 
 def run_build(run: Path, folder: Path, prompt: str) -> str:
-    """The background wrapper: one `claude -p`, stopped after 45 minutes; writes the outcome."""
-    env = {**os.environ, "REVIEWRADAR_LOOP": "1"}
-    args = ["claude", "-p", prompt, "--max-turns", str(MAX_TURNS)]
-    child = subprocess.Popen(
-        args, cwd=folder, env=env, stdin=subprocess.DEVNULL, start_new_session=True
-    )
-    try:
-        outcome = str(child.wait(timeout=RUN_LIMIT))
-    except subprocess.TimeoutExpired:
-        os.killpg(child.pid, signal.SIGTERM)
-        try:
-            child.wait(timeout=30)
-        except subprocess.TimeoutExpired:
-            os.killpg(child.pid, signal.SIGKILL)
-        outcome = "timeout"
+    """The background wrapper: up to 3 starts of `claude -p`, 45 minutes in all; writes `exit`."""
+    deadline = time.monotonic() + RUN_LIMIT
+    outcome = "no-artifact"
+    for number in range(1, STARTS + 1):
+        if number > 1 and time.monotonic() >= deadline:
+            outcome = "timeout"
+            break
+        outcome = run_start(run, folder, prompt, number, deadline)
+        if outcome != "no-artifact":
+            break
     (run / "exit").write_text(outcome)
     return outcome
+
+
+def stop_group(child: subprocess.Popen[str]) -> None:
+    os.killpg(child.pid, signal.SIGTERM)
+    try:
+        child.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        os.killpg(child.pid, signal.SIGKILL)
+
+
+def read_lines(child: subprocess.Popen[str], lines: queue.Queue[str | None]) -> None:
+    assert child.stdout is not None
+    for line in child.stdout:
+        lines.put(line)
+    lines.put(None)
+
+
+def with_newline(line: str) -> str:
+    return line if line.endswith("\n") else line + "\n"
+
+
+def run_start(run: Path, folder: Path, prompt: str, number: int, deadline: float) -> str:
+    """One `claude -p`; its output is the session log, a missing Artifact tool stops it."""
+    env = {**os.environ, "REVIEWRADAR_LOOP": "1"}
+    args = ["claude", "-p", prompt, "--max-turns", str(MAX_TURNS), "--output-format",
+            "stream-json", "--verbose", "--allowedTools", "Artifact", "--append-system-prompt",
+            HINT]
+    with (run / "log.txt").open("a") as log, (run / f"session-{number}.jsonl").open("a") as session:
+        log.write(f"start {number} of {STARTS}\n")
+        log.flush()
+        child = subprocess.Popen(
+            args, cwd=folder, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=log, text=True, start_new_session=True,
+        )
+        lines: queue.Queue[str | None] = queue.Queue()
+        threading.Thread(target=read_lines, args=(child, lines), daemon=True).start()
+        seen_init = False
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                stop_group(child)
+                return "timeout"
+            try:
+                line = lines.get(timeout=remaining)
+            except queue.Empty:
+                continue
+            if line is None:
+                break
+            session.write(with_newline(line))
+            session.flush()
+            try:
+                event = json.loads(line)
+            except ValueError:
+                log.write(with_newline(line))
+                log.flush()
+                continue
+            if not isinstance(event, dict):
+                continue
+            if event.get("type") == "system" and event.get("subtype") == "init" and not seen_init:
+                seen_init = True
+                if "Artifact" not in (event.get("tools") or []):
+                    log.write(f"start {number}: no Artifact tool, stopped\n")
+                    log.flush()
+                    stop_group(child)
+                    return "no-artifact"
+            elif event.get("type") == "result" and isinstance(event.get("result"), str):
+                log.write(with_newline(event["result"]))
+                log.flush()
+        try:
+            return str(child.wait(timeout=max(deadline - time.monotonic(), 0)))
+        except subprocess.TimeoutExpired:
+            stop_group(child)
+            return "timeout"
 
 
 def main(argv: list[str]) -> int:

@@ -6,6 +6,7 @@ import json
 import os
 import signal
 import subprocess
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -451,6 +452,7 @@ def test_build_runs_claude_in_loop_mode_with_a_time_limit(
 
     class Child:
         pid = 4242
+        stdout = ['{"type": "system", "subtype": "init", "tools": ["Artifact"]}\n']
 
         def wait(self, timeout: float) -> int:
             seen["timeout"] = timeout
@@ -461,8 +463,13 @@ def test_build_runs_claude_in_loop_mode_with_a_time_limit(
         return Child()
 
     monkeypatch.setattr(subprocess, "Popen", popen)
+    monkeypatch.setattr(time, "monotonic", lambda: 1000.0)
     assert agent_tick.run_build(tmp_path, tmp_path / "lab", "Use it for issue #1 only.") == "0"
-    assert seen["args"] == ["claude", "-p", "Use it for issue #1 only.", "--max-turns", "80"]
+    assert seen["args"] == [
+        "claude", "-p", "Use it for issue #1 only.", "--max-turns", "80", "--output-format",
+        "stream-json", "--verbose", "--allowedTools", "Artifact", "--append-system-prompt",
+        agent_tick.HINT,
+    ]
     assert seen["kwargs"]["env"]["REVIEWRADAR_LOOP"] == "1"
     assert seen["kwargs"]["cwd"] == tmp_path / "lab"
     assert seen["kwargs"]["stdin"] == subprocess.DEVNULL
@@ -476,11 +483,13 @@ def test_build_is_stopped_after_45_minutes(tmp_path: Path, monkeypatch: pytest.M
 
     class Child:
         pid = 4242
+        stdout: list[str] = []
 
         def wait(self, timeout: float) -> int:
             raise subprocess.TimeoutExpired("claude", timeout)
 
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: Child())
+    monkeypatch.setattr(time, "monotonic", lambda: 1000.0)
     monkeypatch.setattr(os, "killpg", lambda pid, sig: killed.append(sig))
     assert agent_tick.run_build(tmp_path, tmp_path, "p") == "timeout"
     assert killed == [signal.SIGTERM, signal.SIGKILL]
