@@ -46,7 +46,7 @@ All under `~/.reviewradar/`:
 
 - First, open loop pull requests with an owner approval comment are merged when the checks of ADR-016 hold (see Review from the phone).
 - Pull requests of the loop that need a run go first (an open change request, merged or closed with a leftover label, no status label, ready but CI red), then the oldest `agent:ready` issues.
-- An issue is skipped when it is `agent:running`, `agent:review`, `agent:failed` or `agent:manual`, when a `Depends on #M` is still open, or when `agent:ready` was added by anyone but `hungle-agilityio`. No new issue when waiting pull requests plus running issues reach 5.
+- An issue is skipped when it is `agent:running`, `agent:review`, `agent:failed` or `agent:manual`, when a `Depends on #M` is still open, or when `agent:ready` was added by anyone but `hungle-agilityio`. No new issue when waiting pull requests plus running issues reach 10.
 - An issue labelled `risk:high`, or whose body names `migrations/` or `models.py`, runs alone.
 - A build that times out or fails before its pull request: the issue gets `agent:failed` and a comment with the last 20 log lines; the worktree stays. The plan limit: the issue goes back to `agent:ready` and new builds pause for 60 minutes.
 
@@ -89,7 +89,7 @@ Every message goes to ntfy when `NTFY_TOPIC` is set and to Slack when `SLACK_WEB
 | `ReviewRadar working on PR #<p> (<k> change requests open)`, or `(CI)` | the tick started a pull request run; `<k>` counts the owner's `/redo` comments newer than the last commit |
 | `ReviewRadar PR #<p> needs you: <pr:blocked or pr:ci-failed>` and the link | once per pull request, label and head commit |
 | `ReviewRadar PR #<p> merged (#<n>); main is now <sha>`, or `...; main checkout not updated: <reason>` | a loop pull request was merged (by anyone), announced once after the tick pulled `main`; the first run only records the merged ones |
-| `ReviewRadar waiting: <w> pull requests open (limit 5), <k> ready issues not started` and the link | nothing started or running while ready issues wait; again only when the text changes |
+| `ReviewRadar waiting: <w> pull requests open (limit 10), <k> ready issues not started` and the link | nothing started or running while ready issues wait; again only when the text changes |
 | `ReviewRadar PR #<p> opened for #<n> (<status label>)`, the pull request link, `Report: <link>` | an issue build ended and an open loop pull request closes that issue (also after an error or a timeout that came after the pull request) |
 | `ReviewRadar PR #<p> updated for #<n> (<status label>)`, the same two links | a pull request build (a `/redo` or a CI fix) ended normally and the pull request is still open |
 | `ReviewRadar build for issue #<n> failed: <reason>` | an issue build ended without a pull request |
