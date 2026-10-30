@@ -37,7 +37,8 @@ All under `~/.reviewradar/`:
 |---|---|
 | `agent.env` | the settings |
 | `runs/<key>/log.txt` | the output of a running build (`<key>` is `issue-<n>` or `pr-<n>`) |
-| `runs/done/<key>-<time>/` | the folder of an ended build, log included |
+| `runs/<key>/session-<n>.jsonl` | the whole session of start `<n>`, one JSON event per line |
+| `runs/done/<key>-<time>/` | the folder of an ended build, log and sessions included |
 | `worktrees/<key>` | the checkout of a build; kept after a failed build |
 | `paused-until` | set for 60 minutes when the Claude plan limit is reached |
 | `tick.lock` | present while a tick runs; one older than 15 minutes is left over |
@@ -49,6 +50,16 @@ All under `~/.reviewradar/`:
 - An issue is skipped when it is `agent:running`, `agent:review`, `agent:failed` or `agent:manual`, when a `Depends on #M` is still open, or when `agent:ready` was added by anyone but `hungle-agilityio`. No new issue when waiting pull requests plus running issues reach 10.
 - An issue labelled `risk:high`, or whose body names `migrations/` or `models.py`, runs alone.
 - A build that times out or fails before its pull request: the issue gets `agent:failed` and a comment with the last 20 log lines; the worktree stays. The plan limit: the issue goes back to `agent:ready` and new builds pause for 60 minutes.
+
+## The Artifact tool check
+
+A build needs the `Artifact` tool to publish its verify report. Each build starts `claude -p` with `--output-format stream-json`, reads the tool list of the first `init` event and starts again (three starts at most) when `Artifact` is missing.
+
+- See the tools of a build: `grep '"subtype":"init"' ~/.reviewradar/runs/done/<run>/session-1.jsonl`.
+- `start <n>: no Artifact tool, stopped` in `log.txt`: that start had no `Artifact` tool and was stopped within seconds, before any work.
+- `started 3 times without the Artifact tool`: all three starts lacked it. The issue gets `agent:failed` with the last 20 log lines; it is not the plan limit and nothing pauses.
+- Every session also gets the hint to load a deferred `Artifact` tool with `ToolSearch` (`select:Artifact`), through `--append-system-prompt`.
+- The 45-minute limit counts from the first start and covers all starts.
 
 ## Review from the phone
 
