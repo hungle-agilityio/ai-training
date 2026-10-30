@@ -58,6 +58,48 @@ GH_UNSPLIT_OK = {"issue", "pr", "label"}
 GIT_REMOTE_SUBS = GIT_NETWORK | {"clone", "remote", "config"}
 
 
+def split_segments(command: str) -> list[str]:
+    """Split on &&, ||, ; and | outside quotes; several lines or an unclosed quote split on all."""
+    if "\n" in command:
+        return SEGMENT_SPLIT.split(command)
+    parts: list[str] = []
+    current = ""
+    quote = ""
+    index = 0
+    while index < len(command):
+        char = command[index]
+        if quote:
+            if char == "\\" and quote == '"' and index + 1 < len(command):
+                current += command[index : index + 2]
+                index += 2
+                continue
+            if char == quote:
+                quote = ""
+            current += char
+        elif char == "\\" and index + 1 < len(command):
+            current += command[index : index + 2]
+            index += 2
+            continue
+        elif char in "'\"":
+            quote = char
+            current += char
+        elif command.startswith(("&&", "||"), index):
+            parts.append(current)
+            current = ""
+            index += 2
+            continue
+        elif char in ";|":
+            parts.append(current)
+            current = ""
+        else:
+            current += char
+        index += 1
+    if quote:
+        return SEGMENT_SPLIT.split(command)
+    parts.append(current)
+    return parts
+
+
 def normalise(owner: str, name: str) -> str:
     """Return owner/name in lower case without a .git suffix."""
     if name.endswith(".git"):
@@ -358,7 +400,7 @@ def check_command(command: str, allowed: str, loop: bool = False) -> list[str]:
         return problems
     if ADMIN_GH.search(command):
         problems.append("gh commands that manage repositories, accounts or secrets are not allowed")
-    for segment in SEGMENT_SPLIT.split(command):
+    for segment in split_segments(command):
         text = segment.strip()
         for env_value in GH_REPO_ENV.findall(text):
             if repo_from_value(env_value) != allowed:
@@ -498,7 +540,7 @@ def check_publish(
     problems: list[str] = []
     ask: list[str] = []
     marks: list[str] = []
-    segments = [s.strip() for s in SEGMENT_SPLIT.split(without_inert_heredocs(command))]
+    segments = [s.strip() for s in split_segments(without_inert_heredocs(command))]
     segments = [segment for segment in segments if segment]
     moves = any(re.match(r"^(?:cd|pushd)\b", segment) for segment in segments)
     for segment in segments:
