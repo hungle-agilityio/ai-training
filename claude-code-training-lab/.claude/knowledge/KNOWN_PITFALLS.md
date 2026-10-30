@@ -79,3 +79,9 @@ Reproducible gotchas. Add one entry per pitfall with the symptom, the cause and 
 - **Symptom:** the loop's pull request says the verify report is "not shared", although the share gate said `ALLOWED`; `out/artifact-publish.log` has no line for that run (seen on PR #41).
 - **Cause:** an unattended session can only use a tool that is in `permissions.allow` of `.claude/settings.json`. A tool that needs a permission prompt is skipped, because nobody answers the prompt.
 - **Fix:** put the tool in the allow list and keep a hook as the real gate (`Artifact` is allowed, `before-artifact-publish` still checks every report). A `claude -p` run needs the same tool in `--allowedTools`.
+
+## A session that starts without the Artifact tool
+
+- **Symptom:** #64 and #103 were built, passed their checks and ended `agent:failed` with "this session has no Artifact tool"; the same happened in a local session.
+- **Cause:** not known yet; it happens now and then.
+- **Fix:** the loop restarts such a build, every `work-queue` run checks the tool first ("Check the tools") and stops before any work, and `session-<n>.jsonl` shows the tools a loop build had.
