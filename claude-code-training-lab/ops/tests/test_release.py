@@ -41,6 +41,8 @@ def repo(tmp_path: Path) -> tuple[Path, Path]:
     git(tmp_path, "init", "--bare", "-b", "main", str(origin))
     clone = tmp_path / "clone"
     git(tmp_path, "clone", str(origin), str(clone))
+    git(clone, "config", "user.name", "T")  # the script tags with the clone's own identity
+    git(clone, "config", "user.email", "t@example.com")
     git(clone, "switch", "-c", "main")
     (clone / "a.txt").write_text("a")
     git(clone, "add", ".")
