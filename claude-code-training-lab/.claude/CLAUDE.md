@@ -43,3 +43,4 @@ A rule: `rules/`. A decision: an ADR. A gotcha: `knowledge/KNOWN_PITFALLS.md`. Y
 | 2026-10-29 | A conflict with `main` is always `pr:blocked` | The owner does not fix conflicts by hand; the merge step sends `/redo merge origin/main …` and the loop merges `main` into the branch (never a rebase) | ADR-015, `work-queue` section 1 |
 | 2026-10-29 | `/redo` as the only change request | The owner reviews the normal way: any comment or line comment is a change request, marked 👀 🚀 😕 by the loop | ADR-016, `work-queue` section 1 |
 | 2026-10-29 | Merge only through a thread's `gh pr merge` | One merge route with fixed checks in code: the tick merges on the owner's approval comment; Claude builds never merge | ADR-016, `.claude/project-instructions.md` |
+| 2026-10-30 | Deploy on every green merge to `main` | The owner wants one release per sprint or epic | ADR-017, `ops/release.py` |
