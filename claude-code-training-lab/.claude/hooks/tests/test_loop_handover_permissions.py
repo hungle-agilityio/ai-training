@@ -145,12 +145,21 @@ def test_unsplit_publish_commands_are_still_refused_in_loop(command: str) -> Non
     assert publish_decision(command) == "deny"
 
 
-# AC4: writes outside out/, reviews/ and reviewradar/ stay refused for loop builds.
+# AC4, widened by #92: loop builds write only where the allow list says.
 
 
-def test_settings_allow_edits_only_in_out_reviews_and_reviewradar() -> None:
+def test_settings_allow_edits_only_in_the_listed_paths() -> None:
     edits = sorted(rule for rule in allow_rules() if rule.startswith(("Edit(", "Write(")))
-    assert edits == ["Edit(./out/**)", "Edit(./reviewradar/**)", "Edit(./reviews/**)"]
+    assert edits == [
+        "Edit(../render.yaml)",
+        "Edit(./.gitignore)",
+        "Edit(./README.md)",
+        "Edit(./ops/**)",
+        "Edit(./out/**)",
+        "Edit(./reviewradar/**)",
+        "Edit(./reviews/**)",
+        "Edit(./specs/**)",
+    ]
 
 
 @pytest.mark.parametrize(

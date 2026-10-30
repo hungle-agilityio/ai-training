@@ -32,7 +32,11 @@ For every new request:
    - `Depends on #M` when it needs another open issue;
    - a link to the spec on `main` (full lane);
    - the labels `risk:low`, `risk:medium` or `risk:high`, plus `needs-ui` when users see a change;
-   - `agent:ready`, or `agent:manual` when the task changes `.claude/`, which the loop may not edit;
+   - the labels printed by `python3 -I .claude/skills/create-issue/route_issue.py <body file>`, run on each issue body before it is posted. They come from its Files likely touched section:
+     - `area:flow` for the workflow (`ops/`, `.claude/`, `.github/`, `specs/`, `docs/learning/`), `area:app` for the app and its hosting;
+     - `agent:manual` when a path is one `before-edit-check` refuses in loop mode (`.claude/`, `.github/`, `.mcp.json`, the gate files, an existing test under `reviews/tests/`);
+     - `agent:needs-permission` when a path has no `Edit(...)` allow rule in `.claude/settings.json`: the loop does not take it, and it becomes `agent:ready` once the missing rule is merged;
+     - `agent:ready` otherwise;
    - a `## Files likely touched` section with one backticked path per bullet line (for example ``- `reviews/services.py` ``), because the tick reads it to keep two builds off the same file;
    - assignee hungle-agilityio.
 
@@ -54,6 +58,6 @@ After the hand over:
 
 - **Merge.** When I approve a named build pull request here (or the only one waiting), a thread posts the approval comment `/merge` on it through the same Remote Control route (`gh pr comment <n> --body /merge`, with my login), runs one tick at once (`uv run python ops/agent_tick.py`), and reports what the tick did: merged, waiting for CI, updated from `main`, or not merged and why. The thread never runs `gh pr merge`: the tick merges, one pull request at a time, only when CI is green and no change request is open; it updates a branch that is behind `main` first, and on a conflict it posts `/redo merge origin/main into this branch and fix the conflict` itself, so my approval is needed again after that round (ADR-015, ADR-016). Never post `/merge` without my explicit OK for that pull request.
 - **Redo.** When I ask to change a pull request, post my words as a plain comment on it through the same Remote Control route (or the draft file); no `/redo` prefix is needed. Then run one tick at once.
-- **Status.** When I ask how things stand (for example "#N sao rồi"), read the issues and pull requests on GitHub (read only). For each issue, give its label (`agent:ready`, `agent:running`, `agent:review`, `agent:failed`, `agent:manual`), the pull request, the pull request's status label (`pr:ready-for-review`, `pr:changes-requested`, `pr:blocked`, `pr:ci-failed`, or none yet) and its report link.
+- **Status.** When I ask how things stand (for example "#N sao rồi"), read the issues and pull requests on GitHub (read only). For each issue, give its labels (`agent:ready`, `agent:running`, `agent:review`, `agent:failed`, `agent:manual`, `agent:needs-permission`, and `area:flow` or `area:app`), the pull request, the pull request's status label (`pr:ready-for-review`, `pr:changes-requested`, `pr:blocked`, `pr:ci-failed`, or none yet) and its report link.
 
 How to run: at most 2 threads at a time. Start threads without asking, except wait for my "Merge PR spec" or "OK" at step 4 and before any merge. Post only when a thread finishes or is blocked. A blocked thread takes the narrowest reading, says so in its report and goes on; it does not stall.

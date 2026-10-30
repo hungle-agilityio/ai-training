@@ -38,6 +38,7 @@ from typing import Any
 
 MAX_FAILED_ACTIONS = 3
 VIEWPORT = {"width": 1280, "height": 800}
+VIEWPORT_LIMITS = (200, 4000)
 
 DEFAULT_STEPS: list[dict[str, Any]] = [
     {"name": "dashboard", "goto": "/dashboard/", "expect": ["Reputation dashboard", "Riverside"]},
@@ -205,8 +206,23 @@ def judge(step: dict[str, Any], text: str) -> list[str]:
     return problems
 
 
+def parse_viewport(value: str) -> dict[str, int]:
+    """A viewport is <width>x<height>, two whole numbers within VIEWPORT_LIMITS."""
+    low, high = VIEWPORT_LIMITS
+    width, sep, height = value.lower().partition("x")
+    if not (sep and width.isdigit() and height.isdigit()):
+        raise ValueError(f"--viewport must be <width>x<height>, for example 390x844, not {value!r}")
+    size = {"width": int(width), "height": int(height)}
+    if not all(low <= number <= high for number in size.values()):
+        raise ValueError(f"--viewport sizes must be from {low} to {high}, not {value!r}")
+    return size
+
+
 def summarize(
-    steps: list[dict[str, Any]], stopped: str | None, masking: dict[str, Any] | None = None
+    steps: list[dict[str, Any]],
+    stopped: str | None,
+    masking: dict[str, Any] | None = None,
+    viewport: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     masking = masking or masking_of(steps)
     errors = sum(len(step["console_errors"]) + len(step["page_errors"]) for step in steps)
@@ -226,6 +242,7 @@ def summarize(
         "problems": wrong,
         "stopped": stopped,
         "masking": masking,
+        "viewport": viewport or VIEWPORT,
         "status": "clean" if clean else "not clean",
     }
 
@@ -324,6 +341,7 @@ def run(
     out_dir: Path,
     blur: bool = False,
     plant: str | None = None,
+    viewport: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     from playwright.sync_api import sync_playwright
 
@@ -343,7 +361,7 @@ def run(
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch()
             context = browser.new_context(
-                viewport=VIEWPORT, locale="en-US", timezone_id="Asia/Ho_Chi_Minh"
+                viewport=viewport or VIEWPORT, locale="en-US", timezone_id="Asia/Ho_Chi_Minh"
             )
             for index, step in enumerate(steps, 1):
                 page = context.new_page()
@@ -361,7 +379,7 @@ def run(
                     )
                     break
             browser.close()
-        summary = summarize(results, stopped)
+        summary = summarize(results, stopped, viewport=viewport or VIEWPORT)
     finally:
         server.terminate()
         server.wait(timeout=10)
@@ -390,6 +408,8 @@ def print_summary(summary: dict[str, Any], out_dir: Path) -> None:
         f"network: {summary['network_failures']} failure(s), "
         f"checks: {summary['problems']} problem(s)"
     )
+    size = summary.get("viewport") or VIEWPORT
+    print(f"viewport: {size['width']}x{size['height']}")
     print(f"masking: {summary['masking']['status']}")
     if summary["stopped"]:
         print(summary["stopped"])
@@ -410,11 +430,21 @@ def main(argv: list[str]) -> int:
         help="blur the fields marked data-sensitive in the screenshots",
     )
     parser.add_argument("--plant", help="add a review with this text, to test the scan only")
+    parser.add_argument(
+        "--viewport", help="browser size as <width>x<height>, e.g. 390x844 (default 1280x800)"
+    )
     args = parser.parse_args(argv)
+    try:
+        viewport = parse_viewport(args.viewport) if args.viewport else dict(VIEWPORT)
+    except ValueError as error:
+        print(f"NOT RUN: {error}")
+        return 2
     root = project_root(Path.cwd())
     out_dir = args.out or root / "out" / "browser-check" / datetime.now().strftime("%Y%m%d-%H%M%S")
     try:
-        summary = run(root, load_steps(args.spec), out_dir, args.blur, args.plant)
+        summary = run(
+            root, load_steps(args.spec), out_dir, args.blur, args.plant, viewport=viewport
+        )
     except ImportError:
         print("NOT CONFIGURED: playwright is not installed (run: uv sync)")
         return 2
