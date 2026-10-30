@@ -102,6 +102,14 @@ Every message goes to ntfy when `NTFY_TOPIC` is set and to Slack when `SLACK_WEB
 
 The loop's open pull requests with their status labels: <https://github.com/hungle-agilityio/ai-training/pulls?q=is%3Apr+is%3Aopen+%22work-queue%22+in%3Abody>
 
+## Release
+
+`uv run python ops/release.py` turns the newest `main` commit into a sprint release. Run it by hand in the main checkout on the Mac mini, on the owner's request; the loop never runs it. It fetches `origin`, then in one `git push --atomic` (no force, `main` untouched) creates the branch `release/sprint-N` (one more than the highest on `origin`), an annotated tag `vYYYY.MM.DD` (Vietnam date, `.2`, `.3` for more that day) and moves `deploy`, which Render follows. It then prints the branch, the tag, the commit, the merged pull requests since the last release and `Render deploys branch deploy after Checks pass.`
+
+`--dry-run` prints the same plan (commit, branch, tag, pull requests) and pushes nothing.
+
+It refuses with exit 1 and one line, pushing nothing, when the newest `Checks` run of the commit is missing, still running or not successful; when `origin/deploy` already points at the commit (`nothing new to release`); or when `origin/deploy` is not an ancestor of the commit.
+
 ## Tests
 
 `uv run pytest ops/tests -q --no-cov` (gh, git, claude and the clock are faked; CI runs them in "Hook and skill tests").
