@@ -2,7 +2,7 @@
 
 ## Summary
 
-The wrapper that runs one loop build (`run_build` in `ops/agent_tick.py`) reads the tool list that `claude -p` reports when it starts. When `Artifact` is missing, it stops that session at once and starts it again, at most three starts in total. It also keeps the whole session as a log and tells the session how to load a deferred `Artifact` tool. Nothing visible to users of the app.
+The wrapper that runs one loop build (`run_build` in `ops/agent_tick.py`) reads the tool list that `claude -p` reports when it starts. When `Artifact` is missing, it stops that session at once and starts it again, at most three starts in total. It also keeps the whole session as a log and tells the session how to load a deferred `Artifact` tool. The `work-queue` skill checks for the tool before any work, in loop mode and in an interactive session, so a session without it stops before it builds. Nothing visible to users of the app.
 
 ## Acceptance criteria
 
@@ -15,6 +15,10 @@ The wrapper that runs one loop build (`run_build` in `ops/agent_tick.py`) reads 
 - **AC7. Time limit.** The 45-minute limit counts from the first start and covers all starts. When it is reached, the running start is stopped as today and the outcome is `timeout`.
 - **AC8. Tests.** A new test file `ops/tests/test_build_artifact_tool.py` covers AC1 to AC7 with `subprocess.Popen`, `os.killpg` and the clock faked (no `claude`, no network): a start with `Artifact` in the init tools (one start, exit code written, `session-1.jsonl` holds the stream, `log.txt` holds the result text); a first start without it and a second with it (two starts, two session files, the stop line in `log.txt`); three starts without it (`no-artifact`, and `handle_end` labels the issue `agent:failed` with the new reason and does not pause); a stream with no init event; a non-JSON line; the time limit reached during the second start. The issue permits editing exactly two existing tests in `ops/tests/test_agent_tick.py`, `test_build_runs_claude_in_loop_mode_with_a_time_limit` and `test_build_is_stopped_after_45_minutes`, only so that they fit the new command and the read of standard output; what they check stays the same. All other existing tests stay unchanged and pass. `uv run ruff check .` and `uv run mypy .` pass.
 - **AC9. How to read it.** `ops/README.md` says in a few lines: where `session-<n>.jsonl` is, how to see the tools a build had (`grep '"subtype":"init"'`), what `start <n>: no Artifact tool, stopped` and the reason `started 3 times without the Artifact tool` mean, and that the session is told how to load a deferred `Artifact` tool.
+
+- **AC10. Check the tool first (work-queue).** `.claude/skills/work-queue/SKILL.md` gets a step "Check the tools" that runs before anything else in a run, in loop mode and in an interactive session alike: when `Artifact` is not in the session's tools, load it with ToolSearch (`select:Artifact`); when it is still not there, stop the run before any claim, branch, build, label or comment, and end with the one line `No Artifact tool in this session; nothing was started.`
+- **AC11. No agent:failed from that stop.** The stop of AC10 adds and removes no label and posts nothing on GitHub. In an interactive session the issue keeps its labels as they were. In loop mode the tick decides the label as in AC6 (the build ends without a pull request); the session itself never sets `agent:failed` for a missing `Artifact` tool.
+- **AC12. Pitfall.** `.claude/knowledge/KNOWN_PITFALLS.md` gets an entry "A session that starts without the Artifact tool" (symptom: #64 and #103 built, passed and ended `agent:failed` with "this session has no Artifact tool", also in a local session; cause: not known yet, intermittent; fix: AC5 restart in the loop, AC10 check first everywhere, and `session-<n>.jsonl` to find the cause).
 
 ## Edge cases
 
@@ -33,6 +37,7 @@ The wrapper that runs one loop build (`run_build` in `ops/agent_tick.py`) reads 
 | Q3. Fallback when there is no link | None; "no link, no pull request" stays | Pull request without link and `pr:blocked` | The owner expects a report link on every loop pull request |
 | Q4. Deferred tool | A fixed hint through `--append-system-prompt` | No hint | Covers the other likely cause without changing the tick's prompt or `.claude/` |
 | Q5. Probe on the Mac mini first | Skip | Read the #103 transcript through Remote Control first | Q1 and Q4 cover both likely causes, and the new session log shows the real one next time |
+| Q6. A local (interactive) session without the tool | `work-queue` checks the tool before any work and stops without a label (T2, `agent:manual`) | Keep T1 only | The owner saw the same failure in a local build, which the tick's wrapper does not cover |
 
 ## Design
 

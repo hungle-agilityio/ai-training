@@ -8,3 +8,12 @@
 - **Risk:** medium
 - **needs-ui:** no
 - **Label:** `agent:ready`
+
+## T2: Every work-queue run checks for the Artifact tool before any work
+
+- **ACs:** AC10, AC11, AC12
+- **Files likely touched:** `.claude/skills/work-queue/SKILL.md`, `.claude/knowledge/KNOWN_PITFALLS.md`
+- **Depends on:** none (no shared file with T1)
+- **Risk:** low
+- **needs-ui:** no
+- **Label:** `agent:manual` (changes `.claude/`)
