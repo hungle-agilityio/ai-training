@@ -2,6 +2,8 @@
 
 ## Summary
 
+> 2026-10-30: AC8 (branch), AC11 (deploy text), AC13 and decision Q3 are replaced by `specs/release-deploy/spec.md`: Render follows the branch `deploy`, which moves only when the owner makes a release.
+
 ReviewRadar runs on Render's free plan at a `*.onrender.com` address. Render builds and starts it again after each push to `main`, but only once the GitHub `Checks` workflow is green. Each start creates a fresh SQLite database and fills it with the demo data. The site is public and asks search engines not to index it. Pages look the same as today; the only visible changes are the address and a wait of about a minute when the site has been asleep.
 
 ## Acceptance criteria
