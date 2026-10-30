@@ -28,7 +28,7 @@ The `work-queue` loop gives each of its open pull requests exactly one status la
 ## Edge cases
 
 - Empty: no open pull request of the loop, nothing to label.
-- Large data: up to 5 open pull requests (the current cap); each run checks each one once.
+- Large data: up to 10 open pull requests (the current cap); each run checks each one once.
 - Permissions: only the loop sets `pr:*` labels. If the owner changes one by hand, the loop's next action on that pull request sets the label again by these rules.
 - CI not configured for a branch, or `gh pr checks` reports no checks: treat as still running (AC3), never as green.
 - The loop's labels and comments use the owner's login (the loop's token); the marker `<!-- work-queue -->` stays on every comment.

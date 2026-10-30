@@ -110,12 +110,12 @@ def test_ci_failed_needs_you(home: Path) -> None:
 
 
 def test_cap_reached_sends_waiting_once(home: Path) -> None:
-    prs = [pull(n, "pr:ready-for-review") for n in (20, 21, 22, 23, 24)]
+    prs = [pull(n, "pr:ready-for-review") for n in range(20, 30)]
     host = NotifyHost(prs=prs, issues=[issue(1, "agent:ready"), issue(2, "agent:ready")])
     agent_tick.tick_once(host, home)
     agent_tick.tick_once(host, home)
     assert messages(host, "waiting") == [
-        "ReviewRadar waiting: 5 pull requests open (limit 5), 2 ready issues not started\n"
+        "ReviewRadar waiting: 10 pull requests open (limit 10), 2 ready issues not started\n"
         + agent_tick.OPEN_PRS_URL
     ]
     assert messages(host, "queue empty") == []
