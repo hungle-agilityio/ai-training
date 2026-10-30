@@ -51,7 +51,13 @@
       "Bash(gh api -X POST repos/hungle-agilityio/ai-training/issues/comments/*/reactions *)",
       "Bash(gh api -X POST repos/hungle-agilityio/ai-training/pulls/comments/*/reactions *)",
       "Bash(gh api -X POST repos/hungle-agilityio/ai-training/pulls/*/comments/*/replies *)",
-      "Bash(gh api graphql *)"
+      "Bash(gh api graphql *)",
+      "Bash(gh run view:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh api repos/hungle-agilityio/ai-training/pulls/*/comments)",
+      "Bash(gh api repos/hungle-agilityio/ai-training/pulls/*/comments *)",
+      "Bash(gh api repos/hungle-agilityio/ai-training/issues/*/comments)",
+      "Bash(gh api repos/hungle-agilityio/ai-training/issues/*/comments *)"
     ],
     "ask": [
       "Bash(gh issue close:*)",
