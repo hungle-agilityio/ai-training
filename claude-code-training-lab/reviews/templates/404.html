@@ -1,0 +1,27 @@
+{% extends "reviews/base.html" %}
+{% block title %}Page not found · ReviewRadar{% endblock %}
+{% block actions %}{% endblock %}
+{% block content %}
+<style>
+  .topbar { display: none; }
+  .not-found { max-width: 560px; margin: 48px auto; text-align: center; padding: 48px 24px; }
+  .not-found-code { font-size: 120px; line-height: 1; font-weight: 800; color: var(--brand); }
+  .not-found-title { font-size: 28px; font-weight: 700; margin: 8px 0; }
+  .not-found-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 24px; }
+  .not-found-primary { background: var(--brand); border-color: var(--brand); color: var(--bg); }
+  .not-found-primary:hover { background: var(--brand); color: var(--bg); opacity: .9; }
+  @media (max-width: 600px) {
+    .not-found { margin: 24px auto; padding: 32px 16px; }
+    .not-found-code { font-size: 72px; }
+  }
+</style>
+<section class="panel not-found">
+  <p class="not-found-code" aria-hidden="true">404</p>
+  <h1 class="not-found-title">Page not found</h1>
+  <p class="muted">This page may have moved, or the link may be wrong.</p>
+  <div class="not-found-actions">
+    <a class="button not-found-primary" href="{% url 'dashboard' %}">Back to Dashboard</a>
+    <a class="button" href="{% url 'reviews' %}">View all reviews</a>
+  </div>
+</section>
+{% endblock %}
