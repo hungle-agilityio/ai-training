@@ -28,7 +28,7 @@ def _value(text: str, key: str) -> str:
         ("rootDir", "claude-code-training-lab"),
         ("branch", "deploy"),
         ("autoDeployTrigger", "checksPass"),
-        ("healthCheckPath", "/dashboard/"),
+        ("healthCheckPath", "/healthz/"),
     ],
 )
 def test_service_setting(blueprint: str, key: str, expected: str) -> None:
