@@ -7,7 +7,7 @@ services:
     rootDir: claude-code-training-lab
     branch: deploy
     autoDeployTrigger: checksPass
-    healthCheckPath: /dashboard/
+    healthCheckPath: /healthz/
     buildCommand: pip install uv && uv sync --frozen --no-dev && uv run --no-sync python manage.py collectstatic --noinput
     startCommand: uv run --no-sync python manage.py migrate --noinput && uv run --no-sync python manage.py seed_demo_data && uv run --no-sync gunicorn reviewradar.wsgi --bind 0.0.0.0:$PORT
     envVars:
