@@ -38,6 +38,7 @@ from typing import Any
 
 MAX_FAILED_ACTIONS = 3
 VIEWPORT = {"width": 1280, "height": 800}
+VIEWPORT_LIMITS = (200, 4000)
 
 DEFAULT_STEPS: list[dict[str, Any]] = [
     {"name": "dashboard", "goto": "/dashboard/", "expect": ["Reputation dashboard", "Riverside"]},
@@ -163,8 +164,11 @@ def wait_until_ready(url: str, seconds: float = 30.0) -> bool:
     return False
 
 
-def start_app(root: Path, database: Path, port: int) -> subprocess.Popen[bytes]:
-    env = {**os.environ, "DJANGO_DB_NAME": str(database), "DJANGO_DEBUG": "1"}
+def start_app(
+    root: Path, database: Path, port: int, debug: bool = True
+) -> subprocess.Popen[bytes]:
+    """With debug off the app runs as in production; --insecure still serves the static files."""
+    env = {**os.environ, "DJANGO_DB_NAME": str(database), "DJANGO_DEBUG": "1" if debug else "0"}
     for command in (["migrate", "--noinput"], ["seed_demo_data"]):
         subprocess.run(
             [sys.executable, "manage.py", *command],
@@ -174,12 +178,36 @@ def start_app(root: Path, database: Path, port: int) -> subprocess.Popen[bytes]:
             capture_output=True,
         )
     return subprocess.Popen(
-        [sys.executable, "manage.py", "runserver", f"127.0.0.1:{port}", "--noreload"],
+        [
+            sys.executable,
+            "manage.py",
+            "runserver",
+            f"127.0.0.1:{port}",
+            "--noreload",
+            *([] if debug else ["--insecure"]),
+        ],
         cwd=root,
         env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+
+
+def load_options(spec: Path | None) -> dict[str, Any]:
+    """A spec written as an object may also set "debug" (true or false) and "viewport"."""
+    if spec is None:
+        return {}
+    data = json.loads(spec.read_text())
+    if not isinstance(data, dict):
+        return {}
+    options: dict[str, Any] = {}
+    if "debug" in data:
+        if not isinstance(data["debug"], bool):
+            raise ValueError(f"the spec's debug must be true or false, not {data['debug']!r}")
+        options["debug"] = data["debug"]
+    if "viewport" in data:
+        options["viewport"] = parse_viewport(str(data["viewport"]))
+    return options
 
 
 def load_steps(spec: Path | None) -> list[dict[str, Any]]:
@@ -205,8 +233,24 @@ def judge(step: dict[str, Any], text: str) -> list[str]:
     return problems
 
 
+def parse_viewport(value: str) -> dict[str, int]:
+    """A viewport is <width>x<height>, two whole numbers within VIEWPORT_LIMITS."""
+    low, high = VIEWPORT_LIMITS
+    width, sep, height = value.lower().partition("x")
+    if not (sep and width.isdigit() and height.isdigit()):
+        raise ValueError(f"--viewport must be <width>x<height>, for example 390x844, not {value!r}")
+    size = {"width": int(width), "height": int(height)}
+    if not all(low <= number <= high for number in size.values()):
+        raise ValueError(f"--viewport sizes must be from {low} to {high}, not {value!r}")
+    return size
+
+
 def summarize(
-    steps: list[dict[str, Any]], stopped: str | None, masking: dict[str, Any] | None = None
+    steps: list[dict[str, Any]],
+    stopped: str | None,
+    masking: dict[str, Any] | None = None,
+    viewport: dict[str, int] | None = None,
+    debug: bool = True,
 ) -> dict[str, Any]:
     masking = masking or masking_of(steps)
     errors = sum(len(step["console_errors"]) + len(step["page_errors"]) for step in steps)
@@ -226,8 +270,32 @@ def summarize(
         "problems": wrong,
         "stopped": stopped,
         "masking": masking,
+        "viewport": viewport or VIEWPORT,
+        "debug": debug,
         "status": "clean" if clean else "not clean",
     }
+
+
+def apply_expected_status(
+    record: dict[str, Any], step: dict[str, Any], base: str
+) -> dict[str, Any]:
+    """A step's "status" is the HTTP status its page must answer; that answer is not a failure."""
+    expected = step.get("status")
+    if expected is None or "goto" not in step:
+        return record
+    got = record.get("http_status")
+    if got != expected:
+        record["problems"].append(f"expected status {expected}, got {got}")
+        return record
+    own = f"{expected} {base}{step['goto']}"
+    if own in record["network_failures"]:
+        record["network_failures"].remove(own)
+        echo = f"the server responded with a status of {expected}"
+        for text in record["console_errors"]:
+            if echo in text:
+                record["console_errors"].remove(text)
+                break
+    return record
 
 
 def run_step(
@@ -293,6 +361,7 @@ def run_step(
     seen.update(scan_text(f"{body}\n{title}\n{url}"))
     record.update({"url": redact(url), "title": redact(title), "screenshot": file.name})
     record["problems"] += [redact(line) for line in judge(step, body)]
+    apply_expected_status(record, step, base)
     record["masking_findings"] = sorted(seen)
     if seen:
         file.unlink(missing_ok=True)
@@ -324,6 +393,8 @@ def run(
     out_dir: Path,
     blur: bool = False,
     plant: str | None = None,
+    viewport: dict[str, int] | None = None,
+    debug: bool = True,
 ) -> dict[str, Any]:
     from playwright.sync_api import sync_playwright
 
@@ -331,7 +402,7 @@ def run(
     temp = Path(tempfile.mkdtemp(prefix="browser-check-"))
     port = free_port()
     base = f"http://127.0.0.1:{port}"
-    server = start_app(root, temp / "demo.sqlite3", port)
+    server = start_app(root, temp / "demo.sqlite3", port, debug=debug)
     try:
         if plant:
             plant_review(root, temp / "demo.sqlite3", plant)
@@ -343,7 +414,7 @@ def run(
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch()
             context = browser.new_context(
-                viewport=VIEWPORT, locale="en-US", timezone_id="Asia/Ho_Chi_Minh"
+                viewport=viewport or VIEWPORT, locale="en-US", timezone_id="Asia/Ho_Chi_Minh"
             )
             for index, step in enumerate(steps, 1):
                 page = context.new_page()
@@ -361,7 +432,7 @@ def run(
                     )
                     break
             browser.close()
-        summary = summarize(results, stopped)
+        summary = summarize(results, stopped, viewport=viewport or VIEWPORT, debug=debug)
     finally:
         server.terminate()
         server.wait(timeout=10)
@@ -390,6 +461,8 @@ def print_summary(summary: dict[str, Any], out_dir: Path) -> None:
         f"network: {summary['network_failures']} failure(s), "
         f"checks: {summary['problems']} problem(s)"
     )
+    size = summary.get("viewport") or VIEWPORT
+    print(f"viewport: {size['width']}x{size['height']}, debug: {summary.get('debug', True)}")
     print(f"masking: {summary['masking']['status']}")
     if summary["stopped"]:
         print(summary["stopped"])
@@ -410,11 +483,38 @@ def main(argv: list[str]) -> int:
         help="blur the fields marked data-sensitive in the screenshots",
     )
     parser.add_argument("--plant", help="add a review with this text, to test the scan only")
+    parser.add_argument(
+        "--viewport", help="browser size as <width>x<height>, e.g. 390x844 (default 1280x800)"
+    )
+    parser.add_argument(
+        "--debug-off",
+        action="store_true",
+        help="run the app with DJANGO_DEBUG=0, to see the error pages users see",
+    )
     args = parser.parse_args(argv)
+    try:
+        options = load_options(args.spec)
+        viewport = (
+            parse_viewport(args.viewport)
+            if args.viewport
+            else options.get("viewport", dict(VIEWPORT))
+        )
+    except ValueError as error:
+        print(f"NOT RUN: {error}")
+        return 2
+    debug = False if args.debug_off else options.get("debug", True)
     root = project_root(Path.cwd())
     out_dir = args.out or root / "out" / "browser-check" / datetime.now().strftime("%Y%m%d-%H%M%S")
     try:
-        summary = run(root, load_steps(args.spec), out_dir, args.blur, args.plant)
+        summary = run(
+            root,
+            load_steps(args.spec),
+            out_dir,
+            args.blur,
+            args.plant,
+            viewport=viewport,
+            debug=debug,
+        )
     except ImportError:
         print("NOT CONFIGURED: playwright is not installed (run: uv sync)")
         return 2

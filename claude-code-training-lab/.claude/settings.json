@@ -41,6 +41,13 @@
       "Edit(./reviews/**)",
       "Edit(./reviewradar/**)",
       "Edit(./out/**)",
+      "Edit(./ops/**)",
+      "Edit(./specs/**)",
+      "Edit(./.gitignore)",
+      "Edit(./README.md)",
+      "Edit(//**/render.yaml)",
+      "Bash(git merge origin/main:*)",
+      "Bash(git merge --abort:*)",
       "Bash(gh api -X POST repos/hungle-agilityio/ai-training/issues/comments/*/reactions *)",
       "Bash(gh api -X POST repos/hungle-agilityio/ai-training/pulls/comments/*/reactions *)",
       "Bash(gh api -X POST repos/hungle-agilityio/ai-training/pulls/*/comments/*/replies *)",
@@ -88,7 +95,8 @@
       "Edit(./.git/**)",
       "Bash(gh pr review:*)",
       "Read(**/*DO-NOT-OPEN*)"
-    ]
+    ],
+    "additionalDirectories": [".."]
   },
   "includeCoAuthoredBy": false,
   "attribution": {

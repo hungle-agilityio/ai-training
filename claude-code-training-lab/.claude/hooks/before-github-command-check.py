@@ -384,6 +384,7 @@ def read_allowed() -> str:
 
 LOOP_ENV = "REVIEWRADAR_LOOP"
 LOOP_BRANCH = re.compile(r"^(?:bug|feat|task)/\d+-[a-z0-9][a-z0-9-]*$")
+SPEC_BRANCH = re.compile(r"^task/spec-[a-z0-9][a-z0-9-]*$")
 FORCE_FLAGS = {"--mirror", "--delete", "--prune", "--all"}
 MAIN_NAMES = {"main", "master"}
 MERGE_FLAGS = {"--merge", "-m"}
@@ -447,8 +448,12 @@ def merge_problems(args: list[str], run: GitRunner) -> tuple[list[str], str]:
     problems: list[str] = []
     if data.get("state") != "OPEN":
         problems.append("the pull request is not open")
-    if not LOOP_BRANCH.match(str(data.get("headRefName", ""))):
-        problems.append("only an issue branch (kind/number-description) may be merged here")
+    head = str(data.get("headRefName", ""))
+    if not (LOOP_BRANCH.match(head) or SPEC_BRANCH.match(head)):
+        problems.append(
+            "only an issue branch (kind/number-description) or a spec branch (task/spec-name) "
+            "may be merged here"
+        )
     if data.get("baseRefName") != "main" or data.get("isCrossRepository"):
         problems.append("only a same-repository pull request into main may be merged here")
     if not str(data.get("headRefOid", "")).lower().startswith(sha):
