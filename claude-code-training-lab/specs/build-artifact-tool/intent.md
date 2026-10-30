@@ -6,7 +6,7 @@ A loop build on the Mac mini sometimes starts without the `Artifact` tool. It bu
 
 ## Goal
 
-A build that starts without the `Artifact` tool is stopped within seconds and started again, before it spends any work. Every build keeps a full session log, so the next failure shows its cause.
+A build that starts without the `Artifact` tool is stopped within seconds and started again, before it spends any work. A local (interactive) `work-queue` run checks for the tool first and stops without changing any label. Every build keeps a full session log, so the next failure shows its cause.
 
 ## Users
 
@@ -16,4 +16,4 @@ The owner, who reads the issue labels, the ntfy messages and the logs in `~/.rev
 
 - Resuming a failed build from the report step on its kept branch.
 - A fallback report without an artifact link; "no link, no pull request" stays.
-- Any change under `.claude/` (skills, settings, hooks, KNOWN_PITFALLS).
+- Any change to `.claude/settings.json` or the hooks. The only `.claude/` changes are the `work-queue` check and one KNOWN_PITFALLS entry (T2, `agent:manual`).
