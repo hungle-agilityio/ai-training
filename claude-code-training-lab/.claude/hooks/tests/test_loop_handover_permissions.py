@@ -151,7 +151,6 @@ def test_unsplit_publish_commands_are_still_refused_in_loop(command: str) -> Non
 def test_settings_allow_edits_only_in_the_listed_paths() -> None:
     edits = sorted(rule for rule in allow_rules() if rule.startswith(("Edit(", "Write(")))
     assert edits == [
-        "Edit(../render.yaml)",
         "Edit(./.gitignore)",
         "Edit(./README.md)",
         "Edit(./ops/**)",
@@ -159,6 +158,7 @@ def test_settings_allow_edits_only_in_the_listed_paths() -> None:
         "Edit(./reviewradar/**)",
         "Edit(./reviews/**)",
         "Edit(./specs/**)",
+        "Edit(//**/render.yaml)",
     ]
 
 

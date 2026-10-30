@@ -22,7 +22,7 @@ def load() -> ModuleType:
 
 
 ROUTE = load()
-ALLOW = ["Edit(./reviews/**)", "Edit(./reviewradar/**)", "Edit(./ops/**)", "Edit(../render.yaml)"]
+ALLOW = ["Edit(./reviews/**)", "Edit(./reviewradar/**)", "Edit(./ops/**)", "Edit(//**/render.yaml)"]
 
 
 def body(*paths: str) -> str:

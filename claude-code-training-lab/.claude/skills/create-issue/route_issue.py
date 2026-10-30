@@ -77,7 +77,10 @@ def glob_regex(pattern: str) -> re.Pattern[str]:
     out = ""
     index = 0
     while index < len(pattern):
-        if pattern.startswith("**", index):
+        if pattern.startswith("**/", index):
+            out += "(?:.*/)?"
+            index += 3
+        elif pattern.startswith("**", index):
             out += ".*"
             index += 2
         elif pattern[index] == "*":
@@ -90,9 +93,17 @@ def glob_regex(pattern: str) -> re.Pattern[str]:
 
 
 def allowed(path: str, allow: list[str]) -> bool:
+    """A rule starting with // is an absolute path, matched against the path without ../."""
     for rule in allow:
         match = EDIT_RULE.match(rule)
-        if match and glob_regex(match.group(1).removeprefix("./")).fullmatch(path):
+        if not match:
+            continue
+        pattern = match.group(1)
+        if pattern.startswith("//"):
+            target, pattern = path.removeprefix("../"), pattern[2:]
+        else:
+            target, pattern = path, pattern.removeprefix("./")
+        if glob_regex(pattern).fullmatch(target):
             return True
     return False
 
