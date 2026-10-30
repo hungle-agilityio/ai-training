@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: reviewradar
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: claude-code-training-lab
+    branch: main
+    autoDeployTrigger: checksPass
+    healthCheckPath: /dashboard/
+    buildCommand: pip install uv && uv sync --frozen --no-dev && uv run --no-sync python manage.py collectstatic --noinput
+    startCommand: uv run --no-sync python manage.py migrate --noinput && uv run --no-sync python manage.py seed_demo_data && uv run --no-sync gunicorn reviewradar.wsgi --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: reviewradar.onrender.com
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.11"

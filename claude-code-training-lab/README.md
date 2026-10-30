@@ -65,6 +65,21 @@ Open http://127.0.0.1:8000/. If port 8000 is busy, use `runserver 8800`.
 
 Time zone is `Asia/Ho_Chi_Minh`. Never commit `.env` or secrets.
 
+## Deploy
+
+ReviewRadar is online at <https://reviewradar.onrender.com>, hosted on Render's free plan. `render.yaml` at the repository root describes the service.
+
+- The site sleeps after 15 minutes without visits. The first visit then waits about a minute.
+- Every start fills the database with the demo data again. Nothing typed online is kept.
+- A push to `main` is deployed only after the GitHub `Checks` are green. If a deploy fails, the previous version stays online.
+
+One-time steps for the owner:
+
+1. Sign in to render.com with GitHub and let Render read only `hungle-agilityio/ai-training`.
+2. New → Blueprint → choose this repository.
+3. Keep the generated `DJANGO_SECRET_KEY`.
+4. If the name `reviewradar` is taken, set `DJANGO_ALLOWED_HOSTS` to the address Render shows.
+
 ## Usage
 
 | Address | What it shows |
