@@ -1,11 +1,17 @@
 from dataclasses import asdict
 
+from django.contrib.auth.decorators import login_not_required
 from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 
 from reviews import services
 from reviews.forms import PageForm, ReviewFilterForm
+
+
+@login_not_required
+def healthz(request: HttpRequest) -> HttpResponse:
+    return HttpResponse("ok", content_type="text/plain")
 
 
 def dashboard(request: HttpRequest) -> HttpResponse:
