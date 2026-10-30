@@ -9,6 +9,14 @@ One run: first the owner's answers (redo, merged), then **one new issue**, then 
 
 The tick (`ops/agent_tick.py`, started by `ops/start-loop.sh`) starts each run as `claude -p "Use the work-queue skill for issue #N only."` (or "pull request #N") with `REVIEWRADAR_LOOP=1`, in its own worktree. In that mode `before-edit-check` (rules, gates and existing tests are read-only) and `before-finish-check` (lint, types, tests must pass) are active, and `before-github-command-check` lets only a clean push, a pull request and the review marks below through and refuses every merge. Start the run on a clean tree (`git status`); if it is not clean, stop and say so.
 
+## Check the tools
+
+Before anything else in a run, in loop mode and in an interactive session alike, check that `Artifact` is in this session's tools. When it is not, load it with ToolSearch (`select:Artifact`). When it is still not there, stop the run before any claim, branch, build, label or comment, and end with the one line:
+
+`No Artifact tool in this session; nothing was started.`
+
+That stop adds and removes no label and posts nothing on GitHub. In an interactive session the issue keeps its labels as they were. In loop mode the tick decides the label (the build ends without a pull request); the session never sets `agent:failed` for a missing `Artifact` tool.
+
 ## One target (from the tick)
 
 When the prompt names one issue or one pull request, work on that one only; the tick has already picked it, claimed it and checked the cap (ADR-014).
@@ -74,7 +82,7 @@ Each open pull request of the loop has exactly one status label, on the pull req
 8. **Verify and hand over**, in this order:
    1. `build-verify-report` writes one report with the Decisions table and the ACs.
    2. `share-report` runs the gate and publishes the report as a private artifact (`Artifact` is in the allow list; the hook `before-artifact-publish` still checks it), then writes the link to `report.json` under `share.url`. In a `/redo` round it republishes to that same URL, so the link in the pull request stays valid.
-   3. **No link, no pull request.** When the gate says `BLOCKED`, or the publish fails or is refused, open no pull request: label the issue `agent:failed`, comment the reason on the issue (with the marker), and keep the branch local, as for a finding open after round two. Go to the next run.
+   3. **No link, no pull request.** When the gate says `BLOCKED`, or the publish fails or is refused, open no pull request (a missing `Artifact` tool never gets here: "Check the tools" stops the run first): label the issue `agent:failed`, comment the reason on the issue (with the marker), and keep the branch local, as for a finding open after round two. Go to the next run.
    4. Commit with `create-commit` after PASS, then `git push -u origin <branch>`.
    5. Write the body with `draft-pull-request` (What, Why, How tested, Evidence, One concern, the "Verify report" line with the artifact link, `Closes #N`), starting with the marker, and open the pull request with `gh pr create --body-file <that file>`; the file must exist before the call. `before-github-command-check` refuses a loop `gh pr create` whose body has no `https://claude.ai/artifact/` link, and one with no body or an unreadable body file.
 
