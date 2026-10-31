@@ -65,6 +65,15 @@ Open http://127.0.0.1:8000/. If port 8000 is busy, use `runserver 8800`.
 
 Time zone is `Asia/Ho_Chi_Minh`. Never commit `.env` or secrets.
 
+## Sign in
+
+Every page needs an account. Only the sign-in page (`/login/`) and the health path (`/healthz/`) are open without one.
+
+- **Add an account:** `uv run python manage.py create_user <username>`. It asks for the password twice, checks it with Django's password rules, and prints `Created user <username>.` The account is active and is not staff.
+- **Reset a password:** `uv run python manage.py changepassword <username>`.
+- **Demo account, locally:** set `REVIEWRADAR_DEMO_PASSWORD` before `seed_demo_data`, for example `REVIEWRADAR_DEMO_PASSWORD='<a strong password>' uv run python manage.py seed_demo_data`. It creates the user `demo` with that password (or sets it when `demo` exists) and prints `Demo user: demo`. Without the variable it prints `REVIEWRADAR_DEMO_PASSWORD is not set; no demo user.` and makes no account.
+- **Demo account, on Render:** type `REVIEWRADAR_DEMO_PASSWORD` in the Render dashboard (Environment). `render.yaml` lists the variable with `sync: false`, so its value is never in the repository. Without it nobody can sign in on the live site.
+
 ## Deploy
 
 ReviewRadar is online at <https://reviewradar-zo3u.onrender.com>, hosted on Render's free plan. `render.yaml` at the repository root describes the service. The app also accepts the host Render reports in `RENDER_EXTERNAL_HOSTNAME`, so it works whatever name Render gives the service.
