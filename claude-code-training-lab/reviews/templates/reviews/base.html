@@ -38,6 +38,15 @@
         </span>
       </nav>
       <p class="sidebar-note">Online reputation management for multi-location businesses.</p>
+      {% if request.user.is_authenticated %}
+      <div class="account">
+        <span>Signed in as <strong data-sensitive>{{ request.user.get_username }}</strong></span>
+        <form class="account-signout" method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="account-button">Sign out</button>
+        </form>
+      </div>
+      {% endif %}
     </aside>
 
     <div class="main">
