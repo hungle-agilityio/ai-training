@@ -50,6 +50,7 @@
               <th scope="col" class="num">Reviews</th>
               <th scope="col">Rating</th>
               <th scope="col">Status</th>
+              <th scope="col">Details</th>
             </tr>
           </thead>
           <tbody>
@@ -69,6 +70,7 @@
                   </td>
                   <td><span class="badge badge-{{ row.status }}">{{ row.status_label }}</span></td>
                 {% endif %}
+                <td><a class="row-link" href="/locations/{{ row.branch_id }}/" aria-label="Details for {{ row.name }}">Details</a></td>
               </tr>
             {% endfor %}
           </tbody>

@@ -93,6 +93,7 @@ class RatingBar:
 
 @dataclass(frozen=True)
 class ReviewRow:
+    branch_id: int
     branch_name: str
     rating: int
     rating_percent: int
@@ -142,6 +143,7 @@ def to_review_row(review: Review) -> ReviewRow:
     sentiment, sentiment_label = review_sentiment(review.rating)
     text_short, is_truncated = shorten_text(review.text)
     return ReviewRow(
+        branch_id=review.branch_id,
         branch_name=review.branch.name,
         rating=review.rating,
         rating_percent=round(review.rating / 5 * 100),
