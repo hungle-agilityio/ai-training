@@ -1,11 +1,16 @@
+import os
 from datetime import timedelta
 from typing import Any
 
+from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandParser
 from django.utils import timezone
 
 from reviews.models import Branch, Business, Review
 from reviews.repositories import create_review
+
+DEMO_USERNAME = "demo"
+DEMO_PASSWORD_VARIABLE = "REVIEWRADAR_DEMO_PASSWORD"
 
 DEMO_REVIEWS: dict[str, list[tuple[int, str]]] = {
     "Airport": [
@@ -62,6 +67,18 @@ class Command(BaseCommand):
             Branch.objects.create(business=business, name="Newtown")
 
         self.stdout.write(self.style.SUCCESS(f"Seeded {Branch.objects.count()} branches."))
+        self._set_demo_user()
+
+    def _set_demo_user(self) -> None:
+        """The demo account exists only when its password comes from the environment."""
+        password = os.environ.get(DEMO_PASSWORD_VARIABLE, "")
+        if not password:
+            self.stdout.write(f"{DEMO_PASSWORD_VARIABLE} is not set; no demo user.")
+            return
+        demo, _ = get_user_model().objects.get_or_create(username=DEMO_USERNAME)
+        demo.set_password(password)
+        demo.save()
+        self.stdout.write(f"Demo user: {DEMO_USERNAME}")
 
     @staticmethod
     def _create_branch(
