@@ -167,6 +167,7 @@ class Tick:
     main_red: bool = False
     pull_problem: str = ""
     open_issues: list[dict[str, Any]] | None = None
+    not_planned: dict[int, bool] = field(default_factory=dict)
 
     @property
     def runs(self) -> Path:
@@ -491,11 +492,11 @@ def redo_count(tick: Tick, pr: dict[str, Any]) -> int:
     return len(open_requests(tick, pr))
 
 
-def pr_needs_run(tick: Tick, pr: dict[str, Any], review_issues: set[int]) -> bool:
-    """AC4: the cases of work-queue section 1."""
+def pr_needs_run(tick: Tick, pr: dict[str, Any]) -> bool:
+    """AC4: the cases of work-queue section 1; an ended pull request is tidied, not run."""
     labels = names(pr)
     if pr["state"] != "OPEN":
-        return bool(labels & PR_LABELS) or closes(pr) in review_issues
+        return False
     if open_requests(tick, pr):
         return True
     if "pr:blocked" in labels:
@@ -546,6 +547,34 @@ def runs_alone(issue: dict[str, Any]) -> bool:
     return "risk:high" in names(issue) or any(word in body for word in ALONE_WORDS) or no_files
 
 
+def closed_as_not_planned(tick: Tick, number: int) -> bool:
+    """#143 AC3: only an explicit NOT_PLANNED fails a dependency; unreadable counts as done."""
+    if number not in tick.not_planned:
+        code, out = tick.gh("issue", "view", str(number), "--json", "stateReason")
+        reason = ""
+        if code == 0:
+            try:
+                data = json.loads(out)
+            except ValueError:
+                data = {}
+            if isinstance(data, dict):
+                reason = str(data.get("stateReason") or "").upper().replace(" ", "_")
+        tick.not_planned[number] = reason == "NOT_PLANNED"
+    return tick.not_planned[number]
+
+
+def unmet(tick: Tick, depends: set[int], open_numbers: set[int]) -> set[int]:
+    """The dependencies that are still open or were closed as not planned."""
+    return {m for m in depends if m in open_numbers or closed_as_not_planned(tick, m)}
+
+
+def open_issue_list(tick: Tick) -> list[dict[str, Any]]:
+    if tick.open_issues is None:
+        tick.open_issues = tick.gh_json("issue", "list", "--state", "open", "--limit", "200",
+                                        "--json", "number,title,body,labels,createdAt")
+    return tick.open_issues
+
+
 def main_is_red(tick: Tick) -> bool:
     """#70 AC5: the latest completed Checks run on main; unreadable counts as green."""
     code, out = tick.gh("run", "list", "--workflow", "checks.yml", "--branch", "main",
@@ -576,12 +605,9 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
     chosen: list[Target] = []
     if free <= 0:
         return chosen
-    reviews = tick.gh_json("issue", "list", "--state", "all", "--label", "agent:review",
-                           "--limit", "200", "--json", "number")
-    review_issues = {item["number"] for item in reviews}
     for pr in prs:
         key = f"pr-{pr['number']}"
-        if len(chosen) < free and key not in running and pr_needs_run(tick, pr, review_issues):
+        if len(chosen) < free and key not in running and pr_needs_run(tick, pr):
             prompt = f"Use the work-queue skill for pull request #{pr['number']} only."
             count = redo_count(tick, pr)
             what = f"{count} change requests open" if count else "CI"
@@ -590,9 +616,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
                                  message=message))
     if any(running.values()) or tick.main_red:
         return chosen
-    issues = tick.gh_json("issue", "list", "--state", "open", "--limit", "200",
-                          "--json", "number,title,body,labels,createdAt")
-    tick.open_issues = issues
+    issues = open_issue_list(tick)
     busy: dict[str, int] = {}
     for item in issues:
         if names(item) & {"agent:running", "agent:review"}:
@@ -608,7 +632,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
             break
         key = f"issue-{issue['number']}"
         depends = depends_on(issue.get("body") or "")
-        if key in running or names(issue) & SKIP_LABELS or depends & open_numbers:
+        if key in running or names(issue) & SKIP_LABELS or unmet(tick, depends, open_numbers):
             continue
         files = files_of(issue.get("body") or "")
         shared = sorted(path for path in files if path in busy)
@@ -748,6 +772,38 @@ def tidy_ready(tick: Tick) -> None:
         if "agent:ready" in names(item):
             tick.gh("issue", "edit", str(item["number"]), "--remove-label", "agent:ready")
             tick.say(f"issue-{item['number']}: handed over, agent:ready removed")
+
+
+def tidy_ended(tick: Tick, prs: list[dict[str, Any]]) -> None:
+    """#143 AC1, AC7: labels of ended pull requests, and agent:ready of closed issues."""
+    review: set[int] | None = None
+    for pr in prs:
+        if pr["state"] == "OPEN":
+            continue
+        stale = sorted(names(pr) & PR_LABELS)
+        number = closes(pr)
+        in_review = False
+        if number is not None:
+            if review is None:
+                found = tick.gh_json("issue", "list", "--state", "all", "--label",
+                                     "agent:review", "--limit", "200", "--json", "number")
+                review = {item["number"] for item in found}
+            in_review = number in review
+        if not stale and not in_review:
+            continue
+        if stale:
+            tick.gh("pr", "edit", str(pr["number"]), "--remove-label", ",".join(stale))
+            pr["labels"] = [x for x in pr.get("labels") or [] if x["name"] not in PR_LABELS]
+        if in_review and number is not None and review is not None:
+            tick.gh("issue", "edit", str(number), "--remove-label", "agent:review")
+            review.discard(number)
+        tick.say(f"pr-{pr['number']}: tidied, labels removed")
+    closed = tick.gh_json("issue", "list", "--state", "closed", "--label", "agent:ready",
+                          "--limit", "200", "--json", "number,labels,state")
+    for item in closed:
+        if item.get("state") == "CLOSED" and "agent:ready" in names(item):
+            tick.gh("issue", "edit", str(item["number"]), "--remove-label", "agent:ready")
+            tick.say(f"issue-{item['number']}: closed, agent:ready removed")
 
 
 def paused(tick: Tick) -> bool:
@@ -892,6 +948,80 @@ def merge_approved(tick: Tick, prs: list[dict[str, Any]], running: dict[str, boo
         announce_one(tick, pr)
 
 
+def dependency_reason(tick: Tick, prs: list[dict[str, Any]],
+                      issues: dict[int, dict[str, Any]], number: int) -> str:
+    """#143 AC4: why a dependency has not unlocked its issue."""
+    if number not in issues:
+        return "closed as not planned, remove the dependency or reopen it"
+    opened = newest_open_pr(prs, number)
+    if opened is not None:
+        return f"review PR #{opened['number']}"
+    if "agent:running" in names(issues[number]):
+        return "building"
+    return "no pull request yet"
+
+
+def blocked_lines(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool],
+                  started: set[str]) -> tuple[int, list[str]]:
+    """#143 AC4: the ready issues held back by a dependency or a shared file, one line each."""
+    issues = open_issue_list(tick)
+    by_number = {item["number"]: item for item in issues}
+    busy: dict[str, int] = {}
+    for item in issues:
+        if names(item) & {"agent:running", "agent:review"}:
+            for path in files_of(item.get("body") or ""):
+                busy.setdefault(path, item["number"])
+    ready = sorted((i for i in issues if "agent:ready" in names(i) and not names(i) & SKIP_LABELS),
+                   key=lambda i: (i["createdAt"], i["number"]))
+    entries: list[tuple[int, int, str]] = []
+    blocked: set[int] = set()
+    for item in ready:
+        number = item["number"]
+        key = f"issue-{number}"
+        body = item.get("body") or ""
+        if key in running:
+            continue
+        found: list[tuple[int, str]] = [
+            (m, f"#{number} waits for #{m}: {dependency_reason(tick, prs, by_number, m)}")
+            for m in sorted(unmet(tick, depends_on(body), set(by_number)))
+        ]
+        if not found:
+            shared: dict[int, str] = {}
+            for path in sorted(files_of(body)):
+                if path in busy:
+                    shared.setdefault(busy[path], path)
+            found = [(m, f"#{number} waits for #{m}, which also touches {path}")
+                     for m, path in sorted(shared.items())]
+        if found and labelled_by_owner(tick, number):
+            blocked.add(number)
+            entries += [(number, m, text) for m, text in found]
+        elif not found and key in started:
+            for path in files_of(body):
+                busy.setdefault(path, number)
+    return len(blocked), [text for _, _, text in sorted(entries)]
+
+
+def say_blocked(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool],
+                started: set[str]) -> None:
+    """#143 AC4, AC5, AC6, AC8: one message when the blocked set changes; none at the limit."""
+    count, lines = blocked_lines(tick, prs, running, started)
+    last = tick.home / "last-blocked"
+    if not lines:
+        last.unlink(missing_ok=True)
+        return
+    for line in lines:
+        tick.say(line)
+    waiting = sum(1 for pr in prs if pr["state"] == "OPEN")
+    waiting += sum(1 for item in open_issue_list(tick) if "agent:running" in names(item))
+    if waiting >= WAITING_CAP:
+        return
+    message = "\n".join([f"ReviewRadar waiting: {count} ready issues blocked", *lines])
+    if last.exists() and last.read_text() == message:
+        return
+    last.write_text(message)
+    tick.notify(message)
+
+
 def queue_empty(tick: Tick, prs: list[dict[str, Any]]) -> None:
     """AC12: 'queue empty', or #78 AC3 'waiting' when ready issues wait on the cap."""
     waiting = sum(1 for pr in prs if pr["state"] == "OPEN")
@@ -931,11 +1061,13 @@ def tick_once(host: Host, home: Path) -> list[str]:
         needs_you(tick, prs)
         running = running_keys(tick)
         merge_approved(tick, prs, running)
+        tidy_ended(tick, prs)
         tick.main_red = main_is_red(tick)
         if paused(tick):
             tick.say("paused after the plan limit; no build started")
             return tick.log
         started = [t for t in choose(tick, prs, running) if start(tick, t)]
+        say_blocked(tick, prs, running, {t.key for t in started})
         if started:
             (home / "last-empty").unlink(missing_ok=True)
         elif not running:
