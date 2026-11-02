@@ -79,7 +79,7 @@
         <tbody>
           {% for row in page.rows %}
             <tr class="review-row">
-              <th scope="row">{{ row.branch_name }}</th>
+              <th scope="row"><a class="row-link" href="/locations/{{ row.branch_id }}/">{{ row.branch_name }}</a></th>
               <td>
                 <span class="stars" role="img" aria-label="{{ row.rating }} out of 5" title="{{ row.rating }} out of 5"><span style="--pct: {{ row.rating_percent }}%"></span></span>
               </td>
