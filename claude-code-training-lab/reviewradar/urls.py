@@ -10,6 +10,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("healthz/", views.healthz, name="healthz"),
     path("", RedirectView.as_view(pattern_name="dashboard"), name="home"),
     path("dashboard/", views.dashboard, name="dashboard"),
+    path("locations/<int:pk>/", views.location, name="location"),
     path("reviews/", views.reviews, name="reviews"),
     path("reviews/export/", views.reviews_export, name="reviews-export"),
     path("api/dashboard/", views.dashboard_api, name="dashboard-api"),

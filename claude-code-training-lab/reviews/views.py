@@ -1,7 +1,7 @@
 from dataclasses import asdict
 
 from django.contrib.auth.decorators import login_not_required
-from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 
@@ -16,6 +16,13 @@ def healthz(request: HttpRequest) -> HttpResponse:
 
 def dashboard(request: HttpRequest) -> HttpResponse:
     return render(request, "reviews/dashboard.html", {"overview": services.dashboard_overview()})
+
+
+def location(request: HttpRequest, pk: int) -> HttpResponse:
+    page = services.location_page(pk)
+    if page is None:
+        raise Http404("No such location")
+    return render(request, "reviews/location.html", {"page": page})
 
 
 def reviews(request: HttpRequest) -> HttpResponse:

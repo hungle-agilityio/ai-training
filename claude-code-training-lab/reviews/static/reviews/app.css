@@ -321,3 +321,11 @@ a.pager-link:hover { border-color: var(--brand); color: var(--brand); }
 @media (max-width: 400px) {
   .signin-card { padding: 24px 16px; }
 }
+
+.location-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); margin-bottom: 20px; }
+.score-value { font-size: 36px; letter-spacing: -.02em; }
+.see-all { margin: 14px 0 0; }
+.bars .bar-link { cursor: default; }
+.bars .bar-link:hover { background: none; }
+.bars .bar-link:hover .bar-label { text-decoration: none; }
+@media (max-width: 900px) { .location-grid { grid-template-columns: 1fr; } }
