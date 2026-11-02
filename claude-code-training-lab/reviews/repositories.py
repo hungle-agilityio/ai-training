@@ -47,6 +47,33 @@ def list_recent_reviews(limit: int) -> Sequence[Review]:
     return list(Review.objects.select_related("branch").order_by("-created_at")[:limit])
 
 
+def branch_rating_totals_for(pk: int) -> BranchTotals | None:
+    """Count and rating sum of one branch in one query; None when it does not exist."""
+    row = (
+        Branch.objects.filter(pk=pk)
+        .values("id", "name")
+        .annotate(review_count=Count("reviews"), rating_total=Coalesce(Sum("reviews__rating"), 0))
+        .first()
+    )
+    if row is None:
+        return None
+    return BranchTotals(
+        branch_id=int(row["id"]),
+        name=str(row["name"]),
+        review_count=int(row["review_count"]),
+        rating_total=int(row["rating_total"]),
+    )
+
+
+def rating_counts_for(branch_id: int) -> dict[int, int]:
+    rows = Review.objects.filter(branch_id=branch_id).values("rating").annotate(total=Count("id"))
+    return {row["rating"]: row["total"] for row in rows}
+
+
+def newest_reviews_of(branch_id: int, limit: int) -> Sequence[Review]:
+    return list(reviews_newest_first(branch_id=branch_id)[:limit])
+
+
 def reviews_newest_first(
     *,
     branch_id: int | None = None,

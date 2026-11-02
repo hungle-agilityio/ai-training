@@ -154,6 +154,56 @@ def to_review_row(review: Review) -> ReviewRow:
     )
 
 
+LOCATION_PAGE_REVIEWS = 5
+
+
+@dataclass(frozen=True)
+class LocationPage:
+    branch_id: int
+    name: str
+    review_count: int
+    average_rating: float | None
+    bar_percent: int
+    status: str
+    status_label: str
+    rating_bars: list[RatingBar]
+    latest_reviews: list[ReviewRow]
+
+
+def rating_bars_from(counts: dict[int, int]) -> list[RatingBar]:
+    total = sum(counts.values())
+    return [
+        RatingBar(
+            stars=stars,
+            count=counts.get(stars, 0),
+            percent=round(counts.get(stars, 0) / total * 100) if total else 0,
+        )
+        for stars in (5, 4, 3, 2, 1)
+    ]
+
+
+def location_page(pk: int) -> LocationPage | None:
+    """Score, breakdown and newest reviews of one location; None when it does not exist."""
+    totals = repositories.branch_rating_totals_for(pk)
+    if totals is None:
+        return None
+    average = average_from_totals(totals.rating_total, totals.review_count)
+    status, status_label = ("", "") if average is None else branch_status(average)
+    has_reviews = totals.review_count > 0
+    newest = repositories.newest_reviews_of(pk, LOCATION_PAGE_REVIEWS) if has_reviews else []
+    return LocationPage(
+        branch_id=totals.branch_id,
+        name=totals.name,
+        review_count=totals.review_count,
+        average_rating=average,
+        bar_percent=round(average / 5 * 100) if average is not None else 0,
+        status=status,
+        status_label=status_label,
+        rating_bars=rating_bars_from(repositories.rating_counts_for(pk)),
+        latest_reviews=[to_review_row(review) for review in newest],
+    )
+
+
 def dashboard_overview(recent_limit: int = 6) -> DashboardOverview:
     rows = []
     for score in branch_scores():
