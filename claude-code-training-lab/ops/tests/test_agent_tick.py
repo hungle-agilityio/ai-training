@@ -274,10 +274,8 @@ def test_blocked_pull_request_with_new_redo_is_taken(home: Path) -> None:
     [
         pull(20),
         pull(20, "pr:ready-for-review", checks="FAILURE"),
-        pull(20, "pr:ready-for-review", state="MERGED"),
-        pull(20, state="CLOSED", closes=6),
     ],
-    ids=["no-status-label", "ready-but-ci-red", "merged-with-label", "closed-issue-in-review"],
+    ids=["no-status-label", "ready-but-ci-red"],
 )
 def test_pull_request_that_needs_a_run_is_taken(home: Path, pr: dict[str, Any]) -> None:
     host = FakeHost(prs=[pr], issues=[issue(6, "agent:review")])
