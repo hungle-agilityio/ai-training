@@ -91,6 +91,17 @@ h1, h2, p { margin: 0; }
 .nav-item.is-active { background: rgba(123, 147, 255, .18); color: #fff; }
 .nav-item.is-disabled { opacity: .55; cursor: default; }
 .sidebar-note { margin-top: auto; font-size: 13px; padding: 0 8px; opacity: .7; }
+.account {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 10px 0; border-top: 1px solid rgba(196, 204, 226, .2); font-size: 13px;
+}
+.account strong { color: #fff; overflow-wrap: anywhere; }
+.account-button {
+  border: 1px solid rgba(196, 204, 226, .35); background: transparent; color: #fff;
+  border-radius: 8px; padding: 5px 12px; font: inherit; font-weight: 600; cursor: pointer;
+}
+.account-button:hover { border-color: #7b93ff; }
+.account-button:focus-visible { outline: 2px solid #7b93ff; outline-offset: 2px; }
 
 /* Main */
 .main { display: flex; flex-direction: column; min-width: 0; }
@@ -248,6 +259,10 @@ a.pager-link:hover { border-color: var(--brand); color: var(--brand); }
   .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 14px 16px; gap: 12px; }
   .nav { flex-direction: row; flex-wrap: wrap; }
   .nav-item.is-disabled, .sidebar-note { display: none; }
+  .account {
+    width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center;
+    justify-content: space-between; padding: 8px 4px 0;
+  }
   .topbar { flex-direction: column; align-items: flex-start; padding: 20px 16px 4px; }
   .content { padding: 12px 16px 24px; }
   .footer { padding: 12px 16px 24px; }
