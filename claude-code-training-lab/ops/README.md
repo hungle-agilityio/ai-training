@@ -43,6 +43,21 @@ All under `~/.reviewradar/`:
 | `paused-until` | set for 60 minutes when the Claude plan limit is reached |
 | `tick.lock` | present while a tick runs; one older than 15 minutes is left over |
 
+## One status label per issue
+
+An open loop issue carries exactly one of these four labels, and the tick (not the build) keeps it so.
+
+| Label | Meaning |
+|---|---|
+| `agent:ready` | waiting for the loop |
+| `agent:running` | being built, no pull request yet |
+| `agent:review` | has an open loop pull request (`Closes #N`), also while its CI still runs; the pull request's `pr:*` label shows CI |
+| `agent:failed` | stopped without a pull request; the reason is in the issue comment |
+
+- Starting a build swaps `agent:ready` for `agent:running` in one call. Each tick, an issue with an open loop pull request gets `agent:review` and loses `agent:running` and `agent:ready` (log: `issue-<n>: has PR #<p>, agent:review`).
+- A build that ends without a pull request swaps `agent:running` and `agent:ready` for `agent:failed`. To rebuild, remove `agent:failed` and add `agent:ready`; an issue with only `agent:failed`, or with no status label, is never started. An old issue with both `agent:ready` and `agent:failed` is left alone.
+- The plan limit sends the issue back to `agent:ready` alone.
+
 ## What a tick does
 
 - First, open loop pull requests with an owner approval comment are merged when the checks of ADR-016 hold (see Review from the phone).
@@ -86,7 +101,7 @@ The log lines are in the tmux window and in the tick's output.
 - **Pull `main`.** After taking the lock, the tick fast-forwards the main checkout (`git fetch origin main`, `git merge --ff-only origin/main`) when it is on `main` with no tracked changes; the new code runs from the next tick. Another branch, tracked changes or a failed fetch or fast-forward: no pull and one ntfy per reason.
 - **Only the owner's pull requests.** A pull request from a fork, or opened by another login, is never the loop's, even with the marker.
 - **Plan limit.** Recognised also as `extra_usage`, `usage_limit` and "hit your ... limit", whatever the exit code, as long as the build had not handed over: the issue goes back to `agent:ready` and builds pause 60 minutes.
-- **Handed over.** An open issue with `agent:ready` and `agent:review` loses `agent:ready`, so a closed pull request is not rebuilt; add `agent:ready` again to rebuild it. `agent:failed` keeps `agent:ready`.
+- **Handed over.** An open issue with `agent:ready` and `agent:review` loses `agent:ready`, so a closed pull request is not rebuilt; add `agent:ready` again to rebuild it. An old `agent:ready` + `agent:failed` issue is left alone for the owner to decide.
 - **`archive/` branches.** When a kept worktree is moved aside, its branch (and, for an issue, every local `bug/<n>-`, `feat/<n>-`, `task/<n>-` branch) is renamed `archive/<branch>-<unix time>`. Nothing is deleted.
 
 ## Phone messages (ntfy and Slack)

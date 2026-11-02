@@ -275,5 +275,5 @@ def test_open_issue_keeps_agent_ready(home: Path) -> None:
         issues=[issue(3, "agent:ready", body=files("a.py"))],
         closed=[issue(3, "agent:ready") | {"state": "OPEN"}],
     )
-    agent_tick.tick_once(host, home)
-    assert removed(host, "issue", "edit") == []
+    log = agent_tick.tick_once(host, home)
+    assert "issue-3: closed, agent:ready removed" not in log

@@ -350,7 +350,7 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
         return
     ensure_label(tick, "agent:failed")
     tick.gh("issue", "edit", number, "--add-label", "agent:failed", "--remove-label",
-            "agent:running")
+            "agent:running,agent:ready")
     body = f"{MARKER}\nThe loop build {reason}. Last {LOG_TAIL} lines of the log:\n"
     body += f"\n```\n{tail}\n```"
     tick.gh("issue", "comment", number, "--body", body)
@@ -683,7 +683,8 @@ def start(tick: Tick, target: Target) -> bool:
     (tick.home / "start-failed" / target.key).unlink(missing_ok=True)
     if target.key.startswith("issue-"):
         ensure_label(tick, "agent:running")
-        tick.gh("issue", "edit", str(target.number), "--add-label", "agent:running")
+        tick.gh("issue", "edit", str(target.number), "--add-label", "agent:running",
+                "--remove-label", "agent:ready")
     run = tick.runs / target.key
     run.mkdir(parents=True, exist_ok=True)
     if target.alone:
@@ -764,14 +765,37 @@ def pull_main(tick: Tick) -> None:
         tick.notify(f"ReviewRadar main checkout not updated: {reason}")
 
 
-def tidy_ready(tick: Tick) -> None:
+def tidy_ready(tick: Tick) -> set[int]:
     """#74 AC6: an issue handed over (agent:review) loses agent:ready; agent:failed keeps it."""
+    fixed: set[int] = set()
     found = tick.gh_json("issue", "list", "--state", "open", "--label", "agent:review",
                          "--limit", "200", "--json", "number,labels")
     for item in found:
         if "agent:ready" in names(item):
             tick.gh("issue", "edit", str(item["number"]), "--remove-label", "agent:ready")
             tick.say(f"issue-{item['number']}: handed over, agent:ready removed")
+            fixed.add(item["number"])
+    return fixed
+
+
+def sync_review(tick: Tick, prs: list[dict[str, Any]], fixed: set[int]) -> None:
+    """#146 AC2: an open issue with an open loop pull request is agent:review alone."""
+    by_number = {item["number"]: item for item in open_issue_list(tick)}
+    for pr in prs:
+        number = closes(pr)
+        item = by_number.get(number) if number is not None and pr["state"] == "OPEN" else None
+        if number is None or item is None:
+            continue
+        have = names(item) - ({"agent:ready"} if number in fixed else set())
+        stale = [x for x in ("agent:running", "agent:ready") if x in have]
+        if "agent:review" in have and not stale:
+            continue
+        args = ["--add-label", "agent:review"] if "agent:review" not in have else []
+        if stale:
+            args += ["--remove-label", ",".join(stale)]
+        tick.gh("issue", "edit", str(number), *args)
+        item["labels"] = [{"name": x} for x in sorted((have | {"agent:review"}) - set(stale))]
+        tick.say(f"issue-{number}: has PR #{pr['number']}, agent:review")
 
 
 def tidy_ended(tick: Tick, prs: list[dict[str, Any]]) -> None:
@@ -1055,7 +1079,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
     try:
         pull_main(tick)
         prs = loop_pull_requests(tick)
-        tidy_ready(tick)
+        sync_review(tick, prs, tidy_ready(tick))
         announce_merged(tick, prs)
         finish_runs(tick, prs)
         needs_you(tick, prs)

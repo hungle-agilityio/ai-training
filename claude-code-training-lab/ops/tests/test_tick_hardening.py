@@ -65,7 +65,7 @@ def test_another_logins_pull_request_does_not_hide_a_failed_build(home: Path) ->
     host = GitHost(prs=[stranger], issues=[issue(1, "agent:running")])
     agent_tick.tick_once(host, home)
     assert ["gh", "issue", "edit", "1", "--add-label", "agent:failed", "--remove-label",
-            "agent:running", "--repo", agent_tick.REPO] in host.calls
+            "agent:running,agent:ready", "--repo", agent_tick.REPO] in host.calls
 
 
 def test_foreign_pull_requests_do_not_count_towards_the_cap(home: Path) -> None:
