@@ -407,7 +407,8 @@ def test_issue_is_labelled_running_before_the_build_starts(home: Path) -> None:
     names = [c[1:4] for c in host.calls if c[0] == "gh"]
     assert ["label", "create", "agent:running"] in names
     assert host.gh_calls("issue", "edit") == [
-        ["gh", "issue", "edit", "1", "--add-label", "agent:running", "--repo", agent_tick.REPO]
+        ["gh", "issue", "edit", "1", "--add-label", "agent:running", "--remove-label",
+         "agent:ready", "--repo", agent_tick.REPO]
     ]
 
 
@@ -518,7 +519,7 @@ def test_failed_build_marks_the_issue_failed(home: Path, outcome: str | None,
     host = FakeHost(issues=[issue(1, "agent:ready", "agent:running")])
     agent_tick.tick_once(host, home)
     assert ["gh", "issue", "edit", "1", "--add-label", "agent:failed", "--remove-label",
-            "agent:running", "--repo", agent_tick.REPO] in host.calls
+            "agent:running,agent:ready", "--repo", agent_tick.REPO] in host.calls
     body = host.gh_calls("issue", "comment")[0][5]
     assert body.startswith(MARKER) and reason in body
     assert "line 10\n" in body and "line 9\n" not in body

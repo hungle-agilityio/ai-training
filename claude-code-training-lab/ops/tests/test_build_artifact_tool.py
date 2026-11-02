@@ -99,7 +99,7 @@ def test_missing_three_times_is_no_artifact_and_fails_the_issue_without_a_pause(
     host = FakeHost(issues=[issue(1, "agent:ready", "agent:running")])
     agent_tick.tick_once(host, home)
     assert ["gh", "issue", "edit", "1", "--add-label", "agent:failed", "--remove-label",
-            "agent:running", "--repo", agent_tick.REPO] in host.calls
+            "agent:running,agent:ready", "--repo", agent_tick.REPO] in host.calls
     assert reason in host.gh_calls("issue", "comment")[0][5]
     assert host.sent[0] == f"rr-test: ReviewRadar build for issue #1 failed: {reason}"
     assert not (home / "paused-until").exists()
