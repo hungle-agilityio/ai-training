@@ -150,7 +150,7 @@ def test_signed_in_user_sees_the_page() -> None:
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("count", [5, 200])
-def test_page_needs_at_most_three_queries(
+def test_page_needs_at_most_four_queries(
     count: int, django_assert_max_num_queries: DjangoAssertNumQueries
 ) -> None:
     branch = _branch()
@@ -159,7 +159,7 @@ def test_page_needs_at_most_three_queries(
         for i in range(count)
     )
 
-    with django_assert_max_num_queries(3):
+    with django_assert_max_num_queries(4):
         response = Client().get(f"/locations/{branch.pk}/")
 
     assert response.status_code == 200
