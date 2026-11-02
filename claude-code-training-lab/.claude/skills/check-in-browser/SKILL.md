@@ -14,13 +14,14 @@ uv run python .claude/skills/check-in-browser/browser_check.py
 ```
 
 - It starts the app on a **throw-away demo database** (never `db.sqlite3`), runs the steps in a headless Chromium with a fixed window size (1280 by 800), and stops the app and deletes the database at the end.
+- Every page needs a signed-in user, so before the steps it **signs in as `demo`** through the real sign-in page, with a password (and, with debug off, a secret key) made for this run only and never written anywhere. No password has to be set on the machine. If the sign-in fails the run stops with `NOT RUN: could not sign in as demo` (exit code 2). To check pages as a visitor (the sign-in page itself), pass `--signed-out` or set `"sign_in": false` in a spec written as an object. Signed in, every page has a **Sign out** button, so a click selector must name its own button (`button.button-apply` for the filters), never `button[type=submit]`, which signs out.
 - Default steps: the dashboard, the reviews page, the Bad and Good filters, and a filter with no match.
 - Screenshots, one per step, and `result.json` go to `out/browser-check/<time>/` (git-ignored). The screenshots show demo data only.
 - For another page or flow, write a spec from the issue's "Steps to check the result" and pass it with `--spec`: a list of steps, each with a `name`, a `goto` address, optional `actions` (`select`, `fill`, `click` on a selector), and optional `expect` and `absent` texts. A step may also give `status`, the HTTP status its page must answer (for example 404 for an error page). A spec written as an object (`{"steps": [...]}`) may set `"debug": false` to run the app as in production (needed to see `404.html` or `500.html`) and `"viewport": "390x844"` for a narrow screen; `--debug-off` and `--viewport` do the same on the command line and win over the spec.
 
 ```
 {"steps": [{"name": "week-filter", "goto": "/reviews/",
-            "actions": [{"fill": {"#filter-week": "2026-10-12"}}, {"click": "button[type=submit]"}],
+            "actions": [{"fill": {"#filter-week": "2026-10-12"}}, {"click": "button.button-apply"}],
             "expect": ["Week:"]}]}
 ```
 

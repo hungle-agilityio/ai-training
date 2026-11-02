@@ -3,6 +3,9 @@
 
 Usage: uv run python .claude/skills/check-in-browser/browser_check.py [--spec FILE] [--out DIR]
 
+Since every page needs a signed-in user, the check signs in as "demo" through the sign-in page
+before the steps, with a password made for this run only (--signed-out runs as a visitor).
+
 It starts the app on a throw-away demo database (never the developer database), opens each
 step of the spec in a headless Chromium, saves one screenshot per step, and records console
 messages, JavaScript errors and failed network requests. It writes result.json next to the
@@ -25,6 +28,7 @@ import importlib.util
 import json
 import os
 import re
+import secrets
 import shutil
 import socket
 import subprocess
@@ -37,6 +41,8 @@ from pathlib import Path
 from typing import Any
 
 MAX_FAILED_ACTIONS = 3
+DEMO_USERNAME = "demo"
+LOGIN_PATH = "/login/"
 VIEWPORT = {"width": 1280, "height": 800}
 VIEWPORT_LIMITS = (200, 4000)
 
@@ -46,21 +52,21 @@ DEFAULT_STEPS: list[dict[str, Any]] = [
     {
         "name": "filter-bad",
         "goto": "/reviews/",
-        "actions": [{"select": {"#filter-rating": "bad"}}, {"click": "button[type=submit]"}],
+        "actions": [{"select": {"#filter-rating": "bad"}}, {"click": "button.button-apply"}],
         "expect": ["Waited 50 minutes"],
         "absent": ["Friendly staff"],
     },
     {
         "name": "filter-good",
         "goto": "/reviews/",
-        "actions": [{"select": {"#filter-rating": "good"}}, {"click": "button[type=submit]"}],
+        "actions": [{"select": {"#filter-rating": "good"}}, {"click": "button.button-apply"}],
         "expect": ["Friendly staff"],
         "absent": ["Waited 50 minutes"],
     },
     {
         "name": "no-match",
         "goto": "/reviews/",
-        "actions": [{"fill": {"#filter-week": "2001-01-01"}}, {"click": "button[type=submit]"}],
+        "actions": [{"fill": {"#filter-week": "2001-01-01"}}, {"click": "button.button-apply"}],
         "expect": ["No reviews found"],
     },
 ]
@@ -164,11 +170,33 @@ def wait_until_ready(url: str, seconds: float = 30.0) -> bool:
     return False
 
 
+class SignInError(RuntimeError):
+    """The check could not sign in as the demo user."""
+
+
+def one_run_secret() -> str:
+    """A random value used for one run only and never written anywhere."""
+    return secrets.token_urlsafe(32)
+
+
+def app_env(database: Path, debug: bool, password: str) -> dict[str, str]:
+    """The app's environment: a throw-away database, a one-run demo password and secret key."""
+    env = {
+        **os.environ,
+        "DJANGO_DB_NAME": str(database),
+        "DJANGO_DEBUG": "1" if debug else "0",
+        "REVIEWRADAR_DEMO_PASSWORD": password,
+    }
+    if not debug:
+        env["DJANGO_SECRET_KEY"] = one_run_secret()
+    return env
+
+
 def start_app(
-    root: Path, database: Path, port: int, debug: bool = True
+    root: Path, database: Path, port: int, debug: bool = True, password: str = ""
 ) -> subprocess.Popen[bytes]:
     """With debug off the app runs as in production; --insecure still serves the static files."""
-    env = {**os.environ, "DJANGO_DB_NAME": str(database), "DJANGO_DEBUG": "1" if debug else "0"}
+    env = app_env(database, debug, password or one_run_secret())
     for command in (["migrate", "--noinput"], ["seed_demo_data"]):
         subprocess.run(
             [sys.executable, "manage.py", *command],
@@ -194,7 +222,7 @@ def start_app(
 
 
 def load_options(spec: Path | None) -> dict[str, Any]:
-    """A spec written as an object may also set "debug" (true or false) and "viewport"."""
+    """A spec written as an object may also set "debug", "sign_in" (true or false), "viewport"."""
     if spec is None:
         return {}
     data = json.loads(spec.read_text())
@@ -205,6 +233,10 @@ def load_options(spec: Path | None) -> dict[str, Any]:
         if not isinstance(data["debug"], bool):
             raise ValueError(f"the spec's debug must be true or false, not {data['debug']!r}")
         options["debug"] = data["debug"]
+    if "sign_in" in data:
+        if not isinstance(data["sign_in"], bool):
+            raise ValueError(f"the spec's sign_in must be true or false, not {data['sign_in']!r}")
+        options["sign_in"] = data["sign_in"]
     if "viewport" in data:
         options["viewport"] = parse_viewport(str(data["viewport"]))
     return options
@@ -251,6 +283,7 @@ def summarize(
     masking: dict[str, Any] | None = None,
     viewport: dict[str, int] | None = None,
     debug: bool = True,
+    signed_in: bool = True,
 ) -> dict[str, Any]:
     masking = masking or masking_of(steps)
     errors = sum(len(step["console_errors"]) + len(step["page_errors"]) for step in steps)
@@ -272,6 +305,7 @@ def summarize(
         "masking": masking,
         "viewport": viewport or VIEWPORT,
         "debug": debug,
+        "signed_in": signed_in,
         "status": "clean" if clean else "not clean",
     }
 
@@ -298,6 +332,12 @@ def apply_expected_status(
     return record
 
 
+def is_favicon_message(message: Any) -> bool:
+    """A missing favicon is not a failure, so its console echo is not an error either."""
+    location = getattr(message, "location", None) or {}
+    return str(location.get("url", "")).endswith("favicon.ico")
+
+
 def run_step(
     page: Any, base: str, step: dict[str, Any], out_dir: Path, index: int, blur: bool = False
 ) -> tuple[dict[str, Any], bool]:
@@ -321,7 +361,7 @@ def run_step(
         "console",
         lambda m: (
             keep("console_errors" if m.type == "error" else "console_warnings", m.text)
-            if m.type in ("error", "warning")
+            if m.type in ("error", "warning") and not is_favicon_message(m)
             else None
         ),
     )
@@ -369,6 +409,20 @@ def run_step(
     return record, ok
 
 
+def sign_in(page: Any, base: str, password: str) -> None:
+    """Sign in as the demo user through the real sign-in page; the session stays in the context."""
+    try:
+        page.goto(base + LOGIN_PATH, wait_until="load", timeout=15000)
+        page.fill("#id_username", DEMO_USERNAME, timeout=5000)
+        page.fill("#id_password", password, timeout=5000)
+        with page.expect_navigation(wait_until="load", timeout=8000):
+            page.click("button[type=submit]", timeout=5000)
+    except Exception as error:
+        raise SignInError(f"could not sign in as {DEMO_USERNAME}") from error
+    if page.url.replace(base, "").startswith(LOGIN_PATH):
+        raise SignInError(f"could not sign in as {DEMO_USERNAME}")
+
+
 def plant_review(root: Path, database: Path, text: str) -> None:
     """Add one review with this text to the throw-away database (to test the scan only)."""
     code = (
@@ -395,6 +449,7 @@ def run(
     plant: str | None = None,
     viewport: dict[str, int] | None = None,
     debug: bool = True,
+    signed_in: bool = True,
 ) -> dict[str, Any]:
     from playwright.sync_api import sync_playwright
 
@@ -402,7 +457,8 @@ def run(
     temp = Path(tempfile.mkdtemp(prefix="browser-check-"))
     port = free_port()
     base = f"http://127.0.0.1:{port}"
-    server = start_app(root, temp / "demo.sqlite3", port, debug=debug)
+    password = one_run_secret()
+    server = start_app(root, temp / "demo.sqlite3", port, debug=debug, password=password)
     try:
         if plant:
             plant_review(root, temp / "demo.sqlite3", plant)
@@ -416,6 +472,12 @@ def run(
             context = browser.new_context(
                 viewport=viewport or VIEWPORT, locale="en-US", timezone_id="Asia/Ho_Chi_Minh"
             )
+            if signed_in:
+                login_page = context.new_page()
+                try:
+                    sign_in(login_page, base, password)
+                finally:
+                    login_page.close()
             for index, step in enumerate(steps, 1):
                 page = context.new_page()
                 record, ok = run_step(page, base, step, out_dir, index, blur)
@@ -432,7 +494,9 @@ def run(
                     )
                     break
             browser.close()
-        summary = summarize(results, stopped, viewport=viewport or VIEWPORT, debug=debug)
+        summary = summarize(
+            results, stopped, viewport=viewport or VIEWPORT, debug=debug, signed_in=signed_in
+        )
     finally:
         server.terminate()
         server.wait(timeout=10)
@@ -462,7 +526,10 @@ def print_summary(summary: dict[str, Any], out_dir: Path) -> None:
         f"checks: {summary['problems']} problem(s)"
     )
     size = summary.get("viewport") or VIEWPORT
-    print(f"viewport: {size['width']}x{size['height']}, debug: {summary.get('debug', True)}")
+    print(
+        f"viewport: {size['width']}x{size['height']}, debug: {summary.get('debug', True)}, "
+        f"signed_in: {summary.get('signed_in', True)}"
+    )
     print(f"masking: {summary['masking']['status']}")
     if summary["stopped"]:
         print(summary["stopped"])
@@ -491,6 +558,11 @@ def main(argv: list[str]) -> int:
         action="store_true",
         help="run the app with DJANGO_DEBUG=0, to see the error pages users see",
     )
+    parser.add_argument(
+        "--signed-out",
+        action="store_true",
+        help="run every step as a visitor (default: signed in as the demo user)",
+    )
     args = parser.parse_args(argv)
     try:
         options = load_options(args.spec)
@@ -503,6 +575,7 @@ def main(argv: list[str]) -> int:
         print(f"NOT RUN: {error}")
         return 2
     debug = False if args.debug_off else options.get("debug", True)
+    signed_in = False if args.signed_out else options.get("sign_in", True)
     root = project_root(Path.cwd())
     out_dir = args.out or root / "out" / "browser-check" / datetime.now().strftime("%Y%m%d-%H%M%S")
     try:
@@ -514,7 +587,11 @@ def main(argv: list[str]) -> int:
             args.plant,
             viewport=viewport,
             debug=debug,
+            signed_in=signed_in,
         )
+    except SignInError as error:
+        print(f"NOT RUN: {error}")
+        return 2
     except ImportError:
         print("NOT CONFIGURED: playwright is not installed (run: uv sync)")
         return 2
