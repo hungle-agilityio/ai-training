@@ -1,6 +1,8 @@
 """Tests of the after-edit-format hook. Run: uv run pytest .claude/hooks/tests --no-cov -q"""
 
+import os
 import sys
+from collections.abc import Mapping
 from importlib import util
 from pathlib import Path
 from types import ModuleType
@@ -33,6 +35,20 @@ class FakeRun:
     def __call__(self, args: list[str], cwd: Path) -> tuple[int, str]:
         self.calls.append(args)
         return self.code, self.output
+
+
+def require_ruff(path: Path, env: Mapping[str, str]) -> list[str]:
+    """Without ruff the real-ruff tests fail on CI, so a green run always ran them."""
+    if not path.exists():
+        if env.get("CI"):
+            pytest.fail(f"ruff is missing at {path}; run uv sync")
+        pytest.skip(f"ruff is not installed at {path}")
+    return [str(path)]
+
+
+@pytest.fixture
+def ruff() -> list[str]:
+    return require_ruff(RUFF, os.environ)
 
 
 def payload(file_path: str, tool: str = "Edit") -> dict[str, object]:
@@ -113,42 +129,68 @@ def test_missing_ruff_is_reported_not_raised(project: Path) -> None:
     assert message is not None and "not formatted" in message
 
 
-@pytest.mark.skipif(not RUFF.exists(), reason="ruff is not installed next to this Python")
-def test_real_ruff_sorts_imports_and_lays_out(project: Path) -> None:
+def test_real_ruff_sorts_imports_and_lays_out(project: Path, ruff: list[str]) -> None:
     target = project / "a.py"
     target.write_text(
         "import sys\nimport os\ndef f():\n    return os.sep, sys.argv\ndef g():\n    pass\n"
     )
-    assert FORMAT.evaluate(payload(str(target)), project, FORMAT.real_run, [str(RUFF)]) is None
+    assert FORMAT.evaluate(payload(str(target)), project, FORMAT.real_run, ruff) is None
     assert target.read_text() == (
         "import os\nimport sys\n\n\ndef f():\n    return os.sep, sys.argv\n\n\ndef g():\n    pass\n"
     )
 
 
-@pytest.mark.skipif(not RUFF.exists(), reason="ruff is not installed next to this Python")
-def test_real_ruff_keeps_a_broken_file(project: Path) -> None:
+def test_real_ruff_keeps_a_broken_file(project: Path, ruff: list[str]) -> None:
     target = project / "a.py"
     broken = "def f(\n    return 1\n"
     target.write_text(broken)
-    message = FORMAT.evaluate(payload(str(target)), project, FORMAT.real_run, [str(RUFF)])
+    message = FORMAT.evaluate(payload(str(target)), project, FORMAT.real_run, ruff)
     assert message is not None
     assert "no output" not in message
     assert target.read_text() == broken
 
 
-@pytest.mark.skipif(not RUFF.exists(), reason="ruff is not installed next to this Python")
-def test_real_ruff_skips_migrations(project: Path) -> None:
+def test_real_ruff_skips_migrations(project: Path, ruff: list[str]) -> None:
     target = project / "reviews" / "migrations" / "0001_x.py"
     target.parent.mkdir(parents=True)
     messy = "import sys\nimport os\nx=(os,sys)\n"
     target.write_text(messy)
-    assert FORMAT.evaluate(payload(str(target)), project, FORMAT.real_run, [str(RUFF)]) is None
+    assert FORMAT.evaluate(payload(str(target)), project, FORMAT.real_run, ruff) is None
     assert target.read_text() == messy
 
 
-@pytest.mark.skipif(not RUFF.exists(), reason="ruff is not installed next to this Python")
-def test_real_ruff_keeps_an_import_not_used_yet(project: Path) -> None:
+def test_real_ruff_keeps_an_import_not_used_yet(project: Path, ruff: list[str]) -> None:
     target = project / "a.py"
     target.write_text("import sys\nimport json\n\n\ndef f():\n    return 1\n")
-    assert FORMAT.evaluate(payload(str(target)), project, FORMAT.real_run, [str(RUFF)]) is None
+    assert FORMAT.evaluate(payload(str(target)), project, FORMAT.real_run, ruff) is None
     assert target.read_text() == "import json\nimport sys\n\n\ndef f():\n    return 1\n"
+
+
+def test_missing_ruff_fails_on_ci(tmp_path: Path) -> None:
+    with pytest.raises(pytest.fail.Exception):
+        require_ruff(tmp_path / "no-ruff", {"CI": "true"})
+
+
+def test_missing_ruff_skips_outside_ci(tmp_path: Path) -> None:
+    with pytest.raises(pytest.skip.Exception):
+        require_ruff(tmp_path / "no-ruff", {})
+
+
+def test_ruff_of_the_project_venv_comes_first(tmp_path: Path) -> None:
+    local = tmp_path / ".venv" / "bin" / "ruff"
+    local.parent.mkdir(parents=True)
+    local.write_text("")
+    assert FORMAT.ruff_command(tmp_path) == [str(local)]
+
+
+def test_without_a_venv_ruff_runs_through_uv(tmp_path: Path) -> None:
+    assert FORMAT.ruff_command(tmp_path) == ["uv", "run", "--quiet", "ruff"]
+
+
+def test_slow_ruff_times_out_as_one_line(project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(FORMAT, "TIMEOUT_SECONDS", 0.2)
+    slow = [sys.executable, "-c", "import time; time.sleep(5)", "--"]
+    code, output = FORMAT.real_run(slow, project)
+    assert code == 124 and "timed out" in output
+    message = FORMAT.evaluate(payload(str(project / "a.py")), project, FORMAT.real_run, slow)
+    assert message is not None and "\n" not in message and "timed out" in message
