@@ -1,12 +1,28 @@
 from dataclasses import asdict
 
 from django.contrib.auth.decorators import login_not_required
-from django.http import Http404, HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
-from django.shortcuts import render
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseRedirect,
+    JsonResponse,
+    StreamingHttpResponse,
+)
+from django.shortcuts import redirect, render
+from django.templatetags.static import static
 from django.utils import timezone
 
 from reviews import services
 from reviews.forms import PageForm, ReviewFilterForm
+
+SITE_ICON = "reviews/icon.svg"
+
+
+@login_not_required
+def favicon(request: HttpRequest) -> HttpResponseRedirect:
+    """Browsers that ask the old address before reading the page get the tab icon too."""
+    return redirect(static(SITE_ICON))
 
 
 @login_not_required
