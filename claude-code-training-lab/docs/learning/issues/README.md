@@ -10,3 +10,5 @@ One file per issue, grouped by type (`bugs/`, `features/`, `tasks/`). These are 
 | – | #9 | Task | `tasks/protect-repository.md` | [TASK] protect the repository |
 | – | #14 | Task | `tasks/record-github-lessons.md` | [TASK] write down what we learned from connecting the assistant to GitHub |
 | – | #16 | Task | `tasks/close-practices-epics.md` | [TASK] close the Claude Code practices epics |
+| – | #151 | Task | `tasks/claude-review-on-pull-requests.md` | [TASK] Let Claude review each pull request on GitHub and answer @claude |
+| – | #152 | Task | `tasks/format-python-on-edit.md` | [TASK] Format a Python file each time Claude edits it |
