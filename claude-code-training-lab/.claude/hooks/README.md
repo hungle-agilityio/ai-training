@@ -1,6 +1,6 @@
-# Hooks: guards that run before shell commands
+# Hooks: guards that run before shell commands, and one formatter after edits
 
-A hook runs before a tool call. Exit code 2 blocks it and Claude gets the reason. Anything that must always hold is a hook or a permission rule, not a sentence Claude reads.
+A `before-` hook runs before a tool call. Exit code 2 blocks it and Claude gets the reason. An `after-` hook runs once the tool is done; it cannot block, its exit code 2 only sends a line back to Claude. Anything that must always hold is a hook or a permission rule, not a sentence Claude reads.
 
 | Hook | Refuses |
 |---|---|
@@ -9,8 +9,9 @@ A hook runs before a tool call. Exit code 2 blocks it and Claude gets the reason
 | `before-artifact-publish` | Publishing a file under `out/verify/` with the Artifact tool unless the sharing gate allows it (masking `clean`, standing approval `on`, size under the limit) |
 | `before-edit-check` | Loop mode only (`REVIEWRADAR_LOOP=1`), letter case ignored: editing `.github/`, `.claude/` (a new file in `knowledge/` is allowed), `.mcp.json`, `pyproject.toml`, `uv.lock`, `conftest.py`, and tests already on main (unless `ALLOW_TEST_EDIT=1`); fails closed |
 | `before-finish-check` | Loop mode only: stopping while lint, types or tests fail (a second stop is allowed) |
+| `after-edit-format` | Nothing (it fixes): after Edit or Write on a `.py` file of the project, runs `ruff check --fix` then `ruff format` on that file only, with the settings of `pyproject.toml` (migrations excluded). On a syntax error or a missing ruff the file stays as written and Claude gets one line; the edit is never undone. A file that was not formatted before is formatted whole the first time it is edited |
 
-All fail closed: if a hook cannot check a command that looks relevant (or, in loop mode, an edit), it is blocked. Their tests are in `tests/` and run in the automatic checks.
+All `before-` hooks fail closed: if a hook cannot check a command that looks relevant (or, in loop mode, an edit), it is blocked. Their tests are in `tests/` and run in the automatic checks.
 
 ## What is NOT a hook
 
