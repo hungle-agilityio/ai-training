@@ -19,6 +19,8 @@ from pathlib import Path
 Runner = Callable[[list[str], Path], tuple[int, str]]
 
 TIMEOUT_SECONDS = 30
+# An import added in one edit is often used only in the next one: never remove it here.
+KEEP = ["--extend-unfixable", "F401"]
 MAX_REASON = 200
 
 
@@ -65,7 +67,7 @@ def evaluate(payload: object, project: Path, run: Runner, ruff: list[str]) -> st
     if path is None:
         return None
     steps = [
-        [*ruff, "check", "--fix", "--exit-zero", "--force-exclude", str(path)],
+        [*ruff, "check", "--fix", *KEEP, "--exit-zero", "--force-exclude", str(path)],
         [*ruff, "format", "--force-exclude", str(path)],
     ]
     for args in steps:

@@ -54,7 +54,16 @@ def test_python_file_gets_fix_then_format(project: Path) -> None:
     target = project / "reviews" / "forms.py"
     assert FORMAT.evaluate(payload(str(target)), project, run, ["ruff"]) is None
     assert run.calls == [
-        ["ruff", "check", "--fix", "--exit-zero", "--force-exclude", str(target)],
+        [
+            "ruff",
+            "check",
+            "--fix",
+            "--extend-unfixable",
+            "F401",
+            "--exit-zero",
+            "--force-exclude",
+            str(target),
+        ],
         ["ruff", "format", "--force-exclude", str(target)],
     ]
 
@@ -135,3 +144,11 @@ def test_real_ruff_skips_migrations(project: Path) -> None:
     target.write_text(messy)
     assert FORMAT.evaluate(payload(str(target)), project, FORMAT.real_run, [str(RUFF)]) is None
     assert target.read_text() == messy
+
+
+@pytest.mark.skipif(not RUFF.exists(), reason="ruff is not installed next to this Python")
+def test_real_ruff_keeps_an_import_not_used_yet(project: Path) -> None:
+    target = project / "a.py"
+    target.write_text("import sys\nimport json\n\n\ndef f():\n    return 1\n")
+    assert FORMAT.evaluate(payload(str(target)), project, FORMAT.real_run, [str(RUFF)]) is None
+    assert target.read_text() == "import json\nimport sys\n\n\ndef f():\n    return 1\n"
