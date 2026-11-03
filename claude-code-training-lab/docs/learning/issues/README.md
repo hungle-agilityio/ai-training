@@ -12,3 +12,4 @@ One file per issue, grouped by type (`bugs/`, `features/`, `tasks/`). These are 
 | – | #16 | Task | `tasks/close-practices-epics.md` | [TASK] close the Claude Code practices epics |
 | – | #151 | Task | `tasks/claude-review-on-pull-requests.md` | [TASK] Let Claude review each pull request on GitHub and answer @claude |
 | – | #152 | Task | `tasks/format-python-on-edit.md` | [TASK] Format a Python file each time Claude edits it |
+| – | #156 | Task | `tasks/stop-automatic-claude-review.md` | [TASK] Stop the automatic Claude review; keep @claude on request |
