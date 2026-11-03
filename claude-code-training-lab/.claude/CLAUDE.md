@@ -44,3 +44,4 @@ A rule: `rules/`. A decision: an ADR. A gotcha: `knowledge/KNOWN_PITFALLS.md`. Y
 | 2026-10-29 | `/redo` as the only change request | The owner reviews the normal way: any comment or line comment is a change request, marked 👀 🚀 😕 by the loop | ADR-016, `work-queue` section 1 |
 | 2026-10-29 | Merge only through a thread's `gh pr merge` | One merge route with fixed checks in code: the tick merges on the owner's approval comment; Claude builds never merge | ADR-016, `.claude/project-instructions.md` |
 | 2026-10-30 | Deploy on every green merge to `main` | The owner wants one release per sprint or epic | ADR-017, `ops/release.py` |
+| 2026-11-03 | The automatic Claude review on every pull request (`claude-review.yml`) | Each push cost a run on the owner's plan, and three runs on PR #155 each found new small points without settling; the owner reviews with Claude only on request | `@claude review this pull request` (`claude-mention.yml`), git history, #156 |
