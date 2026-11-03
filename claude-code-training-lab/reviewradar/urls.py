@@ -8,6 +8,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("login/", auth_views.LoginView.as_view(redirect_authenticated_user=True), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("healthz/", views.healthz, name="healthz"),
+    path("favicon.ico", views.favicon),
     path("", RedirectView.as_view(pattern_name="dashboard"), name="home"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("locations/<int:pk>/", views.location, name="location"),

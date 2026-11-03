@@ -15,3 +15,4 @@ The issue number (ID) is the **GitHub issue number**, given when the issue is pu
 | – | #18 | Feature | `features/export-reviews.md` | [FEAT] Export reviews to a spreadsheet file |
 | – | #19 | Feature | `features/location-score-trend.md` | [FEAT] Show which locations are getting better or worse |
 | – | #20 | Feature | `features/search-review-text.md` | [FEAT] Search reviews by the words in their text |
+| – | #158 | Bug | `bugs/missing-site-icon.md` | [BUG] Every page asks for a site icon that does not exist |
