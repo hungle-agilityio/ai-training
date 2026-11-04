@@ -33,7 +33,7 @@ Rejected:
 ### What it replaces
 
 - ADR-008: one loop session at a time, and "never ask" (the target allows one `needs-info` round per issue, built in a later phase).
-- ADR-009: the cap of 5 waiting pull requests becomes 3, when the loop scripts are built.
+- ADR-009: the cap of 5 waiting pull requests becomes 3, when the loop scripts are built (superseded by ADR-018: no pull request limit).
 - ADR-011: "the Project opens no pull request". It may now open and merge spec pull requests, and only those.
 
 ### Phases
@@ -42,7 +42,7 @@ Each phase is one issue, built in an interactive session on the Mac mini (`agent
 
 0. Probe on the Mac mini (done 2026-10-28). `claude -p` runs on the subscription with no API key, loads the repository's agents and skills, and is stopped by `before-edit-check` in loop mode. A tool that is not allowed is refused at once, without hanging. `gtimeout` and `tmux` are not installed (`brew install coreutils tmux`). The Stop hook in `claude -p` is not tested yet.
 1. This ADR, the Project instructions, the spec templates, the labels `risk:*`, `needs-ui`, `agent:manual`.
-2. Loop scripts: `ops/agent-env.sh`, `ops/agent-tick.sh`, `ops/agent-run.sh`, `ops/start-loop.sh`. They add the labeller check, `Depends on`, the cap of 3, `gtimeout 45m` and `--max-turns 80`, the committed `plans/issue-N.md`, the separate review `claude -p` with `VERDICT`, the Gate 2 report, auto risk flags and ntfy.
+2. Loop scripts: `ops/agent-env.sh`, `ops/agent-tick.sh`, `ops/agent-run.sh`, `ops/start-loop.sh`. They add the labeller check, `Depends on`, the cap of 3 (superseded by ADR-018), `gtimeout 45m` and `--max-turns 80`, the committed `plans/issue-N.md`, the separate review `claude -p` with `VERDICT`, the Gate 2 report, auto risk flags and ntfy.
 3. Asking and fixing: `agent:needs-info` with `/answer`; `/redo` limits and `/replan`; `agent:rejected`; the `allow-test-edit` label in `before-edit-check`; the "When unsure", "Never decide alone" and "Cannot finish" sections.
 4. Failed handling: run log, `failed:<type>`, `attempt:<n>`, "Phân tích failed #N" in the Project.
 5. Trial runs, then `AGENT_CONCURRENCY=2`; retire `work-queue`.

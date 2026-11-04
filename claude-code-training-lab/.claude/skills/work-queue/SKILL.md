@@ -22,7 +22,8 @@ That stop adds and removes no label and posts nothing on GitHub. In an interacti
 When the prompt names one issue or one pull request, work on that one only; the tick has already picked it, claimed it and checked the cap (ADR-014).
 
 - **Pull request #N:** section 1 for that pull request only, then end. The current folder is a worktree on its branch.
-- **Issue #N:** section 2 from step 3 (Analyse) on, for that issue only, then end. The current folder is a worktree detached at `origin/main`: first create the branch there, `git switch -c <kind>/<N>-<short-description>` (`rules/git.md`). Do not pick, claim, check the cap or look at other issues.
+- **Issue #N:** section 2 from step 3 (Analyse) on, for that issue only, then end. The current folder is a worktree detached at `origin/main`: first create the branch there, `git switch -c <kind>/<N>-<short-description>` (`rules/git.md`). Do not pick, claim or look at other issues.
+- **Stacked issue (ADR-018):** when the prompt also says `Stacked on pull request #Q: branch from origin/<branch> and open the pull request into <branch>.`, the worktree is detached at the parent branch instead of `origin/main`. Create the branch there the same way (`git switch -c`, not from `origin/main`), open the pull request with `gh pr create --base <branch>`, and put the line `Stacked on #<Q> (merge that one first).` just above `Closes #N` in the body. Every other step is unchanged. Without that prompt line the base is `main`, as always.
 - Every other rule holds: the status labels, waiting for CI up to 15 minutes, two CI fix attempts per round, and "no link, no pull request" (step 8).
 - No target in the prompt (an interactive "work the queue"): the whole skill as written, starting on `main`.
 
@@ -91,7 +92,7 @@ Each open pull request of the loop has exactly one status label, on the pull req
 
 ## 3. When nothing is left
 
-No issue is `agent:ready` (or the cap is reached) and nothing to redo: end the run. The tick sends the "queue empty" message (ntfy). The loop's open pull requests, by status label (one shows there once its label is set): <https://github.com/hungle-agilityio/ai-training/pulls?q=is%3Apr+is%3Aopen+label%3A%22pr%3Aready-for-review%22%2C%22pr%3Achanges-requested%22%2C%22pr%3Ablocked%22%2C%22pr%3Aci-failed%22>.
+No issue is `agent:ready` and nothing to redo: end the run. The tick sends the "queue empty" message (ntfy). The loop's open pull requests, by status label (one shows there once its label is set): <https://github.com/hungle-agilityio/ai-training/pulls?q=is%3Apr+is%3Aopen+label%3A%22pr%3Aready-for-review%22%2C%22pr%3Achanges-requested%22%2C%22pr%3Ablocked%22%2C%22pr%3Aci-failed%22>.
 
 ## How a pull request gets merged (not by the loop)
 
