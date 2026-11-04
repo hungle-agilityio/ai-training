@@ -55,7 +55,7 @@ An open loop issue carries exactly one of these four labels, and the tick (not t
 | `agent:failed` | stopped without a pull request; the reason is in the issue comment |
 
 - Starting a build swaps `agent:ready` for `agent:running` in one call. Each tick, an issue with an open loop pull request gets `agent:review` and loses `agent:running` and `agent:ready` (log: `issue-<n>: has PR #<p>, agent:review`).
-- A build that ends without a pull request swaps `agent:running` and `agent:ready` for `agent:failed`. To rebuild, remove `agent:failed` and add `agent:ready`; an issue with only `agent:failed`, or with no status label, is never started. An old issue with both `agent:ready` and `agent:failed` is left alone.
+- A build that ends without a pull request swaps `agent:running` and `agent:ready` for `agent:failed`. To rebuild, remove `agent:failed` and add `agent:ready`; an issue with only `agent:failed` is started again only by the retry rule (Self-repair), and an issue with no status label is never started. An old issue with both `agent:ready` and `agent:failed` is left alone.
 - The plan limit sends the issue back to `agent:ready` alone.
 
 ## What a tick does
@@ -63,7 +63,7 @@ An open loop issue carries exactly one of these four labels, and the tick (not t
 - First, open loop pull requests with an owner approval comment are merged when the checks of ADR-016 hold (see Review from the phone).
 - The tick itself removes the `pr:*` labels of merged or closed loop pull requests and `agent:review` from the issue they close, and `agent:ready` from closed issues; it starts no build for that.
 - Pull requests of the loop that need a run go first (an open change request, no status label, ready but CI red), then the oldest `agent:ready` issues.
-- An issue is skipped when it is `agent:running`, `agent:review`, `agent:failed` or `agent:manual`, when a `Depends on #M` is still open or #M was closed as not planned, or when `agent:ready` was added by anyone but `hungle-agilityio`. No new issue when waiting pull requests plus running issues reach 10.
+- An issue is skipped when it is `agent:running`, `agent:review`, `agent:failed` (except a retry, see Self-repair) or `agent:manual`, when a `Depends on #M` is still open or #M was closed as not planned, or when `agent:ready` was added by anyone but `hungle-agilityio`. No new issue when waiting pull requests plus running issues reach 10.
 - An issue labelled `risk:high`, or whose body names `migrations/` or `models.py`, runs alone.
 - A build that times out or fails before its pull request: the issue gets `agent:failed` and a comment with the last 20 log lines; the worktree stays. The plan limit: the issue goes back to `agent:ready` and new builds pause for 60 minutes.
 
@@ -102,6 +102,7 @@ The log lines are in the tmux window and in the tick's output.
 - **Only the owner's pull requests.** A pull request from a fork, or opened by another login, is never the loop's, even with the marker.
 - **Plan limit.** Recognised also as `extra_usage`, `usage_limit` and "hit your ... limit", whatever the exit code, as long as the build had not handed over: the issue goes back to `agent:ready` and builds pause 60 minutes.
 - **Handed over.** An open issue with `agent:ready` and `agent:review` loses `agent:ready`, so a closed pull request is not rebuilt; add `agent:ready` again to rebuild it. An old `agent:ready` + `agent:failed` issue is left alone for the owner to decide.
+- **Retry of a failed issue.** When a build of #N ends with `agent:failed`, the tick writes `~/.reviewradar/failed/<N>` (the `origin/main` commit, `kind`, `retries`). A `transient` end (timeout, no exit code, an error code, no `Artifact` tool) is retried at the next free slot after the ready issues; a `stopped` one (no pull request, or the build gave up itself) only after `origin/main` moved. Each retry starts from a fresh branch (old ones go to `archive/`), comments `Retry <k> of 3: <reason>.` and sends `ReviewRadar retrying #<N> (<k> of 3)`. After 3 retries the issue stays `agent:failed` and one message says it needs you. The plan limit changes no record; restarting the issue by hand or closing it moves the record to `~/.reviewradar/archive/`, so the count starts again.
 - **`archive/` branches.** When a kept worktree is moved aside, its branch (and, for an issue, every local `bug/<n>-`, `feat/<n>-`, `task/<n>-` branch) is renamed `archive/<branch>-<unix time>`. Nothing is deleted.
 
 ## Phone messages (ntfy and Slack)
