@@ -1224,6 +1224,7 @@ def sync_review(tick: Tick, prs: list[dict[str, Any]], fixed: set[int]) -> None:
 def tidy_ended(tick: Tick, prs: list[dict[str, Any]]) -> None:
     """#143 AC1, AC7: labels of ended pull requests, and agent:ready of closed issues."""
     review: set[int] | None = None
+    still_open = {closes(pr) for pr in prs if pr["state"] == "OPEN"}
     for pr in prs:
         if pr["state"] == "OPEN":
             continue
@@ -1245,7 +1246,7 @@ def tidy_ended(tick: Tick, prs: list[dict[str, Any]]) -> None:
                     "number",
                 )
                 review = {item["number"] for item in found}
-            in_review = number in review
+            in_review = number in review and number not in still_open
         if not stale and not in_review:
             continue
         if stale:
@@ -1440,6 +1441,7 @@ def settle_children(tick: Tick, prs: list[dict[str, Any]]) -> None:
                 continue
             # Its checks and merge state were read against the old base: no merge this tick.
             tick.retargeted.add(number)
+            child["baseRefName"] = "main"
             tick.say(f"pr-{number}: parent PR #{up} merged; base is now main")
             continue
         key = f"{number}:{up}"
@@ -1467,6 +1469,47 @@ def settle_children(tick: Tick, prs: list[dict[str, Any]]) -> None:
         mine.write_text("\n".join(sorted({*have, f"{number}:pr:blocked:{needs_you_head(child)}"})))
         tick.say(f"pr-{number}: parent PR #{up} closed without merge; pr:blocked")
         tick.notify(f"ReviewRadar PR #{number} blocked: its parent PR #{up} was closed")
+
+
+def move_children(tick: Tick, kids: list[dict[str, Any]], up: int) -> None:
+    """#180 AC2, AC6: each pull request stacked on the merged one gets base main, still open."""
+    for kid in kids:
+        number = kid["number"]
+        code, out = tick.gh("pr", "edit", str(number), "--base", "main")
+        if code != 0:
+            tick.say(f"pr-{number}: base not changed to main ({out.strip()}); next tick")
+            continue
+        tick.retargeted.add(number)
+        kid["baseRefName"] = "main"
+        tick.say(f"pr-{number}: parent PR #{up} merged; base is now main")
+
+
+def keep_branch(tick: Tick, branch: str) -> None:
+    """#180: a merged parent's branch waits, to be deleted when no pull request is based on it."""
+    record = tick.home / "branch-delete"
+    have = set(record.read_text().split()) if record.exists() else set()
+    record.write_text("\n".join(sorted(have | {branch})))
+
+
+def delete_kept_branches(tick: Tick, prs: list[dict[str, Any]]) -> None:
+    """#180 AC3: delete each kept branch once nothing open is based on it; a failure is retried."""
+    record = tick.home / "branch-delete"
+    if not record.exists():
+        return
+    left = set(record.read_text().split())
+    for branch in sorted(left):
+        if any(p["state"] == "OPEN" and p.get("baseRefName") == branch for p in prs):
+            continue
+        code, out = tick.host.run(
+            ["gh", "api", "-X", "DELETE", f"repos/{REPO}/git/refs/heads/{branch}"]
+        )
+        if code != 0:
+            first = (out.strip().splitlines() or ["no output"])[0]
+            tick.say(f"branch {branch} not deleted ({first}); next tick")
+            continue
+        left.discard(branch)
+        tick.say(f"branch {branch}: deleted, nothing is based on it")
+    record.write_text("\n".join(sorted(left)))
 
 
 def merge_approved(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> None:
@@ -1506,15 +1549,16 @@ def merge_approved(tick: Tick, prs: list[dict[str, Any]], running: dict[str, boo
         if status in ("DIRTY", "BLOCKED"):
             refuse_merge(tick, pr, approval, f"merge state is {status}")
             continue
-        code, out = tick.gh(
-            "pr",
-            "merge",
-            str(number),
-            "--merge",
-            "--delete-branch",
-            "--match-head-commit",
-            str(pr.get("headRefOid") or ""),
-        )
+        branch = str(pr.get("headRefName") or "")
+        kids = [
+            p
+            for p in prs
+            if p is not pr and p["state"] == "OPEN" and branch and p.get("baseRefName") == branch
+        ]
+        merge = ["pr", "merge", str(number), "--merge"]
+        if not kids:
+            merge.append("--delete-branch")
+        code, out = tick.gh(*merge, "--match-head-commit", str(pr.get("headRefOid") or ""))
         if code != 0:
             first = (out.strip().splitlines() or ["no output"])[0]
             refuse_merge(tick, pr, approval, f"the merge failed: {first}")
@@ -1522,6 +1566,9 @@ def merge_approved(tick: Tick, prs: list[dict[str, Any]], running: dict[str, boo
         react(tick, approval, "rocket")
         pr["state"] = "MERGED"
         tick.say(f"pr-{number}: merged on the owner's approval")
+        if kids:
+            keep_branch(tick, branch)
+            move_children(tick, kids, number)
         pull_main(tick)
         record = tick.home / "announced-merged"
         done = set(record.read_text().split()) if record.exists() else set()
@@ -1664,6 +1711,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
         settle_children(tick, prs)
         merge_approved(tick, prs, running)
         settle_children(tick, prs)
+        delete_kept_branches(tick, prs)
         tidy_ended(tick, prs)
         tick.main_red = main_is_red(tick)
         if paused(tick):
