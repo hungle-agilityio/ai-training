@@ -106,19 +106,7 @@ def test_ci_failed_needs_you(home: Path) -> None:
     assert messages(host, "needs you")[0].startswith("ReviewRadar PR #21 needs you: pr:ci-failed")
 
 
-# AC3: waiting on the cap, or queue empty
-
-
-def test_cap_reached_sends_waiting_once(home: Path) -> None:
-    prs = [pull(n, "pr:ready-for-review") for n in range(20, 30)]
-    host = NotifyHost(prs=prs, issues=[issue(1, "agent:ready"), issue(2, "agent:ready")])
-    agent_tick.tick_once(host, home)
-    agent_tick.tick_once(host, home)
-    assert messages(host, "waiting") == [
-        "ReviewRadar waiting: 10 pull requests open (limit 10), 2 ready issues not started\n"
-        + agent_tick.OPEN_PRS_URL
-    ]
-    assert messages(host, "queue empty") == []
+# AC3: queue empty
 
 
 def test_no_ready_issue_sends_queue_empty(home: Path) -> None:

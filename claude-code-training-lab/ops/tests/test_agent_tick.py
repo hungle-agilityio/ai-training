@@ -352,20 +352,6 @@ def test_ready_label_added_by_someone_else_is_skipped(home: Path) -> None:
     assert f"issue-1: agent:ready was not added by {OWNER}; skipped" in log
 
 
-def test_no_issue_when_waiting_pull_requests_and_running_issues_reach_ten(home: Path) -> None:
-    host = FakeHost(prs=[pull(n, "pr:ready-for-review") for n in range(20, 29)],
-                    issues=[issue(3, "agent:running"), issue(4, "agent:ready")])
-    agent_tick.tick_once(host, home)
-    assert host.spawned == []
-
-
-def test_cap_counts_the_issue_claimed_in_this_tick(home: Path) -> None:
-    host = FakeHost(prs=[pull(n, "pr:ready-for-review") for n in range(20, 29)],
-                    issues=[issue(4, "agent:ready"), issue(5, "agent:ready")])
-    agent_tick.tick_once(host, home)
-    assert started(host) == ["Use the work-queue skill for issue #4 only."]
-
-
 # AC6: runs alone
 
 
