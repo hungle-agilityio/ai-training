@@ -1807,7 +1807,11 @@ def main(argv: list[str]) -> int:
     if argv[:1] == ["run"] and len(argv) == 4:
         where = Path(os.environ.get("REVIEWRADAR_HOME", Path.home() / ".reviewradar"))
         settings = read_settings(where / "agent.env")
-        run_build(Path(argv[1]), Path(argv[2]), argv[3], claude_env(settings))
+        extra = claude_env(settings)
+        if extra:
+            run_build(Path(argv[1]), Path(argv[2]), argv[3], extra)
+        else:
+            run_build(Path(argv[1]), Path(argv[2]), argv[3])
         return 0
     home = Path(os.environ.get("REVIEWRADAR_HOME", Path.home() / ".reviewradar"))
     home.mkdir(parents=True, exist_ok=True)
