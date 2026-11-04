@@ -105,6 +105,14 @@ A build needs the `Artifact` tool to publish its verify report. Each build start
 - Every session also gets the hint to load a deferred `Artifact` tool with `ToolSearch` (`select:Artifact`), through `--append-system-prompt`.
 - The 45-minute limit counts from the first start and covers all starts.
 
+### Claude Code settings in `agent.env`
+
+The tick reads these on every run and gives them to every `claude` it starts (each build start and the sign-in check), however the loop was started (tmux, launchd, by hand). A value here wins over the same variable in the tick's own environment; a missing or empty key changes nothing. A leading `~/` is expanded.
+
+- `CLAUDE_CONFIG_DIR`: the folder of the signed-in Claude Code. The Mac mini uses `/Users/hungle/.claude-study`.
+- `CLAUDE_CODE_ENTRYPOINT`: `claude -p` offers the `Artifact` tool only with `claude-desktop`. The Mac mini uses `claude-desktop`. When it is missing, the `agent:failed` comment adds `CLAUDE_CODE_ENTRYPOINT is not set in agent.env`.
+- **Signed out.** Before it starts a build, the tick runs `claude auth status`. When `loggedIn` is false it starts no build and changes no label, so `agent:ready` issues build in the first tick after you sign in again. It sends one urgent message, and again only after a later check found Claude Code signed in. Sign in with `CLAUDE_CONFIG_DIR=<folder> claude auth login` (without the variable for `~/.claude`). When the status cannot be read, the tick goes on as before.
+
 ## Review from the phone
 
 Review a loop pull request on GitHub like any other (ADR-016):
@@ -157,6 +165,7 @@ Each ntfy post has the title `ReviewRadar` and a priority (#167). "Rings" is `ye
 | `ReviewRadar main checkout not updated: <reason>` | yes | the tick could not pull `main`; the first time, and again every 6 hours while the same reason is there (`~/.reviewradar/last-pull-problem` and `last-pull-problem-sent`); a successful pull clears both |
 | `ReviewRadar build for <issue #n \| pull request #n> did not start: <step> failed` | yes | a start failed; once per key and step until that key starts |
 | `ReviewRadar queue empty, <w> pull requests waiting` | no | nothing to start and nothing running; again only when the text changes |
+| `ReviewRadar Claude Code is not signed in (<folder>); builds wait. Sign in with: CLAUDE_CONFIG_DIR=<folder> claude auth login` | yes (urgent) | `claude auth status` says `loggedIn` is false; no build starts; once, and again after a signed-in check |
 | `ReviewRadar loop started on <host name>` | yes | `uv run python ops/agent_tick.py started`, by hand or from launchd at login; takes no lock, runs no tick; sends nothing without `NTFY_TOPIC` |
 
 The loop's open pull requests with their status labels: <https://github.com/hungle-agilityio/ai-training/pulls?q=is%3Apr+is%3Aopen+%22work-queue%22+in%3Abody>
