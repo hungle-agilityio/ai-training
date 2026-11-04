@@ -19,6 +19,11 @@ fi
 echo "Stop the old '/loop 30m use the work-queue skill' session first, if it still runs."
 tmux new-session -d -s "$SESSION" -c "$LAB" \
   "caffeinate -i bash -c 'while true; do date; uv run python ops/agent_tick.py; sleep 600; done'"
+uv run python ops/agent_tick.py started || echo "Could not send the 'loop started' message." >&2
 echo "Loop started in tmux session $SESSION (one tick every 10 minutes)."
+TOPIC="$(sed -n 's/^NTFY_TOPIC=//p' "$HOME/.reviewradar/agent.env" 2>/dev/null | tail -n 1 || true)"
+if [ -n "$TOPIC" ]; then
+  echo "Phone messages: https://ntfy.sh/$TOPIC"
+fi
 echo "Watch: tmux attach -t $SESSION (leave with Ctrl-b d)"
 echo "Stop:  tmux kill-session -t $SESSION (running builds finish on their own)"
