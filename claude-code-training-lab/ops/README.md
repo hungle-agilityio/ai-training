@@ -29,6 +29,22 @@ ops/start-loop.sh
 - Stop: `tmux kill-session -t rr-loop`. A build already started runs to its end; the next start of the loop tidies it.
 - One tick by hand: `uv run python ops/agent_tick.py`.
 
+## Start at login
+
+After a restart of the Mac mini the loop does not come back by itself. A launchd agent starts it at login.
+
+1. On the Mac mini, in a normal terminal, run once by hand: `bash ops/install-launchd.sh` (Claude Code there blocks it). It needs no `sudo`.
+2. The Mac mini must log in by itself after a restart (System Settings → Users & Groups → automatic login), or the agent does not run.
+3. At each login the agent runs `ops/start-loop.sh`; when the loop already runs, that exits and sends nothing. Otherwise the phone gets "ReviewRadar loop started on <host>". Its output is in `~/.reviewradar/launchd.log`.
+4. Remove it: `bash ops/install-launchd.sh --remove` (the plist moves to `~/.reviewradar/archive/`).
+
+## No messages?
+
+1. The loop runs: `tmux ls` shows `rr-loop`. If not, run `ops/start-loop.sh`.
+2. `ops/start-loop.sh` prints `Phone messages: https://ntfy.sh/<topic>` when `NTFY_TOPIC` is set in `~/.reviewradar/agent.env`; open that link to see the messages.
+3. The topic subscribed in the ntfy app is exactly the same name.
+4. Notifications are allowed for ntfy in the phone settings.
+
 ## Where things are
 
 All under `~/.reviewradar/`:
