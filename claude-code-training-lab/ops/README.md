@@ -85,6 +85,8 @@ An open loop issue carries exactly one of these four labels, and the tick (not t
 
 ## Stacked tasks
 
+When the tick merges a pull request that another loop pull request is based on, it merges without `--delete-branch`, moves each direct child to base `main` (it stays open and is merged on a later tick under the usual rules), and only then deletes the parent's branch (`~/.reviewradar/branch-delete` lists branches waiting; a failed delete is logged and retried). A pull request nothing is based on is merged with `--delete-branch` as before. A closed pull request does not take `agent:review` from an issue while another open loop pull request closes it (#180).
+
 A task that depends on others starts early when exactly one dependency (#P, the parent) is unmerged and its loop pull request #Q is open, not a draft, `pr:ready-for-review`, with at least one check and all of them green. Two or more unmerged dependencies, or a parent without such a pull request, keep the task waiting. `agent:manual` tasks never start stacked, and a parent closed as not planned does not count. A green stacked pull request can itself be the parent of the next task (a chain).
 
 The build starts in a worktree detached at `origin/<branch of #Q>` and is told `Stacked on pull request #Q: branch from origin/<branch> and open the pull request into <branch>.` The start message is `ReviewRadar started #N on top of PR #Q: <title>`. `~/.reviewradar/stacked/<N>` holds #Q, its branch and its head commit. The files of #P (and of its own parents in a chain) do not hold the child; a file shared with any other running or in-review issue still does.
