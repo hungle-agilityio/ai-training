@@ -44,6 +44,43 @@
   </section>
 </div>
 
+<section class="panel trend-panel">
+  <header class="panel-head">
+    <h2>Weekly trend</h2>
+    <p>Average rating per week, last 8 weeks (Monday to Sunday)</p>
+  </header>
+  <ol class="trend-chart" aria-hidden="true">
+    {% for week in trend %}
+      <li class="trend-col">
+        <span class="trend-value">{% if week.review_count %}{{ week.average_rating|floatformat:1 }}{% else %}–{% endif %}</span>
+        <span class="trend-plot">{% if week.review_count %}<span class="trend-bar" style="height: {{ week.bar_percent }}%"></span>{% endif %}</span>
+        <span class="trend-week">{{ week.label }}</span>
+        <span class="trend-count">{{ week.review_count }} review{{ week.review_count|pluralize }}</span>
+      </li>
+    {% endfor %}
+  </ol>
+  <div class="table-wrap">
+    <table class="table trend-table">
+      <thead>
+        <tr>
+          <th scope="col">Week of</th>
+          <th scope="col">Average</th>
+          <th scope="col">Reviews</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for week in trend %}
+          <tr>
+            <th scope="row">{{ week.label }}</th>
+            <td>{% if week.review_count %}{{ week.average_rating|floatformat:1 }}{% else %}No reviews{% endif %}</td>
+            <td>{{ week.review_count }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
 <section class="panel">
   <header class="panel-head">
     <h2>Latest reviews</h2>
