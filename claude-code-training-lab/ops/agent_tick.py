@@ -50,6 +50,7 @@ USAGE_LIMIT = re.compile(
 LABEL_COLORS = {
     "agent:running": ("FBCA04", "The loop is building this issue"),
     "agent:failed": ("D93F0B", "The loop could not finish this issue; see the comment"),
+    "pr:blocked": ("B60205", "the loop cannot go on without the owner; the reason is a comment"),
 }
 REPO_ROOT = Path(__file__).resolve().parents[2]
 NEEDS_YOU = ("pr:blocked", "pr:ci-failed")
@@ -165,6 +166,9 @@ class Target:
     alone: bool = False
     message: str = ""
     retry: str = ""
+    stack_pr: int = 0
+    stack_branch: str = ""
+    stack_head: str = ""
 
 
 @dataclass
@@ -191,6 +195,7 @@ class Tick:
     open_issues: list[dict[str, Any]] | None = None
     not_planned: dict[int, bool] = field(default_factory=dict)
     main_head: str | None = None
+    retargeted: set[int] = field(default_factory=set)
 
     @property
     def runs(self) -> Path:
@@ -291,6 +296,7 @@ def loop_pull_requests(tick: Tick) -> list[dict[str, Any]]:
     nodes, and the heavy fields cost about 10,000 per pull request asked for."""
     light = "number,state,body,labels,headRefName,author,isCrossRepository,createdAt"
     heavy = light + ",commits,comments,statusCheckRollup,isDraft,mergeStateStatus,headRefOid"
+    heavy += ",baseRefName,title"
     every = tick.gh_json(
         "pr", "list", "--state", "all", "--limit", str(ALL_PR_LIMIT), "--json", light
     )
@@ -450,6 +456,9 @@ def record_failure(tick: Tick, number: int, kind: str, outcome: str) -> None:
     old = failed_record(tick, number) or {}
     retries = int(old.get("retries") or 0)
     record = {"main": main_head(tick), "kind": kind, "retries": retries, "outcome": outcome}
+    stacked = stacked_record(tick, number)
+    if stacked is not None and stacked.get("head"):
+        record["parent"] = stacked["head"]
     if retries >= RETRIES:
         if not old.get("told"):
             tick.notify(
@@ -458,6 +467,15 @@ def record_failure(tick: Tick, number: int, kind: str, outcome: str) -> None:
             )
         record["told"] = True
     write_record(tick, number, record)
+
+
+def stacked_record(tick: Tick, number: int) -> dict[str, Any] | None:
+    """#165 AC2: the parent pull request, branch and head commit a stacked build started on."""
+    try:
+        data = json.loads((tick.home / "stacked" / str(number)).read_text())
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
 
 
 def tidy_failed(tick: Tick) -> None:
@@ -485,8 +503,8 @@ def tidy_failed(tick: Tick) -> None:
         tick.say(f"issue-{number}: {why}, failure record archived")
 
 
-def retry_reason(tick: Tick, item: dict[str, Any]) -> str:
-    """#149 AC2: why a failed issue may start again, or empty when it may not."""
+def retry_reason(tick: Tick, item: dict[str, Any], parent_pr: dict[str, Any] | None = None) -> str:
+    """#149 AC2, #165 AC9: why a failed issue may start again, or empty when it may not."""
     number = item["number"]
     labels = names(item)
     if "agent:ready" in labels or labels & (SKIP_LABELS - {"agent:failed"}):
@@ -507,6 +525,10 @@ def retry_reason(tick: Tick, item: dict[str, Any]) -> str:
         return ""
     if old and new and old != new:
         return f"main moved from {old[:7]} to {new[:7]}"
+    was = str(record.get("parent") or "")
+    now = str((parent_pr or {}).get("headRefOid") or "")
+    if parent_pr is not None and was and now and was != now:
+        return f"the parent pull request #{parent_pr['number']} moved from {was[:7]} to {now[:7]}"
     return ""
 
 
@@ -781,6 +803,48 @@ def main_is_red(tick: Tick) -> bool:
     return True
 
 
+def shared_holder(
+    busy: dict[str, int], owners: dict[str, set[int]], path: str, ignored: set[int]
+) -> int:
+    """The issue that holds a path for this one, or 0; #165 AC3 ignores the parents' files."""
+    first = busy.get(path, 0)
+    if first not in ignored:
+        return first
+    others = sorted(owners.get(path, set()) - ignored)
+    return others[0] if others else 0
+
+
+def stack_parent(
+    tick: Tick, prs: list[dict[str, Any]], parent: int, open_numbers: set[int]
+) -> dict[str, Any] | None:
+    """#165 AC1: the green, ready loop pull request of the one unmerged dependency, if any."""
+    if parent not in open_numbers:
+        return None
+    found = newest_open_pr(prs, parent)
+    if found is None or found.get("isDraft"):
+        return None
+    if not found.get("headRefName") or not found.get("headRefOid"):
+        return None  # the record of AC2 needs the branch and its head commit
+    checks = [check_state(c) for c in found.get("statusCheckRollup") or []]
+    if "pr:ready-for-review" not in names(found) or not checks or set(checks) != {"green"}:
+        return None
+    return found
+
+
+def stack_issues(prs: list[dict[str, Any]], parent_pr: dict[str, Any]) -> set[int]:
+    """#165 AC3: the parent issue and the parents of its own pull request, down a chain."""
+    ignored = {closes(parent_pr) or 0}
+    current = parent_pr
+    for _ in range(len(prs)):
+        base = str(current.get("baseRefName") or "main")
+        up = next((p for p in prs if p["state"] == "OPEN" and p.get("headRefName") == base), None)
+        if base == "main" or up is None or (closes(up) or 0) in ignored:
+            break
+        ignored.add(closes(up) or 0)
+        current = up
+    return ignored - {0}
+
+
 def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> list[Target]:
     """AC3 to AC6: pull requests first, then the oldest ready issues, within the free slots."""
     free = tick.settings.concurrency - len(running)
@@ -801,10 +865,12 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         return chosen
     issues = open_issue_list(tick)
     busy: dict[str, int] = {}
+    owners: dict[str, set[int]] = {}
     for item in issues:
         if names(item) & {"agent:running", "agent:review"}:
             for path in files_of(item.get("body") or ""):
                 busy.setdefault(path, item["number"])
+                owners.setdefault(path, set()).add(item["number"])
     open_numbers = {item["number"] for item in issues}
     ready = sorted(
         (i for i in issues if "agent:ready" in names(i)),
@@ -820,18 +886,27 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         key = f"issue-{issue['number']}"
         depends = depends_on(issue.get("body") or "")
         retry = ""
+        waiting = unmet(tick, depends, open_numbers)
+        parent_pr = (
+            stack_parent(tick, prs, next(iter(waiting)), open_numbers)
+            if len(waiting) == 1
+            else None
+        )
+        held = bool(waiting) and parent_pr is None
         if "agent:failed" in names(issue) and "agent:ready" not in names(issue):
-            if key in running or unmet(tick, depends, open_numbers):
+            if key in running or held:
                 continue
-            retry = retry_reason(tick, issue)
+            retry = retry_reason(tick, issue, parent_pr)
             if not retry:
                 continue
-        elif key in running or names(issue) & SKIP_LABELS or unmet(tick, depends, open_numbers):
+        elif key in running or names(issue) & SKIP_LABELS or held:
             continue
         files = files_of(issue.get("body") or "")
-        shared = sorted(path for path in files if path in busy)
+        ignored = stack_issues(prs, parent_pr) if parent_pr is not None else set()
+        shared = [p for p in sorted(files) if shared_holder(busy, owners, p, ignored)]
         if shared:
-            tick.say(f"{key}: waits for #{busy[shared[0]]}, which also touches {shared[0]}")
+            holder = shared_holder(busy, owners, shared[0], ignored)
+            tick.say(f"{key}: waits for #{holder}, which also touches {shared[0]}")
             continue
         if not labelled_by_owner(tick, issue["number"]):
             tick.say(f"{key}: agent:ready was not added by {OWNER}; skipped")
@@ -839,6 +914,23 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         prompt = f"Use the work-queue skill for issue #{issue['number']} only."
         title = issue.get("title") or ""
         message = f"ReviewRadar started #{issue['number']}: {title}" if title else ""
+        stack: dict[str, Any] = {}
+        if parent_pr is not None:
+            branch = str(parent_pr["headRefName"])
+            prompt += (
+                f" Stacked on pull request #{parent_pr['number']}: branch from origin/{branch}"
+                f" and open the pull request into {branch}."
+            )
+            head_title = parent_pr.get("title") or title
+            message = (
+                f"ReviewRadar started #{issue['number']} on top of PR "
+                f"#{parent_pr['number']}: {head_title}"
+            )
+            stack = {
+                "stack_pr": parent_pr["number"],
+                "stack_branch": branch,
+                "stack_head": str(parent_pr.get("headRefOid") or ""),
+            }
         if retry:
             record = failed_record(tick, issue["number"]) or {}
             count = int(record.get("retries") or 0) + 1
@@ -847,12 +939,15 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
             if running or chosen:
                 break
             chosen.append(
-                Target(key, issue["number"], prompt, alone=True, message=message, retry=retry)
+                Target(
+                    key, issue["number"], prompt, alone=True, message=message, retry=retry, **stack
+                )
             )
             break
-        chosen.append(Target(key, issue["number"], prompt, message=message, retry=retry))
+        chosen.append(Target(key, issue["number"], prompt, message=message, retry=retry, **stack))
         for path in files:
             busy.setdefault(path, issue["number"])
+            owners.setdefault(path, set()).add(issue["number"])
     return chosen
 
 
@@ -867,8 +962,11 @@ def start(tick: Tick, target: Target) -> bool:
         archive_branches(tick, target, aside)
     elif target.retry:
         archive_branches(tick, target, None)
-    tick.host.run([*git, "fetch", "origin", "main", *([target.branch] if target.branch else [])])
-    if target.branch:
+    wanted = [b for b in (target.branch, target.stack_branch) if b]
+    tick.host.run([*git, "fetch", "origin", "main", *wanted])
+    if target.stack_branch:
+        add = [*git, "worktree", "add", "--detach", str(worktree), f"origin/{target.stack_branch}"]
+    elif target.branch:
         add = [
             *git,
             "worktree",
@@ -890,6 +988,13 @@ def start(tick: Tick, target: Target) -> bool:
             return False
     (tick.home / "start-failed" / target.key).unlink(missing_ok=True)
     if target.key.startswith("issue-"):
+        stacked = tick.home / "stacked" / str(target.number)
+        if target.stack_branch:
+            stacked.parent.mkdir(parents=True, exist_ok=True)
+            info = {"pr": target.stack_pr, "branch": target.stack_branch, "head": target.stack_head}
+            stacked.write_text(json.dumps(info, sort_keys=True))
+        else:
+            stacked.unlink(missing_ok=True)
         ensure_label(tick, "agent:running")
         remove = "agent:ready,agent:failed" if target.retry else "agent:ready"
         tick.gh(
@@ -905,7 +1010,9 @@ def start(tick: Tick, target: Target) -> bool:
     if target.retry:
         record = failed_record(tick, target.number) or {}
         count = int(record.get("retries") or 0) + 1
-        write_record(tick, target.number, record | {"retries": count})
+        kept = {k: v for k, v in record.items() if k != "parent"}
+        parent = {"parent": target.stack_head} if target.stack_head else {}
+        write_record(tick, target.number, kept | {"retries": count} | parent)
         tick.gh(
             "issue",
             "comment",
@@ -1117,6 +1224,11 @@ def paused(tick: Tick) -> bool:
     return flag.exists() and float(flag.read_text().strip() or 0) > tick.host.now()
 
 
+def needs_you_head(pr: dict[str, Any]) -> str:
+    commits = pr.get("commits") or []
+    return (commits[-1].get("oid") or commits[-1].get("committedDate", "")) if commits else ""
+
+
 def needs_you(tick: Tick, prs: list[dict[str, Any]]) -> None:
     """#78 AC2: pr:blocked or pr:ci-failed, once per pull request, label and head commit."""
     seen_file = tick.home / "needs-you"
@@ -1124,8 +1236,7 @@ def needs_you(tick: Tick, prs: list[dict[str, Any]]) -> None:
     for pr in prs:
         if pr["state"] != "OPEN":
             continue
-        commits = pr.get("commits") or []
-        head = (commits[-1].get("oid") or commits[-1].get("committedDate", "")) if commits else ""
+        head = needs_you_head(pr)
         for label in NEEDS_YOU:
             key = f"{pr['number']}:{label}:{head}"
             if label in names(pr) and key not in seen:
@@ -1226,14 +1337,96 @@ def refuse_merge(tick: Tick, pr: dict[str, Any], approval: Remark, reason: str) 
         tick.notify(f"ReviewRadar PR #{number} not merged: {reason}")
 
 
+def parent_of(prs: list[dict[str, Any]], pr: dict[str, Any]) -> dict[str, Any] | None:
+    """#165: the loop pull request whose branch is the base of this one, if the list has it."""
+    base = pr.get("baseRefName")
+    return next((p for p in prs if base and p.get("headRefName") == base and p is not pr), None)
+
+
+def wait_for_parent(
+    tick: Tick, prs: list[dict[str, Any]], pr: dict[str, Any], approval: Remark, base: str
+) -> None:
+    """#165 AC5: no merge into a branch that is not main; the approval stays valid, no reaction."""
+    number = pr["number"]
+    parent = parent_of(prs, pr)
+    what = f"parent PR #{parent['number']}" if parent is not None else f"parent branch {base}"
+    tick.say(f"pr-{number}: approved, not merged: it waits for its {what}")
+    record = tick.home / "stack-waiting"
+    seen = set(record.read_text().split()) if record.exists() else set()
+    key = f"{number}:{approval.id}"
+    if key not in seen:
+        record.write_text("\n".join(sorted(seen | {key})))
+        tick.notify(f"ReviewRadar PR #{number} not merged: it waits for its {what}")
+
+
+def stacked_children(prs: list[dict[str, Any]]) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """#165: (child, parent) for each open loop pull request based on another one's branch."""
+    found = []
+    for child in prs:
+        if child["state"] != "OPEN" or str(child.get("baseRefName") or "main") == "main":
+            continue
+        parent = parent_of(prs, child)
+        if parent is not None and parent["state"] != "OPEN":
+            found.append((child, parent))
+    return found
+
+
+def settle_children(tick: Tick, prs: list[dict[str, Any]]) -> None:
+    """#165 AC6, AC7: children of a merged parent go to main; of a closed one, pr:blocked."""
+    record = tick.home / "parent-closed"
+    seen = set(record.read_text().split()) if record.exists() else set()
+    for child, parent in stacked_children(prs):
+        number, up = child["number"], parent["number"]
+        if parent["state"] == "MERGED":
+            if number in tick.retargeted:
+                continue
+            code, out = tick.gh("pr", "edit", str(number), "--base", "main")
+            if code != 0:
+                tick.say(f"pr-{number}: base not changed to main ({out.strip()}); next tick")
+                continue
+            # Its checks and merge state were read against the old base: no merge this tick.
+            tick.retargeted.add(number)
+            tick.say(f"pr-{number}: parent PR #{up} merged; base is now main")
+            continue
+        key = f"{number}:{up}"
+        if key in seen:
+            continue
+        other = ",".join(sorted(names(child) & PR_LABELS - {"pr:blocked"}))
+        ensure_label(tick, "pr:blocked")
+        edit = ["pr", "edit", str(number), "--add-label", "pr:blocked"]
+        body = (
+            f"{MARKER}\nThe parent pull request #{up} was closed without merge. "
+            "This pull request is built on it and is not merged."
+        )
+        done = [
+            tick.gh(*edit, *(["--remove-label", other] if other else []))[0],
+            tick.gh("pr", "comment", str(number), "--body", body)[0],
+        ]
+        if any(done):
+            tick.say(f"pr-{number}: parent PR #{up} closed; pr:blocked not complete, next tick")
+            continue
+        seen.add(key)
+        record.write_text("\n".join(sorted(seen)))
+        child["labels"] = [{"name": "pr:blocked"}]
+        mine = tick.home / "needs-you"
+        have = mine.read_text().split() if mine.exists() else []
+        mine.write_text("\n".join(sorted({*have, f"{number}:pr:blocked:{needs_you_head(child)}"})))
+        tick.say(f"pr-{number}: parent PR #{up} closed without merge; pr:blocked")
+        tick.notify(f"ReviewRadar PR #{number} blocked: its parent PR #{up} was closed")
+
+
 def merge_approved(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> None:
     """#80 AC2 to AC5: merge an open loop pull request on the owner's approval comment."""
     for pr in prs:
         number = pr["number"]
-        if pr["state"] != "OPEN":
+        if pr["state"] != "OPEN" or number in tick.retargeted:
             continue
         approval = newest_approval(tick, pr)
         if approval is None or approval.created <= last_commit_date(pr, skip_updates=True):
+            continue
+        base = str(pr.get("baseRefName") or "main")
+        if base != "main":
+            wait_for_parent(tick, prs, pr, approval, base)
             continue
         checks = [check_state(c) for c in pr.get("statusCheckRollup") or []]
         if pr.get("isDraft") or "pr:ready-for-review" not in names(pr) or not checks:
@@ -1303,10 +1496,12 @@ def blocked_lines(
     issues = open_issue_list(tick)
     by_number = {item["number"]: item for item in issues}
     busy: dict[str, int] = {}
+    owners: dict[str, set[int]] = {}
     for item in issues:
         if names(item) & {"agent:running", "agent:review"}:
             for path in files_of(item.get("body") or ""):
                 busy.setdefault(path, item["number"])
+                owners.setdefault(path, set()).add(item["number"])
     ready = sorted(
         (i for i in issues if "agent:ready" in names(i) and not names(i) & SKIP_LABELS),
         key=lambda i: (i["createdAt"], i["number"]),
@@ -1319,15 +1514,24 @@ def blocked_lines(
         body = item.get("body") or ""
         if key in running:
             continue
+        waiting = unmet(tick, depends_on(body), set(by_number))
+        parent_pr = (
+            stack_parent(tick, prs, next(iter(waiting)), set(by_number))
+            if len(waiting) == 1
+            else None
+        )
         found: list[tuple[int, str]] = [
             (m, f"#{number} waits for #{m}: {dependency_reason(tick, prs, by_number, m)}")
-            for m in sorted(unmet(tick, depends_on(body), set(by_number)))
+            for m in sorted(waiting)
+            if parent_pr is None
         ]
         if not found:
+            ignored = stack_issues(prs, parent_pr) if parent_pr is not None else set()
             shared: dict[int, str] = {}
             for path in sorted(files_of(body)):
-                if path in busy:
-                    shared.setdefault(busy[path], path)
+                holder = shared_holder(busy, owners, path, ignored)
+                if holder:
+                    shared.setdefault(holder, path)
             found = [
                 (m, f"#{number} waits for #{m}, which also touches {path}")
                 for m, path in sorted(shared.items())
@@ -1403,7 +1607,9 @@ def tick_once(host: Host, home: Path) -> list[str]:
         tidy_failed(tick)
         needs_you(tick, prs)
         running = running_keys(tick)
+        settle_children(tick, prs)
         merge_approved(tick, prs, running)
+        settle_children(tick, prs)
         tidy_ended(tick, prs)
         tick.main_red = main_is_red(tick)
         if paused(tick):
