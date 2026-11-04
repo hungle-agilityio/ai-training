@@ -31,6 +31,7 @@ RUN_LIMIT = 45 * 60
 PAUSE_SECONDS = 60 * 60
 MAX_TURNS = 80
 STARTS = 3
+RETRIES = 3
 HINT = (
     "If the Artifact tool is listed only as a deferred tool, load it with ToolSearch "
     '(query "select:Artifact") before you decide that it is missing.'
@@ -143,6 +144,7 @@ class Target:
     branch: str = ""
     alone: bool = False
     message: str = ""
+    retry: str = ""
 
 
 @dataclass
@@ -168,6 +170,7 @@ class Tick:
     pull_problem: str = ""
     open_issues: list[dict[str, Any]] | None = None
     not_planned: dict[int, bool] = field(default_factory=dict)
+    main_head: str | None = None
 
     @property
     def runs(self) -> Path:
@@ -344,6 +347,8 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
                  f"{key}: {reason}, but the build already handed over")
         if opened is not None:
             tick.notify(pr_message(opened, "opened"))
+        elif not has_pr and "agent:failed" in labels:
+            record_failure(tick, int(number), "stopped", "set agent:failed itself")
         return
     if limit:
         pause_for_limit(tick, key, number, worktree)
@@ -356,6 +361,96 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
     tick.gh("issue", "comment", number, "--body", body)
     tick.say(f"{key}: {reason}; agent:failed, worktree kept")
     tick.notify(f"ReviewRadar build for issue #{number} failed: {reason}")
+    record_failure(tick, int(number), "stopped" if outcome == "0" else "transient", reason)
+
+
+def failed_record(tick: Tick, number: int) -> dict[str, Any] | None:
+    path = tick.home / "failed" / str(number)
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def write_record(tick: Tick, number: int, record: dict[str, Any]) -> None:
+    folder = tick.home / "failed"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / str(number)).write_text(json.dumps(record, sort_keys=True))
+
+
+def main_head(tick: Tick) -> str:
+    """The origin/main commit, fetched once per tick; empty when it cannot be read."""
+    if tick.main_head is None:
+        git = ["git", "-C", str(REPO_ROOT)]
+        tick.host.run([*git, "fetch", "origin", "main"])
+        code, out = tick.host.run([*git, "rev-parse", "origin/main"])
+        head = out.strip() if code == 0 else ""
+        tick.main_head = head if re.fullmatch(r"[0-9a-f]{7,40}", head) else ""
+    return tick.main_head
+
+
+def record_failure(tick: Tick, number: int, kind: str, outcome: str) -> None:
+    """#149 AC1, AC4: what failed and on which main; retries are kept from the last record."""
+    old = failed_record(tick, number) or {}
+    retries = int(old.get("retries") or 0)
+    record = {"main": main_head(tick), "kind": kind, "retries": retries, "outcome": outcome}
+    if retries >= RETRIES:
+        if not old.get("told"):
+            tick.notify(f"ReviewRadar #{number} failed after {RETRIES} retries, needs you: "
+                        f"https://github.com/{REPO}/issues/{number}")
+        record["told"] = True
+    write_record(tick, number, record)
+
+
+def tidy_failed(tick: Tick) -> None:
+    """#149 AC6: a record leaves when its issue is closed or restarted by hand."""
+    folder = tick.home / "failed"
+    if not folder.exists():
+        return
+    by_number = {item["number"]: item for item in open_issue_list(tick)}
+    paused_marks = tick.home / "limit-paused"
+    for path in sorted(folder.iterdir()):
+        if not path.name.isdigit():
+            continue
+        number = int(path.name)
+        item = by_number.get(number)
+        labels = names(item) if item is not None else set()
+        restarted = "agent:ready" in labels and "agent:failed" not in labels
+        if item is not None and not restarted:
+            continue
+        if item is not None and (paused_marks / path.name).exists():
+            continue
+        archive = tick.home / "archive"
+        archive.mkdir(exist_ok=True)
+        path.rename(archive / f"failed-{number}-{int(tick.host.now())}")
+        why = "closed" if item is None else "restarted by hand"
+        tick.say(f"issue-{number}: {why}, failure record archived")
+
+
+def retry_reason(tick: Tick, item: dict[str, Any]) -> str:
+    """#149 AC2: why a failed issue may start again, or empty when it may not."""
+    number = item["number"]
+    labels = names(item)
+    if "agent:ready" in labels or labels & (SKIP_LABELS - {"agent:failed"}):
+        return ""
+    record = failed_record(tick, number)
+    if record is None:
+        record = {"main": main_head(tick), "kind": "stopped", "retries": 0, "outcome": ""}
+        write_record(tick, number, record)
+        tick.say(f"issue-{number}: failed with no record; recorded, waits for main to move")
+        return ""
+    if int(record.get("retries") or 0) >= RETRIES:
+        return ""
+    if record.get("kind") == "transient":
+        return f"the last build {record.get('outcome') or 'failed'}"
+    old, new = str(record.get("main") or ""), main_head(tick)
+    if not old and new:
+        write_record(tick, number, record | {"main": new})
+        return ""
+    if old and new and old != new:
+        return f"main moved from {old[:7]} to {new[:7]}"
+    return ""
 
 
 def pause_for_limit(tick: Tick, key: str, number: str, worktree: Path) -> None:
@@ -363,6 +458,10 @@ def pause_for_limit(tick: Tick, key: str, number: str, worktree: Path) -> None:
     if key.startswith("issue-"):
         tick.gh("issue", "edit", number, "--add-label", "agent:ready",
                 "--remove-label", "agent:running")
+        if failed_record(tick, int(number)) is not None:
+            marks = tick.home / "limit-paused"
+            marks.mkdir(exist_ok=True)
+            (marks / number).touch()
     remove_worktree(tick, worktree)
     until = tick.host.now() + PAUSE_SECONDS
     (tick.home / "paused-until").write_text(str(int(until)))
@@ -627,12 +726,21 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
     waiting += sum(1 for item in issues if "agent:running" in names(item))
     ready = sorted((i for i in issues if "agent:ready" in names(i)),
                    key=lambda i: (i["createdAt"], i["number"]))
-    for issue in ready:
+    failed = sorted((i for i in issues if "agent:failed" in names(i)),
+                    key=lambda i: (i["createdAt"], i["number"]))
+    for issue in [*ready, *failed]:
         if len(chosen) >= free or waiting >= WAITING_CAP:
             break
         key = f"issue-{issue['number']}"
         depends = depends_on(issue.get("body") or "")
-        if key in running or names(issue) & SKIP_LABELS or unmet(tick, depends, open_numbers):
+        retry = ""
+        if "agent:failed" in names(issue) and "agent:ready" not in names(issue):
+            if key in running or unmet(tick, depends, open_numbers):
+                continue
+            retry = retry_reason(tick, issue)
+            if not retry:
+                continue
+        elif key in running or names(issue) & SKIP_LABELS or unmet(tick, depends, open_numbers):
             continue
         files = files_of(issue.get("body") or "")
         shared = sorted(path for path in files if path in busy)
@@ -645,12 +753,17 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         prompt = f"Use the work-queue skill for issue #{issue['number']} only."
         title = issue.get("title") or ""
         message = f"ReviewRadar started #{issue['number']}: {title}" if title else ""
+        if retry:
+            record = failed_record(tick, issue["number"]) or {}
+            count = int(record.get("retries") or 0) + 1
+            message = f"ReviewRadar retrying #{issue['number']} ({count} of {RETRIES})"
         if runs_alone(issue):
             if running or chosen:
                 break
-            chosen.append(Target(key, issue["number"], prompt, alone=True, message=message))
+            chosen.append(Target(key, issue["number"], prompt, alone=True, message=message,
+                                 retry=retry))
             break
-        chosen.append(Target(key, issue["number"], prompt, message=message))
+        chosen.append(Target(key, issue["number"], prompt, message=message, retry=retry))
         for path in files:
             busy.setdefault(path, issue["number"])
         waiting += 1
@@ -666,6 +779,8 @@ def start(tick: Tick, target: Target) -> bool:
         aside = worktree.with_name(f"{target.key}-{int(tick.host.now())}")
         tick.host.run([*git, "worktree", "move", str(worktree), str(aside)])
         archive_branches(tick, target, aside)
+    elif target.retry:
+        archive_branches(tick, target, None)
     tick.host.run([*git, "fetch", "origin", "main", *([target.branch] if target.branch else [])])
     if target.branch:
         add = [*git, "worktree", "add", "-B", target.branch, str(worktree),
@@ -683,8 +798,17 @@ def start(tick: Tick, target: Target) -> bool:
     (tick.home / "start-failed" / target.key).unlink(missing_ok=True)
     if target.key.startswith("issue-"):
         ensure_label(tick, "agent:running")
+        remove = "agent:ready,agent:failed" if target.retry else "agent:ready"
         tick.gh("issue", "edit", str(target.number), "--add-label", "agent:running",
-                "--remove-label", "agent:ready")
+                "--remove-label", remove)
+        (tick.home / "limit-paused" / str(target.number)).unlink(missing_ok=True)
+    if target.retry:
+        record = failed_record(tick, target.number) or {}
+        count = int(record.get("retries") or 0) + 1
+        write_record(tick, target.number, record | {"retries": count})
+        tick.gh("issue", "comment", str(target.number), "--body",
+                f"{MARKER}\nRetry {count} of {RETRIES}: {target.retry}.")
+        tick.say(f"{target.key}: retry {count} of {RETRIES}: {target.retry}")
     run = tick.runs / target.key
     run.mkdir(parents=True, exist_ok=True)
     if target.alone:
@@ -699,14 +823,15 @@ def start(tick: Tick, target: Target) -> bool:
     return True
 
 
-def archive_branches(tick: Tick, target: Target, aside: Path) -> None:
+def archive_branches(tick: Tick, target: Target, aside: Path | None) -> None:
     """#74 AC7: free the branches of a kept worktree; rename to archive/, delete nothing."""
     git = ["git", "-C", str(REPO_ROOT)]
     stamp = int(tick.host.now())
     found: list[str] = []
-    code, out = tick.host.run(["git", "-C", str(aside), "branch", "--show-current"])
-    if code == 0 and out.strip():
-        found.append(out.strip())
+    if aside is not None:
+        code, out = tick.host.run(["git", "-C", str(aside), "branch", "--show-current"])
+        if code == 0 and out.strip():
+            found.append(out.strip())
     if target.key.startswith("issue-"):
         patterns = [f"{kind}/{target.number}-*" for kind in ("bug", "feat", "task")]
         code, out = tick.host.run([*git, "branch", "--list", *patterns,
@@ -1082,6 +1207,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
         sync_review(tick, prs, tidy_ready(tick))
         announce_merged(tick, prs)
         finish_runs(tick, prs)
+        tidy_failed(tick)
         needs_you(tick, prs)
         running = running_keys(tick)
         merge_approved(tick, prs, running)
