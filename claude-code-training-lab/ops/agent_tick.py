@@ -32,6 +32,8 @@ PAUSE_SECONDS = 60 * 60
 MAX_TURNS = 80
 STARTS = 3
 RETRIES = 3
+ALL_PR_LIMIT = 100
+OPEN_PR_LIMIT = 40
 HINT = (
     "If the Artifact tool is listed only as a deferred tool, load it with ToolSearch "
     '(query "select:Artifact") before you decide that it is missing.'
@@ -250,10 +252,18 @@ def is_loop_pr(pr: dict[str, Any]) -> bool:
 
 
 def loop_pull_requests(tick: Tick) -> list[dict[str, Any]]:
-    fields = ("number,state,body,labels,headRefName,commits,comments,statusCheckRollup,"
-              "author,isCrossRepository,createdAt,isDraft,mergeStateStatus,headRefOid")
-    found = tick.gh_json("pr", "list", "--state", "all", "--limit", "100", "--json", fields)
-    return [pr for pr in found if is_loop_pr(pr)]
+    """All states with light fields, open ones with every field: GitHub caps a query at 500,000
+    nodes, and the heavy fields cost about 10,000 per pull request asked for."""
+    light = "number,state,body,labels,headRefName,author,isCrossRepository,createdAt"
+    heavy = light + ",commits,comments,statusCheckRollup,isDraft,mergeStateStatus,headRefOid"
+    every = tick.gh_json("pr", "list", "--state", "all", "--limit", str(ALL_PR_LIMIT),
+                         "--json", light)
+    opened = [pr for pr in tick.gh_json("pr", "list", "--state", "open", "--limit",
+                                        str(OPEN_PR_LIMIT), "--json", heavy)
+              if pr.get("state") == "OPEN"]
+    seen = {pr["number"] for pr in opened}
+    ended = [pr for pr in every if pr["number"] not in seen and pr.get("state") != "OPEN"]
+    return [pr for pr in opened + ended if is_loop_pr(pr)]
 
 
 def closes(pr: dict[str, Any]) -> int | None:
