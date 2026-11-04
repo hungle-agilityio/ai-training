@@ -2,27 +2,32 @@
 
 Online reputation management for businesses with several locations: collect customer reviews, see how each location is rated, and respond faster.
 
-**Status:** MVP in progress. The dashboard, the reviews page with filters and the JSON API work on demo data; review import, sentiment analysis with the Claude API and reply suggestions are planned.
+**Status:** MVP in progress. Sign-in, the dashboard, the location page, the reviews page with search, filters and CSV export, and the JSON API work on demo data; review import, sentiment analysis with the Claude API, reply suggestions and the weekly score trend are planned.
 
 ## Overview
 
 Clinics, spas, salons and similar businesses lose revenue to bad reviews and slow replies, and a manager of many locations cannot see at a glance which location needs attention. ReviewRadar gathers the reviews of every location in one place, scores each location, and (planned) suggests replies.
 
-The project is also the vehicle of a 15-day Claude Code training lab (see [Training lab](#training-lab)).
+The project is also the vehicle of a Claude Code training lab (see [Training lab](#training-lab)).
 
 ## Features
 
 | Feature | Status |
 |---|---|
+| Sign-in: every page needs an account (see [Sign in](#sign-in)) | Done |
 | Dashboard: key numbers, location scores, rating breakdown, latest reviews | Done |
+| Location page: score, rating breakdown and the 5 newest reviews of one location, opened from "Details" on the dashboard | Done |
 | Reviews page: table of all reviews, newest first, 20 per page, full text on hover or focus | Done |
-| Filter reviews by location, rating (good or bad) and week | Done |
+| Filter reviews by location, rating (good, bad or 1 to 5 stars) and week | Done |
+| Search reviews by words in the text (at least 3 characters, every word must appear) | Done |
+| Export the filtered reviews as a CSV file (`Export CSV` on the reviews page) | Done |
+| Review dates shown as "3 hours ago" for the last 7 days, then as the date; the full date and time on hover | Done |
 | JSON API for location scores (`/api/dashboard/`) | Done |
-| Demo data command | Done |
+| Demo data and user account commands | Done |
 | Import reviews from CSV or a mock API | Planned |
 | Sentiment classification with the Claude API | Planned (today sentiment is derived from the stars) |
 | Reply drafts in the language of the review | Planned |
-| Score trend per location | Planned |
+| Weekly score trend on the location page | Planned (epic #129) |
 
 ## Tech stack
 
@@ -95,10 +100,14 @@ One-time steps for the owner:
 
 | Address | What it shows |
 |---|---|
+| `/login/`, `/logout/` | Sign in and sign out |
 | `/` | Redirects to the dashboard |
 | `/dashboard/` | Key numbers, score per location, rating breakdown, latest reviews |
-| `/reviews/` | All reviews in a table with pagination and filters (`?page=N&location=ID&rating=good` or `bad`, `&week=YYYY-MM-DD`) |
+| `/locations/<id>/` | One location: score, rating breakdown, the 5 newest reviews |
+| `/reviews/` | All reviews in a table with pagination, search and filters (`?page=N&search=words&location=ID&rating=good`, `bad` or `1` to `5`, `&week=YYYY-MM-DD`) |
+| `/reviews/export/` | CSV file of the reviews that match the same search and filters |
 | `/api/dashboard/` | JSON: review count and average rating per location |
+| `/healthz/` | `ok`, for the host's health check (no sign-in) |
 
 ## Project structure
 
@@ -110,14 +119,18 @@ reviews/                Django app
   services.py           Business logic
   forms.py              Input validation
   views.py              Thin HTTP layer
-  templates/, static/   Pages and stylesheet
-  management/commands/  seed_demo_data
+  templates/, static/   Pages, stylesheet and tab icon
+  templatetags/         Template filters (review dates)
+  management/commands/  seed_demo_data, create_user
   tests/unit/           Unit tests
   tests/integration/    Integration tests
+ops/                    The build loop on the Mac mini and the release command (ops/README.md)
+specs/                  One folder per feature: intent, spec and tasks (specs/README.md)
+design/                 One folder per feature users see: the design card link (design/README.md)
 docs/
   app/                  The app: issues/ (index in README.md), templates/, project context
-  learning/             Claude Code training: courses/, journal/, exercises/, epics/
-.claude/                Claude Code skills and agents shared by the team
+  learning/             Claude Code training: courses/, journal/, exercises/, epics/, issues/
+.claude/                Claude Code rules, skills, agents and hooks shared by the team
 ```
 
 ## Architecture
@@ -163,12 +176,12 @@ Target: 90% coverage on the service layer. Mock external APIs; tests never use t
 | Dashboard numbers look wrong (rounding) | Fixed |
 | Dashboard is very slow with many locations (one query per location) | Fixed: the scores load in one query, and a test asserts the query count |
 | A location without reviews breaks the dashboard | Fixed: the location is shown without a score |
-| Reviews page, with filters by location, rating and week | Built and tested |
+| Reviews page, with search, filters by location, rating and week, and CSV export | Built and tested |
+| Anyone could open the pages without an account | Fixed: every page needs a sign-in, except `/login/` and `/healthz/` |
+| Location page | Built: score, rating breakdown and the newest reviews; the weekly trend chart is planned (epic #129) |
 | Reply drafts in the wrong language | Open, the reply feature is not built yet |
 
-All tests pass.
-
-Limitations: there is no login and data is not limited per business, so the dashboard and the reviews page show the reviews of every business. Do not use real customer data until access control is added.
+Limitations: data is not limited per business, so every signed-in account sees the reviews of every business. Do not use real customer data until access per business is added.
 
 ## Documentation
 
@@ -178,34 +191,24 @@ Limitations: there is no login and data is not limited per business, so the dash
 
 ## Training lab
 
-ReviewRadar is built as part of a **15-day Claude Code training lab**: each day adds a Claude Code skill to the real project (issues, tests, sub-agents, skills, hooks) instead of a toy exercise.
+ReviewRadar is built as part of a **Claude Code training lab**: each step adds a Claude Code practice to the real project (issues, tests, sub-agents, skills, hooks) instead of a toy exercise.
 
 > [!NOTE]
-> **Progress: 1 of 15 days done, Day 2 in progress.** Skills, sub-agents and `CLAUDE.md` were started early, during Day 2.
+> **Progress: the journal stopped after Day 2.** The work then moved to the issue and loop flow ([ADR-011](.claude/knowledge/decisions/ADR-011-project-takes-requests-loop-builds.md)): the Claude Code Project turns a request into GitHub issues, and the loop on the Mac mini builds them (`ops/README.md`). The record of that work is the GitHub issues, the pull requests and `docs/learning/epics/`.
 
-| Day | Topic | Practice | Status | Notes |
-|:---:|---|---|:---:|:---:|
-| 1 | Setup and Claude 101 | Project skeleton, first conversations with Claude | ✅ | [journal](docs/learning/journal/day-01.md) |
-| 2 | Issue analysis, reproduce and understand | Analyse issues, reproduce bugs, write failing tests, `git pull --rebase`, merge conflict | 🟨 | [journal](docs/learning/journal/day-02.md) |
-| 3 | To be defined | | ⬜ | [journal](docs/learning/journal/day-03.md) |
-| 4 | The `.claude/` folder | | ⬜ | [journal](docs/learning/journal/day-04.md) |
-| 5 | `CLAUDE.md` | | ⬜ | [journal](docs/learning/journal/day-05.md) |
-| 6 | Sub-agents | | ⬜ | [journal](docs/learning/journal/day-06.md) |
-| 7 | Slash commands and skills | | ⬜ | [journal](docs/learning/journal/day-07.md) |
-| 8 | MCP | | ⬜ | [journal](docs/learning/journal/day-08.md) |
-| 9 | Hooks | | ⬜ | [journal](docs/learning/journal/day-09.md) |
-| 10-11 | To be defined | | ⬜ | [10](docs/learning/journal/day-10.md), [11](docs/learning/journal/day-11.md) |
-| 12-15 | Capstone | | ⬜ | [12](docs/learning/journal/day-12.md), [13](docs/learning/journal/day-13.md), [14](docs/learning/journal/day-14.md), [15](docs/learning/journal/day-15.md) |
-
-✅ done · 🟨 in progress · ⬜ not started
+| Day | Topic | Practice | Notes |
+|:---:|---|---|:---:|
+| 1 | Setup and Claude 101 | Project skeleton, first conversations with Claude | [journal](docs/learning/journal/day-01.md) |
+| 2 | Issue analysis, reproduce and understand | Analyse issues, reproduce bugs, write failing tests, `git pull --rebase`, merge conflict | [journal](docs/learning/journal/day-02.md) |
 
 <details>
 <summary>What the lab has produced so far</summary>
 
-- **Skills** (`.claude/skills/`): `write-issue` (one complete issue file), `create-commit` (branches and commits that follow the project rules), `create-issue` and `create-pull-request` (publish on GitHub with the `gh` command), `review-pull-request`, `write-tests`, `diagnose-bug` and `grill-me`.
-- **Sub-agents** (`.claude/agents/`): `analyst` (analyses an issue against the code), `planner` (turns the analysis into a step-by-step plan), `implementer` and `reviewer`.
+- **Skills** (`.claude/skills/`): `write-issue` (one complete issue file), `create-commit` (branches and commits that follow the project rules), `create-issue` and `create-pull-request` (publish on GitHub with the `gh` command), `draft-pull-request`, `review-pull-request`, `write-tests`, `diagnose-bug`, `grill-me`, `check-in-browser`, `capture-before-after`, `build-verify-report`, `share-report` and `work-queue` (the loop's build of one issue).
+- **Sub-agents** (`.claude/agents/`): `analyst` (analyses an issue against the code), `planner` (turns the analysis into a step-by-step plan), `implementer`, `reviewer` and `test-runner`.
 - **Templates** (`docs/app/templates/`): issue templates and the README template.
 - **Issues** (`docs/app/issues/`): five seeded issues analysed and reproduced, and the reviews page, built and tested.
+- **Specs and the loop** (`specs/`, `design/`, `ops/`): a spec pull request per feature, then the loop on the Mac mini builds each issue and opens its pull request.
 - **Rules** (`.claude/CLAUDE.md` and `.claude/rules/`): issue, branch, commit and pull request formats, the workflow by difficulty (easy, medium, hard) and lessons learned.
 
 </details>
