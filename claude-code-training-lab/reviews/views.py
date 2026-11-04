@@ -13,7 +13,7 @@ from django.shortcuts import redirect, render
 from django.templatetags.static import static
 from django.utils import timezone
 
-from reviews import services
+from reviews import services, trend_service
 from reviews.forms import PageForm, ReviewFilterForm
 
 SITE_ICON = "reviews/icon.svg"
@@ -38,7 +38,8 @@ def location(request: HttpRequest, pk: int) -> HttpResponse:
     page = services.location_page(pk)
     if page is None:
         raise Http404("No such location")
-    return render(request, "reviews/location.html", {"page": page})
+    trend = trend_service.weekly_trend(pk, timezone.now())
+    return render(request, "reviews/location.html", {"page": page, "trend": trend})
 
 
 def reviews(request: HttpRequest) -> HttpResponse:
