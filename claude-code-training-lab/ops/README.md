@@ -67,6 +67,18 @@ An open loop issue carries exactly one of these four labels, and the tick (not t
 - An issue labelled `risk:high`, or whose body names `migrations/` or `models.py`, runs alone.
 - A build that times out or fails before its pull request: the issue gets `agent:failed` and a comment with the last 20 log lines; the worktree stays. The plan limit: the issue goes back to `agent:ready` and new builds pause for 60 minutes.
 
+## Stacked tasks
+
+A task that depends on others starts early when exactly one dependency (#P, the parent) is unmerged and its loop pull request #Q is open, not a draft, `pr:ready-for-review`, with at least one check and all of them green. Two or more unmerged dependencies, or a parent without such a pull request, keep the task waiting. `agent:manual` tasks never start stacked, and a parent closed as not planned does not count. A green stacked pull request can itself be the parent of the next task (a chain).
+
+The build starts in a worktree detached at `origin/<branch of #Q>` and is told `Stacked on pull request #Q: branch from origin/<branch> and open the pull request into <branch>.` The start message is `ReviewRadar started #N on top of PR #Q: <title>`. `~/.reviewradar/stacked/<N>` holds #Q, its branch and its head commit. The files of #P (and of its own parents in a chain) do not hold the child; a file shared with any other running or in-review issue still does.
+
+The tick never merges a pull request whose base is not `main`. An approval on it gives one message, `PR #<n> not merged: it waits for its parent PR #<Q>`, per approval; the approval stays valid and the pull request merges at a later tick, after its parent, by the rules of ADR-016.
+
+When the parent is merged, each open pull request based on its branch is given base `main` (`gh pr edit <n> --base main`, when GitHub has not done it) and is from then on a normal loop pull request: updated from `main`, and `/redo merge origin/main ...` on a conflict. When the parent is closed without merge, each open child gets `pr:blocked`, a comment and one message `ReviewRadar PR #<n> blocked: its parent PR #<Q> was closed`. A change to the parent after the child started does nothing to the child until the parent is merged.
+
+A failed stacked issue also records `parent`, the head commit of #Q; a `stopped` failure is retried when that head moved (`the parent pull request #<Q> moved from <old> to <new>`), stacked again if #P still qualifies, from `origin/main` once #P is closed.
+
 ## The Artifact tool check
 
 A build needs the `Artifact` tool to publish its verify report. Each build starts `claude -p` with `--output-format stream-json`, reads the tool list of the first `init` event and starts again (three starts at most) when `Artifact` is missing.
