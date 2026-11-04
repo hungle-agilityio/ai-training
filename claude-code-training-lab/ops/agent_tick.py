@@ -36,7 +36,6 @@ HINT = (
     "If the Artifact tool is listed only as a deferred tool, load it with ToolSearch "
     '(query "select:Artifact") before you decide that it is missing.'
 )
-WAITING_CAP = 10
 LOG_TAIL = 20
 SKIP_LABELS = {"agent:running", "agent:review", "agent:failed", "agent:manual"}
 PR_LABELS = {"pr:ready-for-review", "pr:changes-requested", "pr:blocked", "pr:ci-failed"}
@@ -50,10 +49,6 @@ LABEL_COLORS = {
     "agent:failed": ("D93F0B", "The loop could not finish this issue; see the comment"),
 }
 REPO_ROOT = Path(__file__).resolve().parents[2]
-OPEN_PRS_URL = (
-    "https://github.com/hungle-agilityio/ai-training/pulls?q=is%3Apr+is%3Aopen+%22work-queue%22"
-    "+in%3Abody"
-)
 NEEDS_YOU = ("pr:blocked", "pr:ci-failed")
 APPROVALS = {
     "/merge", "merge", "lgtm", "approved", "approve", "looks good", "look good", "ok", "duyệt",
@@ -257,7 +252,7 @@ def is_loop_pr(pr: dict[str, Any]) -> bool:
 def loop_pull_requests(tick: Tick) -> list[dict[str, Any]]:
     fields = ("number,state,body,labels,headRefName,commits,comments,statusCheckRollup,"
               "author,isCrossRepository,createdAt,isDraft,mergeStateStatus,headRefOid")
-    found = tick.gh_json("pr", "list", "--state", "all", "--limit", "40", "--json", fields)
+    found = tick.gh_json("pr", "list", "--state", "all", "--limit", "100", "--json", fields)
     return [pr for pr in found if is_loop_pr(pr)]
 
 
@@ -722,14 +717,12 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
             for path in files_of(item.get("body") or ""):
                 busy.setdefault(path, item["number"])
     open_numbers = {item["number"] for item in issues}
-    waiting = sum(1 for pr in prs if pr["state"] == "OPEN")
-    waiting += sum(1 for item in issues if "agent:running" in names(item))
     ready = sorted((i for i in issues if "agent:ready" in names(i)),
                    key=lambda i: (i["createdAt"], i["number"]))
     failed = sorted((i for i in issues if "agent:failed" in names(i)),
                     key=lambda i: (i["createdAt"], i["number"]))
     for issue in [*ready, *failed]:
-        if len(chosen) >= free or waiting >= WAITING_CAP:
+        if len(chosen) >= free:
             break
         key = f"issue-{issue['number']}"
         depends = depends_on(issue.get("body") or "")
@@ -766,7 +759,6 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         chosen.append(Target(key, issue["number"], prompt, message=message, retry=retry))
         for path in files:
             busy.setdefault(path, issue["number"])
-        waiting += 1
     return chosen
 
 
@@ -1152,7 +1144,7 @@ def blocked_lines(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool
 
 def say_blocked(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool],
                 started: set[str]) -> None:
-    """#143 AC4, AC5, AC6, AC8: one message when the blocked set changes; none at the limit."""
+    """#143 AC4, AC5, AC6, AC8: one message when the blocked set changes."""
     count, lines = blocked_lines(tick, prs, running, started)
     last = tick.home / "last-blocked"
     if not lines:
@@ -1160,10 +1152,6 @@ def say_blocked(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool],
         return
     for line in lines:
         tick.say(line)
-    waiting = sum(1 for pr in prs if pr["state"] == "OPEN")
-    waiting += sum(1 for item in open_issue_list(tick) if "agent:running" in names(item))
-    if waiting >= WAITING_CAP:
-        return
     message = "\n".join([f"ReviewRadar waiting: {count} ready issues blocked", *lines])
     if last.exists() and last.read_text() == message:
         return
@@ -1172,7 +1160,7 @@ def say_blocked(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool],
 
 
 def queue_empty(tick: Tick, prs: list[dict[str, Any]]) -> None:
-    """AC12: 'queue empty', or #78 AC3 'waiting' when ready issues wait on the cap."""
+    """AC12: 'queue empty' when no ready issue is left; blocked ones get #143's message."""
     waiting = sum(1 for pr in prs if pr["state"] == "OPEN")
     issues = tick.open_issues
     if issues is None:
@@ -1180,11 +1168,8 @@ def queue_empty(tick: Tick, prs: list[dict[str, Any]]) -> None:
                               "--json", "number,title,body,labels,createdAt")
     ready = [i for i in issues if "agent:ready" in names(i) and not names(i) & SKIP_LABELS]
     if ready:
-        waiting += sum(1 for item in issues if "agent:running" in names(item))
-        message = (f"ReviewRadar waiting: {waiting} pull requests open (limit {WAITING_CAP}), "
-                   f"{len(ready)} ready issues not started\n{OPEN_PRS_URL}")
-    else:
-        message = f"ReviewRadar queue empty, {waiting} pull requests waiting"
+        return
+    message = f"ReviewRadar queue empty, {waiting} pull requests waiting"
     last = tick.home / "last-empty"
     if last.exists() and last.read_text() == message:
         return

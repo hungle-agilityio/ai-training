@@ -245,20 +245,6 @@ def test_nothing_blocked_removes_last_blocked_and_sends_nothing(home: Path) -> N
     assert blocked(host) == []
 
 
-# AC6
-
-
-def test_pull_request_limit_sends_only_the_limit_message(home: Path) -> None:
-    prs = [pull(100 + n, "pr:ready-for-review", closes=50 + n) for n in range(10)]
-    host = WaitingHost(
-        prs=prs,
-        issues=[issue(4, "agent:review"), issue(5, "agent:ready", body=depends(4))],
-    )
-    agent_tick.tick_once(host, home)
-    assert len(host.sent) == 1
-    assert host.sent[0].startswith("rr-test: ReviewRadar waiting: 10 pull requests open (limit 10)")
-
-
 # AC7
 
 
