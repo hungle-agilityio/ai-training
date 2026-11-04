@@ -32,3 +32,4 @@ One file per decision: `ADR-001-short-title.md`, numbered in order. Write one fo
 - [ADR-015: Guards for parallel pull requests](ADR-015-guards-for-parallel-pull-requests.md)
 - [ADR-016: The tick merges on the owner's approval comment](ADR-016-tick-merges-on-owner-approval.md)
 - [ADR-017: Deploys go out only by release](ADR-017-deploy-by-release-branch.md)
+- [ADR-018: Stacked pull requests, retries, no pull request limit](ADR-018-stacked-pull-requests-and-retries.md)
