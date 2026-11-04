@@ -111,22 +111,25 @@ Every message goes to ntfy when `NTFY_TOPIC` is set and to Slack when `SLACK_WEB
 
 **Slack, once:** create a Slack app (api.slack.com/apps, From scratch), turn on **Incoming Webhooks**, **Add New Webhook to Workspace** and pick a channel, copy the webhook URL into `~/.reviewradar/agent.env` as `SLACK_WEBHOOK_URL=...` (never into the repository), then set that channel's notifications to **All new messages** in the Slack app on the phone.
 
-| Message | When |
-|---|---|
-| `ReviewRadar started #<n>: <issue title>` | the tick started an issue build |
-| `ReviewRadar working on PR #<p> (<k> change requests open)`, or `(CI)` | the tick started a pull request run; `<k>` counts the owner's `/redo` comments newer than the last commit |
-| `ReviewRadar PR #<p> needs you: <pr:blocked or pr:ci-failed>` and the link | once per pull request, label and head commit |
-| `ReviewRadar PR #<p> merged (#<n>); main is now <sha>`, or `...; main checkout not updated: <reason>` | a loop pull request was merged (by anyone), announced once after the tick pulled `main`; the first run only records the merged ones |
-| `ReviewRadar waiting: <k> ready issues blocked`, then one line `#<n> waits for #<m>: <reason>` per blocked issue and blocking issue (`review PR #<p>`, `building`, `no pull request yet`, `closed as not planned, remove the dependency or reopen it`; for a shared file `#<n> waits for #<m>, which also touches <path>`) | a ready issue is held back by a dependency or a shared file, also while builds run; again only when the text changes (`~/.reviewradar/last-blocked`); not sent when the pull request limit is reached |
-| `ReviewRadar PR #<p> opened for #<n> (<status label>)`, the pull request link, `Report: <link>` | an issue build ended and an open loop pull request closes that issue (also after an error or a timeout that came after the pull request) |
-| `ReviewRadar PR #<p> updated for #<n> (<status label>)`, the same two links | a pull request build (a `/redo` or a CI fix) ended normally and the pull request is still open |
-| `ReviewRadar build for issue #<n> failed: <reason>` | an issue build ended without a pull request |
-| `ReviewRadar build for pull request #<p> <reason>` | a pull request build failed or timed out |
-| `ReviewRadar loop paused 60 minutes: plan limit reached (<key>)` | the Claude plan limit was reached |
-| `main is red at <sha>: <run url>` | the latest completed `Checks` run on `main` is not green; once per commit |
-| `ReviewRadar main checkout not updated: <reason>` | the tick could not pull `main`; once per reason until a pull succeeds |
-| `ReviewRadar build for <issue #n \| pull request #n> did not start: <step> failed` | a start failed; once per key and step until that key starts |
-| `ReviewRadar queue empty, <w> pull requests waiting` | nothing to start and nothing running; again only when the text changes |
+Each ntfy post has the title `ReviewRadar` and a priority (#167). "Rings" is `yes` for `Priority: high` (the phone rings) and `no` for `Priority: low` (the message arrives silently in the ntfy app). A message not in this table is sent with `Priority: high`. Slack gets the plain text without a priority.
+
+| Message | Rings | When |
+|---|---|---|
+| `ReviewRadar started #<n>: <issue title>` | no | the tick started an issue build |
+| `ReviewRadar working on PR #<p> (<k> change requests open)`, or `(CI)` | no | the tick started a pull request run; `<k>` counts the owner's `/redo` comments newer than the last commit |
+| `ReviewRadar PR #<p> needs you: <pr:blocked or pr:ci-failed>` and the link | yes | once per pull request, label and head commit |
+| `ReviewRadar PR #<p> merged (#<n>); main is now <sha>`, or `...; main checkout not updated: <reason>` | no for `main is now <sha>`, yes for `main checkout not updated` | a loop pull request was merged (by anyone), announced once after the tick pulled `main`; the first run only records the merged ones |
+| `ReviewRadar waiting: <k> ready issues blocked`, then one line `#<n> waits for #<m>: <reason>` per blocked issue and blocking issue (`review PR #<p>`, `building`, `no pull request yet`, `closed as not planned, remove the dependency or reopen it`; for a shared file `#<n> waits for #<m>, which also touches <path>`) | no | a ready issue is held back by a dependency or a shared file, also while builds run; again only when the text changes (`~/.reviewradar/last-blocked`); not sent when the pull request limit is reached |
+| `ReviewRadar PR #<p> opened for #<n> (<status label>)`, the pull request link, `Report: <link>` | yes | an issue build ended and an open loop pull request closes that issue (also after an error or a timeout that came after the pull request) |
+| `ReviewRadar PR #<p> updated for #<n> (<status label>)`, the same two links | yes | a pull request build (a `/redo` or a CI fix) ended normally and the pull request is still open |
+| `ReviewRadar build for issue #<n> failed: <reason>` | yes | an issue build ended without a pull request |
+| `ReviewRadar build for pull request #<p> <reason>` | yes | a pull request build failed or timed out |
+| `ReviewRadar loop paused 60 minutes: plan limit reached (<key>)` | yes | the Claude plan limit was reached |
+| `main is red at <sha>: <run url>` | yes | the latest completed `Checks` run on `main` is not green; once per commit |
+| `ReviewRadar main checkout not updated: <reason>` | yes | the tick could not pull `main`; the first time, and again every 6 hours while the same reason is there (`~/.reviewradar/last-pull-problem` and `last-pull-problem-sent`); a successful pull clears both |
+| `ReviewRadar build for <issue #n \| pull request #n> did not start: <step> failed` | yes | a start failed; once per key and step until that key starts |
+| `ReviewRadar queue empty, <w> pull requests waiting` | no | nothing to start and nothing running; again only when the text changes |
+| `ReviewRadar loop started on <host name>` | yes | `uv run python ops/agent_tick.py started`, by hand or from launchd at login; takes no lock, runs no tick; sends nothing without `NTFY_TOPIC` |
 
 The loop's open pull requests with their status labels: <https://github.com/hungle-agilityio/ai-training/pulls?q=is%3Apr+is%3Aopen+%22work-queue%22+in%3Abody>
 

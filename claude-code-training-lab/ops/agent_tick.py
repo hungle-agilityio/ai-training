@@ -12,6 +12,7 @@ import os
 import queue
 import re
 import signal
+import socket
 import subprocess
 import sys
 import threading
@@ -53,7 +54,15 @@ LABEL_COLORS = {
 REPO_ROOT = Path(__file__).resolve().parents[2]
 NEEDS_YOU = ("pr:blocked", "pr:ci-failed")
 APPROVALS = {
-    "/merge", "merge", "lgtm", "approved", "approve", "looks good", "look good", "ok", "duyệt",
+    "/merge",
+    "merge",
+    "lgtm",
+    "approved",
+    "approve",
+    "looks good",
+    "look good",
+    "ok",
+    "duyệt",
     "ship it",
 }
 REDO_CONFLICT = "/redo merge origin/main into this branch and fix the conflict"
@@ -65,6 +74,12 @@ DEPENDS_LINE = re.compile(r"^\W*Depends on\b(.*)$", re.IGNORECASE | re.MULTILINE
 FILES_HEADING = re.compile(r"^##\s+Files likely touched\s*$", re.IGNORECASE | re.MULTILINE)
 BULLET_PATH = re.compile(r"^\s*[-*]\s+[^`\n]*`([^`\n]+)`", re.MULTILINE)
 LAB_PREFIX = "claude-code-training-lab/"
+NTFY_TITLE = "ReviewRadar"
+REMINDER_SECONDS = 6 * 3600
+LOW_PRIORITY = re.compile(
+    r"(?:ReviewRadar )?(?:started #|working on PR #|waiting: |queue empty, |"
+    r"PR #\d+ merged \(#\d+\); main is now )"
+)
 
 
 class Host(Protocol):
@@ -106,7 +121,15 @@ class RealHost:
         return True
 
     def notify(self, topic: str, message: str) -> None:
-        request = urllib.request.Request(f"https://ntfy.sh/{topic}", data=message.encode())
+        self.notify_priority(topic, message, "high")
+
+    def notify_priority(self, topic: str, message: str, priority: str) -> None:
+        """#167 AC3: every ntfy post carries the title and a priority; the text is unchanged."""
+        request = urllib.request.Request(
+            f"https://ntfy.sh/{topic}",
+            data=message.encode(),
+            headers={"Title": NTFY_TITLE, "Priority": priority},
+        )
         try:
             urllib.request.urlopen(request, timeout=10).close()
         except OSError as error:
@@ -180,7 +203,11 @@ class Tick:
     def notify(self, message: str) -> None:
         """ntfy when NTFY_TOPIC is set, Slack when SLACK_WEBHOOK_URL is set (#78 AC6)."""
         if self.settings.ntfy_topic:
-            self.host.notify(self.settings.ntfy_topic, message)
+            send = getattr(self.host, "notify_priority", None)
+            if send is None:
+                self.host.notify(self.settings.ntfy_topic, message)
+            else:
+                send(self.settings.ntfy_topic, message, message_priority(message))
         if self.settings.slack_url:
             post = getattr(self.host, "slack", None)
             if post is None or not post(self.settings.slack_url, message):
@@ -196,6 +223,11 @@ class Tick:
         return json.loads(out)
 
 
+def message_priority(message: str) -> str:
+    """#167 AC1, AC2: information rings silently; everything else, named or not, rings."""
+    return "low" if LOW_PRIORITY.match(message) else "high"
+
+
 def read_settings(path: Path) -> Settings:
     """Missing file or key: one build at a time, no notifications; a bad number stops the tick."""
     values: dict[str, str] = {}
@@ -208,8 +240,11 @@ def read_settings(path: Path) -> Settings:
     raw = values.get("AGENT_CONCURRENCY", "1")
     if raw not in {"1", "2", "3"}:
         raise SystemExit(f"AGENT_CONCURRENCY in {path} must be 1, 2 or 3, not {raw!r}")
-    return Settings(concurrency=int(raw), ntfy_topic=values.get("NTFY_TOPIC", ""),
-                    slack_url=values.get("SLACK_WEBHOOK_URL", ""))
+    return Settings(
+        concurrency=int(raw),
+        ntfy_topic=values.get("NTFY_TOPIC", ""),
+        slack_url=values.get("SLACK_WEBHOOK_URL", ""),
+    )
 
 
 def take_lock(host: Host, lock: Path) -> bool:
@@ -256,11 +291,16 @@ def loop_pull_requests(tick: Tick) -> list[dict[str, Any]]:
     nodes, and the heavy fields cost about 10,000 per pull request asked for."""
     light = "number,state,body,labels,headRefName,author,isCrossRepository,createdAt"
     heavy = light + ",commits,comments,statusCheckRollup,isDraft,mergeStateStatus,headRefOid"
-    every = tick.gh_json("pr", "list", "--state", "all", "--limit", str(ALL_PR_LIMIT),
-                         "--json", light)
-    opened = [pr for pr in tick.gh_json("pr", "list", "--state", "open", "--limit",
-                                        str(OPEN_PR_LIMIT), "--json", heavy)
-              if pr.get("state") == "OPEN"]
+    every = tick.gh_json(
+        "pr", "list", "--state", "all", "--limit", str(ALL_PR_LIMIT), "--json", light
+    )
+    opened = [
+        pr
+        for pr in tick.gh_json(
+            "pr", "list", "--state", "open", "--limit", str(OPEN_PR_LIMIT), "--json", heavy
+        )
+        if pr.get("state") == "OPEN"
+    ]
     seen = {pr["number"] for pr in opened}
     ended = [pr for pr in every if pr["number"] not in seen and pr.get("state") != "OPEN"]
     return [pr for pr in opened + ended if is_loop_pr(pr)]
@@ -348,8 +388,11 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
     opened = newest_open_pr(prs, int(number))
     if "agent:running" not in labels or has_pr:
         remove_worktree(tick, worktree)
-        tick.say(f"{key}: ended normally" if outcome == "0" else
-                 f"{key}: {reason}, but the build already handed over")
+        tick.say(
+            f"{key}: ended normally"
+            if outcome == "0"
+            else f"{key}: {reason}, but the build already handed over"
+        )
         if opened is not None:
             tick.notify(pr_message(opened, "opened"))
         elif not has_pr and "agent:failed" in labels:
@@ -359,8 +402,15 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
         pause_for_limit(tick, key, number, worktree)
         return
     ensure_label(tick, "agent:failed")
-    tick.gh("issue", "edit", number, "--add-label", "agent:failed", "--remove-label",
-            "agent:running,agent:ready")
+    tick.gh(
+        "issue",
+        "edit",
+        number,
+        "--add-label",
+        "agent:failed",
+        "--remove-label",
+        "agent:running,agent:ready",
+    )
     body = f"{MARKER}\nThe loop build {reason}. Last {LOG_TAIL} lines of the log:\n"
     body += f"\n```\n{tail}\n```"
     tick.gh("issue", "comment", number, "--body", body)
@@ -402,8 +452,10 @@ def record_failure(tick: Tick, number: int, kind: str, outcome: str) -> None:
     record = {"main": main_head(tick), "kind": kind, "retries": retries, "outcome": outcome}
     if retries >= RETRIES:
         if not old.get("told"):
-            tick.notify(f"ReviewRadar #{number} failed after {RETRIES} retries, needs you: "
-                        f"https://github.com/{REPO}/issues/{number}")
+            tick.notify(
+                f"ReviewRadar #{number} failed after {RETRIES} retries, needs you: "
+                f"https://github.com/{REPO}/issues/{number}"
+            )
         record["told"] = True
     write_record(tick, number, record)
 
@@ -461,8 +513,9 @@ def retry_reason(tick: Tick, item: dict[str, Any]) -> str:
 def pause_for_limit(tick: Tick, key: str, number: str, worktree: Path) -> None:
     """#74 AC5: a build stopped by the plan limit before its hand-over; any exit code."""
     if key.startswith("issue-"):
-        tick.gh("issue", "edit", number, "--add-label", "agent:ready",
-                "--remove-label", "agent:running")
+        tick.gh(
+            "issue", "edit", number, "--add-label", "agent:ready", "--remove-label", "agent:running"
+        )
         if failed_record(tick, int(number)) is not None:
             marks = tick.home / "limit-paused"
             marks.mkdir(exist_ok=True)
@@ -480,8 +533,9 @@ def remove_worktree(tick: Tick, worktree: Path) -> None:
 
 
 def ensure_label(tick: Tick, label: str) -> None:
-    existing = {item["name"] for item in tick.gh_json("label", "list", "--json", "name",
-                                                      "--limit", "200")}
+    existing = {
+        item["name"] for item in tick.gh_json("label", "list", "--json", "name", "--limit", "200")
+    }
     if label not in existing:
         color, description = LABEL_COLORS[label]
         tick.gh("label", "create", label, "--color", color, "--description", description)
@@ -522,8 +576,7 @@ def remarks_of(tick: Tick, pr: dict[str, Any]) -> list[Remark]:
     if number in tick.remarks:
         return tick.remarks[number]
     found = [r for c in pr.get("comments") or [] if (r := remark_of("conversation", c))]
-    code, out = tick.host.run(["gh", "api", f"repos/{REPO}/pulls/{number}/comments",
-                               "--paginate"])
+    code, out = tick.host.run(["gh", "api", f"repos/{REPO}/pulls/{number}/comments", "--paginate"])
     try:
         inline = json.loads(out) if code == 0 else []
     except ValueError:
@@ -544,16 +597,19 @@ def done_by_owner(tick: Tick, remark: Remark) -> bool:
         remark.marked = False
         if remark.has_summary_mark and remark.id is not None:
             path = "pulls/comments" if remark.kind == "inline" else "issues/comments"
-            code, out = tick.host.run(["gh", "api", f"repos/{REPO}/{path}/{remark.id}/reactions",
-                                       "--paginate"])
+            code, out = tick.host.run(
+                ["gh", "api", f"repos/{REPO}/{path}/{remark.id}/reactions", "--paginate"]
+            )
             try:
                 reactions = json.loads(out) if code == 0 else []
             except ValueError:
                 reactions = []
             remark.marked = any(
-                isinstance(r, dict) and (r.get("user") or {}).get("login") == OWNER
+                isinstance(r, dict)
+                and (r.get("user") or {}).get("login") == OWNER
                 and r.get("content") in DONE_MARKS
-                for r in reactions if isinstance(reactions, list)
+                for r in reactions
+                if isinstance(reactions, list)
             )
     return remark.marked
 
@@ -561,8 +617,11 @@ def done_by_owner(tick: Tick, remark: Remark) -> bool:
 def last_commit_date(pr: dict[str, Any], skip_updates: bool = False) -> str:
     commits = pr.get("commits") or []
     if skip_updates:
-        commits = [c for c in commits
-                   if not str(c.get("messageHeadline") or "").startswith(UPDATE_FROM_MAIN)]
+        commits = [
+            c
+            for c in commits
+            if not str(c.get("messageHeadline") or "").startswith(UPDATE_FROM_MAIN)
+        ]
     return str(commits[-1].get("committedDate", "")) if commits else ""
 
 
@@ -633,7 +692,7 @@ def files_of(body: str) -> set[str]:
     heading = FILES_HEADING.search(body)
     if heading is None:
         return set()
-    section = body[heading.end():]
+    section = body[heading.end() :]
     following = re.search(r"^##\s", section, re.MULTILINE)
     section = section[: following.start()] if following else section
     paths = set()
@@ -674,16 +733,35 @@ def unmet(tick: Tick, depends: set[int], open_numbers: set[int]) -> set[int]:
 
 def open_issue_list(tick: Tick) -> list[dict[str, Any]]:
     if tick.open_issues is None:
-        tick.open_issues = tick.gh_json("issue", "list", "--state", "open", "--limit", "200",
-                                        "--json", "number,title,body,labels,createdAt")
+        tick.open_issues = tick.gh_json(
+            "issue",
+            "list",
+            "--state",
+            "open",
+            "--limit",
+            "200",
+            "--json",
+            "number,title,body,labels,createdAt",
+        )
     return tick.open_issues
 
 
 def main_is_red(tick: Tick) -> bool:
     """#70 AC5: the latest completed Checks run on main; unreadable counts as green."""
-    code, out = tick.gh("run", "list", "--workflow", "checks.yml", "--branch", "main",
-                        "--status", "completed", "--limit", "1",
-                        "--json", "conclusion,headSha,url")
+    code, out = tick.gh(
+        "run",
+        "list",
+        "--workflow",
+        "checks.yml",
+        "--branch",
+        "main",
+        "--status",
+        "completed",
+        "--limit",
+        "1",
+        "--json",
+        "conclusion,headSha,url",
+    )
     try:
         runs = json.loads(out) if code == 0 else None
     except ValueError:
@@ -716,8 +794,9 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
             count = redo_count(tick, pr)
             what = f"{count} change requests open" if count else "CI"
             message = f"ReviewRadar working on PR #{pr['number']} ({what})"
-            chosen.append(Target(key, pr["number"], prompt, branch=pr["headRefName"],
-                                 message=message))
+            chosen.append(
+                Target(key, pr["number"], prompt, branch=pr["headRefName"], message=message)
+            )
     if any(running.values()) or tick.main_red:
         return chosen
     issues = open_issue_list(tick)
@@ -727,10 +806,14 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
             for path in files_of(item.get("body") or ""):
                 busy.setdefault(path, item["number"])
     open_numbers = {item["number"] for item in issues}
-    ready = sorted((i for i in issues if "agent:ready" in names(i)),
-                   key=lambda i: (i["createdAt"], i["number"]))
-    failed = sorted((i for i in issues if "agent:failed" in names(i)),
-                    key=lambda i: (i["createdAt"], i["number"]))
+    ready = sorted(
+        (i for i in issues if "agent:ready" in names(i)),
+        key=lambda i: (i["createdAt"], i["number"]),
+    )
+    failed = sorted(
+        (i for i in issues if "agent:failed" in names(i)),
+        key=lambda i: (i["createdAt"], i["number"]),
+    )
     for issue in [*ready, *failed]:
         if len(chosen) >= free:
             break
@@ -763,8 +846,9 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         if runs_alone(issue):
             if running or chosen:
                 break
-            chosen.append(Target(key, issue["number"], prompt, alone=True, message=message,
-                                 retry=retry))
+            chosen.append(
+                Target(key, issue["number"], prompt, alone=True, message=message, retry=retry)
+            )
             break
         chosen.append(Target(key, issue["number"], prompt, message=message, retry=retry))
         for path in files:
@@ -785,8 +869,15 @@ def start(tick: Tick, target: Target) -> bool:
         archive_branches(tick, target, None)
     tick.host.run([*git, "fetch", "origin", "main", *([target.branch] if target.branch else [])])
     if target.branch:
-        add = [*git, "worktree", "add", "-B", target.branch, str(worktree),
-               f"origin/{target.branch}"]
+        add = [
+            *git,
+            "worktree",
+            "add",
+            "-B",
+            target.branch,
+            str(worktree),
+            f"origin/{target.branch}",
+        ]
     else:
         add = [*git, "worktree", "add", "--detach", str(worktree), "origin/main"]
     lab = worktree / "claude-code-training-lab"
@@ -801,22 +892,40 @@ def start(tick: Tick, target: Target) -> bool:
     if target.key.startswith("issue-"):
         ensure_label(tick, "agent:running")
         remove = "agent:ready,agent:failed" if target.retry else "agent:ready"
-        tick.gh("issue", "edit", str(target.number), "--add-label", "agent:running",
-                "--remove-label", remove)
+        tick.gh(
+            "issue",
+            "edit",
+            str(target.number),
+            "--add-label",
+            "agent:running",
+            "--remove-label",
+            remove,
+        )
         (tick.home / "limit-paused" / str(target.number)).unlink(missing_ok=True)
     if target.retry:
         record = failed_record(tick, target.number) or {}
         count = int(record.get("retries") or 0) + 1
         write_record(tick, target.number, record | {"retries": count})
-        tick.gh("issue", "comment", str(target.number), "--body",
-                f"{MARKER}\nRetry {count} of {RETRIES}: {target.retry}.")
+        tick.gh(
+            "issue",
+            "comment",
+            str(target.number),
+            "--body",
+            f"{MARKER}\nRetry {count} of {RETRIES}: {target.retry}.",
+        )
         tick.say(f"{target.key}: retry {count} of {RETRIES}: {target.retry}")
     run = tick.runs / target.key
     run.mkdir(parents=True, exist_ok=True)
     if target.alone:
         (run / "alone").touch()
-    wrapper = [sys.executable, str(Path(__file__).resolve()), "run", str(run), str(lab),
-               target.prompt]
+    wrapper = [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "run",
+        str(run),
+        str(lab),
+        target.prompt,
+    ]
     pid = tick.host.spawn(wrapper, run / "log.txt")
     (run / "pid").write_text(str(pid))
     tick.say(f"{target.key}: started (pid {pid})")
@@ -836,8 +945,9 @@ def archive_branches(tick: Tick, target: Target, aside: Path | None) -> None:
             found.append(out.strip())
     if target.key.startswith("issue-"):
         patterns = [f"{kind}/{target.number}-*" for kind in ("bug", "feat", "task")]
-        code, out = tick.host.run([*git, "branch", "--list", *patterns,
-                                   "--format=%(refname:short)"])
+        code, out = tick.host.run(
+            [*git, "branch", "--list", *patterns, "--format=%(refname:short)"]
+        )
         if code == 0:
             found += [line.strip() for line in out.splitlines() if line.strip()]
     for branch in dict.fromkeys(found):
@@ -855,8 +965,11 @@ def start_failed(tick: Tick, target: Target, step: str) -> None:
     if mark.exists() and mark.read_text() == step:
         return
     mark.write_text(step)
-    what = f"issue #{target.number}" if target.key.startswith("issue-") else (
-        f"pull request #{target.number}")
+    what = (
+        f"issue #{target.number}"
+        if target.key.startswith("issue-")
+        else (f"pull request #{target.number}")
+    )
     tick.notify(f"ReviewRadar build for {what} did not start: {step} failed")
 
 
@@ -884,19 +997,41 @@ def pull_main(tick: Tick) -> None:
     last = tick.home / "last-pull-problem"
     if not reason:
         last.unlink(missing_ok=True)
+        (tick.home / "last-pull-problem-sent").unlink(missing_ok=True)
         tick.say("main checkout: pulled")
         return
     tick.say(f"main checkout not updated: {reason}")
-    if not (last.exists() and last.read_text() == reason):
-        last.write_text(reason)
-        tick.notify(f"ReviewRadar main checkout not updated: {reason}")
+    sent = tick.home / "last-pull-problem-sent"
+    if last.exists() and last.read_text() == reason and not reminder_due(tick, sent):
+        return
+    last.write_text(reason)
+    sent.write_text(str(tick.host.now()))
+    tick.notify(f"ReviewRadar main checkout not updated: {reason}")
+
+
+def reminder_due(tick: Tick, sent: Path) -> bool:
+    """#167 AC4: the same pull problem is sent again 6 hours after it was last sent."""
+    try:
+        return tick.host.now() - float(sent.read_text()) >= REMINDER_SECONDS
+    except (OSError, ValueError):
+        return True
 
 
 def tidy_ready(tick: Tick) -> set[int]:
     """#74 AC6: an issue handed over (agent:review) loses agent:ready; agent:failed keeps it."""
     fixed: set[int] = set()
-    found = tick.gh_json("issue", "list", "--state", "open", "--label", "agent:review",
-                         "--limit", "200", "--json", "number,labels")
+    found = tick.gh_json(
+        "issue",
+        "list",
+        "--state",
+        "open",
+        "--label",
+        "agent:review",
+        "--limit",
+        "200",
+        "--json",
+        "number,labels",
+    )
     for item in found:
         if "agent:ready" in names(item):
             tick.gh("issue", "edit", str(item["number"]), "--remove-label", "agent:ready")
@@ -936,8 +1071,18 @@ def tidy_ended(tick: Tick, prs: list[dict[str, Any]]) -> None:
         in_review = False
         if number is not None:
             if review is None:
-                found = tick.gh_json("issue", "list", "--state", "all", "--label",
-                                     "agent:review", "--limit", "200", "--json", "number")
+                found = tick.gh_json(
+                    "issue",
+                    "list",
+                    "--state",
+                    "all",
+                    "--label",
+                    "agent:review",
+                    "--limit",
+                    "200",
+                    "--json",
+                    "number",
+                )
                 review = {item["number"] for item in found}
             in_review = number in review
         if not stale and not in_review:
@@ -949,8 +1094,18 @@ def tidy_ended(tick: Tick, prs: list[dict[str, Any]]) -> None:
             tick.gh("issue", "edit", str(number), "--remove-label", "agent:review")
             review.discard(number)
         tick.say(f"pr-{pr['number']}: tidied, labels removed")
-    closed = tick.gh_json("issue", "list", "--state", "closed", "--label", "agent:ready",
-                          "--limit", "200", "--json", "number,labels,state")
+    closed = tick.gh_json(
+        "issue",
+        "list",
+        "--state",
+        "closed",
+        "--label",
+        "agent:ready",
+        "--limit",
+        "200",
+        "--json",
+        "number,labels,state",
+    )
     for item in closed:
         if item.get("state") == "CLOSED" and "agent:ready" in names(item):
             tick.gh("issue", "edit", str(item["number"]), "--remove-label", "agent:ready")
@@ -975,8 +1130,10 @@ def needs_you(tick: Tick, prs: list[dict[str, Any]]) -> None:
             key = f"{pr['number']}:{label}:{head}"
             if label in names(pr) and key not in seen:
                 seen.add(key)
-                tick.notify(f"ReviewRadar PR #{pr['number']} needs you: {label}\n"
-                            f"https://github.com/{REPO}/pull/{pr['number']}")
+                tick.notify(
+                    f"ReviewRadar PR #{pr['number']} needs you: {label}\n"
+                    f"https://github.com/{REPO}/pull/{pr['number']}"
+                )
     seen_file.write_text("\n".join(sorted(seen)))
 
 
@@ -1015,24 +1172,43 @@ def check_state(check: dict[str, Any]) -> str:
     if conclusion:
         return "green" if conclusion in GREEN_CHECKS else "red"
     if state:
-        return "green" if state == "SUCCESS" else "running" if state in (
-            "PENDING", "EXPECTED") else "red"
+        return (
+            "green"
+            if state == "SUCCESS"
+            else "running"
+            if state in ("PENDING", "EXPECTED")
+            else "red"
+        )
     return "running"
 
 
 def newest_approval(tick: Tick, pr: dict[str, Any]) -> Remark | None:
     """#80 AC1, AC5: the newest owner approval on the conversation without a done mark."""
     opened = pr.get("createdAt") or ""
-    found = [r for r in remarks_of(tick, pr)
-             if r.kind == "conversation" and r.id is not None and is_approval(r.body)
-             and r.created > opened and not done_by_owner(tick, r)]
+    found = [
+        r
+        for r in remarks_of(tick, pr)
+        if r.kind == "conversation"
+        and r.id is not None
+        and is_approval(r.body)
+        and r.created > opened
+        and not done_by_owner(tick, r)
+    ]
     return max(found, key=lambda r: r.created) if found else None
 
 
 def react(tick: Tick, remark: Remark, content: str) -> None:
-    tick.host.run(["gh", "api", "-X", "POST",
-                   f"repos/{REPO}/issues/comments/{remark.id}/reactions", "-f",
-                   f"content={content}"])
+    tick.host.run(
+        [
+            "gh",
+            "api",
+            "-X",
+            "POST",
+            f"repos/{REPO}/issues/comments/{remark.id}/reactions",
+            "-f",
+            f"content={content}",
+        ]
+    )
     remark.marked = True
 
 
@@ -1083,8 +1259,15 @@ def merge_approved(tick: Tick, prs: list[dict[str, Any]], running: dict[str, boo
         if status in ("DIRTY", "BLOCKED"):
             refuse_merge(tick, pr, approval, f"merge state is {status}")
             continue
-        code, out = tick.gh("pr", "merge", str(number), "--merge", "--delete-branch",
-                            "--match-head-commit", str(pr.get("headRefOid") or ""))
+        code, out = tick.gh(
+            "pr",
+            "merge",
+            str(number),
+            "--merge",
+            "--delete-branch",
+            "--match-head-commit",
+            str(pr.get("headRefOid") or ""),
+        )
         if code != 0:
             first = (out.strip().splitlines() or ["no output"])[0]
             refuse_merge(tick, pr, approval, f"the merge failed: {first}")
@@ -1099,8 +1282,9 @@ def merge_approved(tick: Tick, prs: list[dict[str, Any]], running: dict[str, boo
         announce_one(tick, pr)
 
 
-def dependency_reason(tick: Tick, prs: list[dict[str, Any]],
-                      issues: dict[int, dict[str, Any]], number: int) -> str:
+def dependency_reason(
+    tick: Tick, prs: list[dict[str, Any]], issues: dict[int, dict[str, Any]], number: int
+) -> str:
     """#143 AC4: why a dependency has not unlocked its issue."""
     if number not in issues:
         return "closed as not planned, remove the dependency or reopen it"
@@ -1112,8 +1296,9 @@ def dependency_reason(tick: Tick, prs: list[dict[str, Any]],
     return "no pull request yet"
 
 
-def blocked_lines(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool],
-                  started: set[str]) -> tuple[int, list[str]]:
+def blocked_lines(
+    tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool], started: set[str]
+) -> tuple[int, list[str]]:
     """#143 AC4: the ready issues held back by a dependency or a shared file, one line each."""
     issues = open_issue_list(tick)
     by_number = {item["number"]: item for item in issues}
@@ -1122,8 +1307,10 @@ def blocked_lines(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool
         if names(item) & {"agent:running", "agent:review"}:
             for path in files_of(item.get("body") or ""):
                 busy.setdefault(path, item["number"])
-    ready = sorted((i for i in issues if "agent:ready" in names(i) and not names(i) & SKIP_LABELS),
-                   key=lambda i: (i["createdAt"], i["number"]))
+    ready = sorted(
+        (i for i in issues if "agent:ready" in names(i) and not names(i) & SKIP_LABELS),
+        key=lambda i: (i["createdAt"], i["number"]),
+    )
     entries: list[tuple[int, int, str]] = []
     blocked: set[int] = set()
     for item in ready:
@@ -1141,8 +1328,10 @@ def blocked_lines(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool
             for path in sorted(files_of(body)):
                 if path in busy:
                     shared.setdefault(busy[path], path)
-            found = [(m, f"#{number} waits for #{m}, which also touches {path}")
-                     for m, path in sorted(shared.items())]
+            found = [
+                (m, f"#{number} waits for #{m}, which also touches {path}")
+                for m, path in sorted(shared.items())
+            ]
         if found and labelled_by_owner(tick, number):
             blocked.add(number)
             entries += [(number, m, text) for m, text in found]
@@ -1152,8 +1341,9 @@ def blocked_lines(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool
     return len(blocked), [text for _, _, text in sorted(entries)]
 
 
-def say_blocked(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool],
-                started: set[str]) -> None:
+def say_blocked(
+    tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool], started: set[str]
+) -> None:
     """#143 AC4, AC5, AC6, AC8: one message when the blocked set changes."""
     count, lines = blocked_lines(tick, prs, running, started)
     last = tick.home / "last-blocked"
@@ -1174,8 +1364,16 @@ def queue_empty(tick: Tick, prs: list[dict[str, Any]]) -> None:
     waiting = sum(1 for pr in prs if pr["state"] == "OPEN")
     issues = tick.open_issues
     if issues is None:
-        issues = tick.gh_json("issue", "list", "--state", "open", "--limit", "200",
-                              "--json", "number,title,body,labels,createdAt")
+        issues = tick.gh_json(
+            "issue",
+            "list",
+            "--state",
+            "open",
+            "--limit",
+            "200",
+            "--json",
+            "number,title,body,labels,createdAt",
+        )
     ready = [i for i in issues if "agent:ready" in names(i) and not names(i) & SKIP_LABELS]
     if ready:
         return
@@ -1259,15 +1457,32 @@ def with_newline(line: str) -> str:
 def run_start(run: Path, folder: Path, prompt: str, number: int, deadline: float) -> str:
     """One `claude -p`; its output is the session log, a missing Artifact tool stops it."""
     env = {**os.environ, "REVIEWRADAR_LOOP": "1"}
-    args = ["claude", "-p", prompt, "--max-turns", str(MAX_TURNS), "--output-format",
-            "stream-json", "--verbose", "--allowedTools", "Artifact", "--append-system-prompt",
-            HINT]
+    args = [
+        "claude",
+        "-p",
+        prompt,
+        "--max-turns",
+        str(MAX_TURNS),
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--allowedTools",
+        "Artifact",
+        "--append-system-prompt",
+        HINT,
+    ]
     with (run / "log.txt").open("a") as log, (run / f"session-{number}.jsonl").open("a") as session:
         log.write(f"start {number} of {STARTS}\n")
         log.flush()
         child = subprocess.Popen(
-            args, cwd=folder, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-            stderr=log, text=True, start_new_session=True,
+            args,
+            cwd=folder,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=log,
+            text=True,
+            start_new_session=True,
         )
         lines: queue.Queue[str | None] = queue.Queue()
         threading.Thread(target=read_lines, args=(child, lines), daemon=True).start()
@@ -1310,12 +1525,21 @@ def run_start(run: Path, folder: Path, prompt: str, number: int, deadline: float
             return "timeout"
 
 
+def announce_started(host: Host, home: Path, name: str) -> int:
+    """#167 AC5: one 'loop started' message; no lock, no tick."""
+    tick = Tick(host, home, read_settings(home / "agent.env"))
+    tick.notify(f"ReviewRadar loop started on {name}")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     if argv[:1] == ["run"] and len(argv) == 4:
         run_build(Path(argv[1]), Path(argv[2]), argv[3])
         return 0
     home = Path(os.environ.get("REVIEWRADAR_HOME", Path.home() / ".reviewradar"))
     home.mkdir(parents=True, exist_ok=True)
+    if argv[:1] == ["started"]:
+        return announce_started(RealHost(), home, socket.gethostname())
     tick_once(RealHost(), home)
     return 0
 
