@@ -4,7 +4,9 @@
 Usage: route_issue.py <issue body file> [--settings <settings.json>]. Prints two labels:
 area:flow or area:app, then agent:manual, agent:needs-permission or agent:ready. The protected
 paths come from the before-edit-check hook and the allow rules from .claude/settings.json, both
-read at run time, so the labels follow the rules the loop really runs with.
+read at run time, so the labels follow the rules the loop really runs with. The folder prefix
+stripped from each path is `project.app_dir` of ops/flow.toml (or of the file named by
+FLOW_CONFIG); `.` means no prefix.
 """
 
 from __future__ import annotations
@@ -20,32 +22,46 @@ from types import ModuleType
 CLAUDE_DIR = Path(__file__).resolve().parents[2]
 SETTINGS = CLAUDE_DIR / "settings.json"
 EDIT_HOOK = CLAUDE_DIR / "hooks" / "before-edit-check.py"
-LAB_PREFIX = "claude-code-training-lab/"
+FLOW_MODULE = CLAUDE_DIR.parent / "ops" / "flow_config.py"
 FLOW_FOLDERS = ("ops/", ".claude/", ".github/", "specs/", "docs/learning/")
 SECTION = re.compile(r"^##\s+Files likely touched\s*$(.*?)(?=^##\s|\Z)", re.M | re.S)
 BULLET_PATH = re.compile(r"^\s*[-*]\s+`([^`]+)`(.*)$", re.M)
 EDIT_RULE = re.compile(r"^Edit\((.+)\)$")
 
 
-def load_hook() -> ModuleType:
-    spec = util.spec_from_file_location("before_edit_check", EDIT_HOOK)
+def load_module(name: str, path: Path) -> ModuleType:
+    spec = util.spec_from_file_location(name, path)
     assert spec is not None and spec.loader is not None
     module = util.module_from_spec(spec)
+    sys.modules[name] = module  # a dataclass looks its module up by name
     spec.loader.exec_module(module)
     return module
 
 
-HOOK = load_hook()
+HOOK = load_module("before_edit_check", EDIT_HOOK)
+FLOW = load_module("flow_config", FLOW_MODULE)
 
 
-def paths_of(text: str) -> list[str]:
-    """Paths are relative to the lab folder; the repository root is written as ../."""
+def prefix_for(app_dir: str) -> str:
+    """The app folder as a path prefix; `.` (the app is the repository root) means none."""
+    folder = app_dir.strip().strip("/")
+    return "" if folder in ("", ".") else f"{folder}/"
+
+
+LAB_PREFIX = prefix_for(FLOW.load().project_app_dir)
+
+
+def paths_of(text: str, prefix: str | None = None) -> list[str]:
+    """Paths are relative to the app folder; the repository root is written as ../."""
+    strip = LAB_PREFIX if prefix is None else prefix
     match = SECTION.search(text)
     if match is None:
         raise ValueError("the issue has no '## Files likely touched' section")
     paths: list[str] = []
     for raw, note in BULLET_PATH.findall(match.group(1)):
-        path = raw.strip().removeprefix("./").removeprefix(LAB_PREFIX)
+        path = raw.strip().removeprefix("./")
+        if strip:
+            path = path.removeprefix(strip)
         if "repository root" in note.lower() and not path.startswith("../"):
             path = f"../{path}"
         paths.append(path)

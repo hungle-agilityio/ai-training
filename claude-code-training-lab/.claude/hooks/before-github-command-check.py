@@ -424,7 +424,13 @@ def read_allowed() -> str:
     raise ValueError("github-allowed-repo.txt has no repository")
 
 
-LOOP_ENV = "REVIEWRADAR_LOOP"
+LOOP_VARS = ("FLOW_LOOP", "REVIEWRADAR_LOOP")
+
+
+def is_loop() -> bool:
+    """Loop mode is on when FLOW_LOOP=1 or REVIEWRADAR_LOOP=1."""
+    return any(os.environ.get(name) == "1" for name in LOOP_VARS)
+
 LOOP_BRANCH = re.compile(r"^(?:bug|feat|task)/\d+-[a-z0-9][a-z0-9-]*$")
 SPEC_BRANCH = re.compile(r"^task/spec-[a-z0-9][a-z0-9-]*$")
 FORCE_FLAGS = {"--mirror", "--delete", "--prune", "--all"}
@@ -664,7 +670,7 @@ def publish_gate(command: str, cwd: str) -> int:
             return 127, ""
         return done.returncode, done.stdout
 
-    loop = os.environ.get(LOOP_ENV) == "1"
+    loop = is_loop()
     try:
         decision, reasons = check_publish(command, loop, run)
         if loop:
@@ -703,7 +709,7 @@ def main() -> int:
     if RELEVANT.search(command) is None and TOKEN_USE.search(plain) is None:
         return 0
     try:
-        problems = check_command(command, read_allowed(), os.environ.get(LOOP_ENV) == "1")
+        problems = check_command(command, read_allowed(), is_loop())
         allowed_name = read_allowed()
     except Exception as error:  # fail closed for anything that looks relevant
         problems = [f"the guard could not check this command ({error})"]

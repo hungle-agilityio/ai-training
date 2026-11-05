@@ -26,6 +26,8 @@ The **CLI loop** on the Mac mini builds it: `ops/start-loop.sh` runs a tick ever
 
 A rule: `rules/`. A decision: an ADR. A gotcha: `knowledge/KNOWN_PITFALLS.md`. Your preferences: memory. Evidence of a change: a verify report shared as a private artifact (`share-report`). A fact explained twice goes here; a procedure becomes a skill. Keep this file short.
 
+Project values of the flow: `ops/flow.toml`.
+
 ## Removed, and why
 
 | Date | Removed | Why | Rebuild from |

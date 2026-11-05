@@ -2,7 +2,8 @@
 """Before Claude stops, in loop mode only: do not finish while lint, types or tests fail.
 
 Runs as a Stop hook. Exit code 2 sends stderr back to Claude and keeps it working.
-Loop mode is on when REVIEWRADAR_LOOP=1; in an interactive session this hook does nothing.
+Loop mode is on when FLOW_LOOP=1 or REVIEWRADAR_LOOP=1; in an interactive session this hook
+does nothing. The checks are `checks.commands` of ops/flow.toml, run in order.
 A second stop in a row is always allowed (stop_hook_active), so a stuck issue ends in the
 report as failed instead of looping for ever.
 """
@@ -14,16 +15,34 @@ import os
 import subprocess
 import sys
 from collections.abc import Callable, Mapping
+from importlib import util
 from pathlib import Path
+from typing import Any
 
 Runner = Callable[[list[str], Path], tuple[int, str]]
 
-CHECKS = [
-    ["uv", "run", "ruff", "check", "."],
-    ["uv", "run", "mypy", "."],
-    ["uv", "run", "pytest", "-q", "--no-cov", "-p", "no:cacheprovider"],
-]
 TAIL_LINES = 30
+
+APP_DIR = Path(__file__).resolve().parents[2]
+FLOW_MODULE = APP_DIR / "ops" / "flow_config.py"
+LOOP_VARS = ("FLOW_LOOP", "REVIEWRADAR_LOOP")
+
+
+def is_loop(env: Mapping[str, str]) -> bool:
+    """Loop mode is on when FLOW_LOOP=1 or REVIEWRADAR_LOOP=1."""
+    return any(env.get(name) == "1" for name in LOOP_VARS)
+
+
+def flow_config(env: Mapping[str, str]) -> Any:
+    """The flow config of the app folder this hook sits in, or the file named by FLOW_CONFIG."""
+    spec = util.spec_from_file_location("flow_config", FLOW_MODULE)
+    if spec is None or spec.loader is None:
+        raise OSError(f"cannot load {FLOW_MODULE}")
+    module = util.module_from_spec(spec)
+    sys.modules[spec.name] = module  # its dataclass looks its module up by name
+    spec.loader.exec_module(module)
+    named = env.get("FLOW_CONFIG")
+    return module.load(Path(named) if named else APP_DIR / "ops" / "flow.toml")
 
 
 def real_run(args: list[str], cwd: Path) -> tuple[int, str]:
@@ -38,9 +57,13 @@ def real_run(args: list[str], cwd: Path) -> tuple[int, str]:
     return done.returncode, done.stdout + done.stderr
 
 
-def failures(project: Path, run: Runner) -> list[str]:
+def check_commands(env: Mapping[str, str]) -> list[list[str]]:
+    return [list(command) for command in flow_config(env).checks_commands]
+
+
+def failures(project: Path, run: Runner, commands: list[list[str]]) -> list[str]:
     found: list[str] = []
-    for args in CHECKS:
+    for args in commands:
         code, output = run(args, project)
         if code != 0:
             tail = "\n".join(output.strip().splitlines()[-TAIL_LINES:])
@@ -49,11 +72,15 @@ def failures(project: Path, run: Runner) -> list[str]:
 
 
 def evaluate(payload: object, project: Path, env: Mapping[str, str], run: Runner) -> list[str]:
-    if env.get("REVIEWRADAR_LOOP") != "1":
+    if not is_loop(env):
         return []
     if isinstance(payload, dict) and payload.get("stop_hook_active"):
         return []
-    return failures(project, run)
+    try:
+        commands = check_commands(env)
+    except Exception as error:  # fail closed: no config means no proof the checks pass
+        return [f"the checks of ops/flow.toml could not be read ({error})"]
+    return failures(project, run, commands)
 
 
 def main() -> int:

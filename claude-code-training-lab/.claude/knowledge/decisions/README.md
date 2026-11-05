@@ -33,3 +33,4 @@ One file per decision: `ADR-001-short-title.md`, numbered in order. Write one fo
 - [ADR-016: The tick merges on the owner's approval comment](ADR-016-tick-merges-on-owner-approval.md)
 - [ADR-017: Deploys go out only by release](ADR-017-deploy-by-release-branch.md)
 - [ADR-018: Stacked pull requests, retries, no pull request limit](ADR-018-stacked-pull-requests-and-retries.md)
+- [ADR-019: The flow reads ops/flow.toml; a new project is bootstrapped by copy and rename](ADR-019-flow-config-and-bootstrap.md)
