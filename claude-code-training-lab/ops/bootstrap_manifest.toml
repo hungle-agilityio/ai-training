@@ -1,0 +1,249 @@
+# What ops/bootstrap.py copies into a new repository, never inferred.
+# scope "app": path inside the app folder. scope "root": path at the git root.
+# A directory is copied whole. An entry that does not exist is reported and skipped.
+
+exclude = ["__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", "ops/flow.toml"]
+
+[[copy]]
+scope = "app"
+path = "ops"
+
+[[copy]]
+scope = "app"
+path = ".claude/hooks"
+
+[[copy]]
+scope = "app"
+path = ".claude/settings.json"
+
+[[copy]]
+scope = "app"
+path = ".claude/skills/work-queue"
+
+[[copy]]
+scope = "app"
+path = ".claude/skills/grill-me"
+
+[[copy]]
+scope = "app"
+path = ".claude/skills/create-issue"
+
+[[copy]]
+scope = "app"
+path = ".claude/skills/write-issue"
+
+[[copy]]
+scope = "app"
+path = ".claude/skills/create-pull-request"
+
+[[copy]]
+scope = "app"
+path = ".claude/skills/draft-pull-request"
+
+[[copy]]
+scope = "app"
+path = ".claude/skills/build-verify-report"
+
+[[copy]]
+scope = "app"
+path = ".claude/skills/share-report"
+
+[[copy]]
+scope = "app"
+path = ".claude/skills/review-pull-request"
+
+[[copy]]
+scope = "app"
+path = ".claude/skills/create-commit"
+
+[[copy]]
+scope = "app"
+path = ".claude/rules/workflow.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/rules/git.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/rules/security.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/rules/issues.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/rules/naming.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-008-unattended-loop-from-github-issues.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-009-loop-opens-pull-requests-owner-merges.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-010-claude-code-project-as-main-thread.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-011-project-takes-requests-loop-builds.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-012-spec-pull-request-and-scripted-loop.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-013-pull-request-status-labels.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-014-tick-runs-builds-in-parallel.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-015-guards-for-parallel-pull-requests.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-016-tick-merges-on-owner-approval.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-017-deploy-by-release-branch.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-018-stacked-pull-requests-and-retries.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-019-flow-config-and-bootstrap.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/README.md"
+
+[[copy]]
+scope = "app"
+path = "docs/app/templates/spec"
+
+[[copy]]
+scope = "app"
+path = "specs/README.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/project-instructions.md"
+
+[[copy]]
+scope = "root"
+path = "CLAUDE.md"
+
+[[copy]]
+scope = "root"
+path = ".github/ISSUE_TEMPLATE"
+
+[[copy]]
+scope = "root"
+path = ".github/PULL_REQUEST_TEMPLATE.md"
+
+[[copy]]
+scope = "root"
+path = ".github/workflows/checks.yml"
+
+# The 18 labels of the flow, as on hungle-agilityio/ai-training today.
+
+[[label]]
+name = "agent:ready"
+color = "0E8A16"
+description = "Decided and ready for the work-queue loop"
+
+[[label]]
+name = "agent:running"
+color = "FBCA04"
+description = "The loop is building this issue"
+
+[[label]]
+name = "agent:review"
+color = "1D76DB"
+description = "Pull request open, waiting for the owner's review"
+
+[[label]]
+name = "agent:failed"
+color = "D93F0B"
+description = "The loop stopped; a human decides"
+
+[[label]]
+name = "agent:manual"
+color = "BFD4F2"
+description = "Built in an interactive session, not by the loop"
+
+[[label]]
+name = "agent:needs-permission"
+color = "FBCA04"
+description = "The loop may not write a file this issue needs; waits for an allow rule"
+
+[[label]]
+name = "pr:ready-for-review"
+color = "0E8A16"
+description = "CI is green and the verify report passed; waiting for the owner"
+
+[[label]]
+name = "pr:changes-requested"
+color = "FBCA04"
+description = "the owner asked for a change and the loop is working on it"
+
+[[label]]
+name = "pr:blocked"
+color = "B60205"
+description = "the loop cannot go on without the owner; the reason is a comment on the pull request"
+
+[[label]]
+name = "pr:ci-failed"
+color = "D93F0B"
+description = "CI is still red after the loop tried to fix it twice"
+
+[[label]]
+name = "risk:low"
+color = "0E8A16"
+description = "Low risk task"
+
+[[label]]
+name = "risk:medium"
+color = "FBCA04"
+description = "Medium risk task"
+
+[[label]]
+name = "risk:high"
+color = "B60205"
+description = "High risk task: needs-info round, review on the MacBook"
+
+[[label]]
+name = "needs-ui"
+color = "1D76DB"
+description = "Changes what users see"
+
+[[label]]
+name = "area:flow"
+color = "5319E7"
+description = "The workflow: loop, hooks, skills, specs, CI"
+
+[[label]]
+name = "area:app"
+color = "1D76DB"
+description = "The ReviewRadar app and its hosting"
+
+[[label]]
+name = "epic"
+color = "3E4B9E"
+description = "A goal made of several issues"
+
+[[label]]
+name = "needs-info"
+color = "D876E3"
+description = "Something is still unconfirmed"
