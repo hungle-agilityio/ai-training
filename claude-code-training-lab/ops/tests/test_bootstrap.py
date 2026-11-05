@@ -264,7 +264,8 @@ def test_entry_that_does_not_exist_is_reported_and_skipped(
     assert run("--no-labels") == 0
 
     out = capsys.readouterr().out
-    assert ("ADR-019" in out) is expected_missing
+    skipped = "skipped, not found in the source: .claude/knowledge/decisions/ADR-019"
+    assert (skipped in out) is expected_missing
 
 
 def test_app_folder_goes_under_the_target_and_checks_workflow_points_at_it(
