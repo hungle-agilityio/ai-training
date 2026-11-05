@@ -1,9 +1,11 @@
+import csv
+import io
 from dataclasses import dataclass
 from datetime import date, datetime, time
 from decimal import ROUND_HALF_UP, Decimal
 
 from reviews import report_repository
-from reviews.services import RATING_RANGES, VIETNAM_TZ, average_from_totals
+from reviews.services import CSV_BOM, RATING_RANGES, VIETNAM_TZ, average_from_totals, csv_safe
 
 REPORT_MONTHS = 12
 MONTH_NAMES = (
@@ -46,6 +48,10 @@ class MonthlyReport:
     previous_label: str
     options: list[MonthOption]
     rows: list[ReportRow]
+
+    @property
+    def month_value(self) -> str:
+        return f"{self.month.year}-{self.month.month:02d}"
 
     @property
     def has_reviews(self) -> bool:
@@ -114,3 +120,36 @@ def monthly_report(month: date | None, now: datetime) -> MonthlyReport:
         options=[MonthOption(value=f"{m.year}-{m.month:02d}", label=_label(m)) for m in months],
         rows=rows,
     )
+
+
+CSV_REPORT_HEADER = ("Location", "Reviews", "Average", "Good", "Bad", "Change vs previous month")
+
+
+def report_filename(report: MonthlyReport) -> str:
+    return f"reviewradar-report-{report.month_value}.csv"
+
+
+def _signed(change: float | None) -> str:
+    if change is None:
+        return ""
+    return f"{change:+.1f}" if change else "0.0"
+
+
+def report_csv(report: MonthlyReport) -> str:
+    """The page table as CSV text: BOM first, CRLF line ends, names safe for a spreadsheet."""
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\r\n")
+    writer.writerow(CSV_REPORT_HEADER)
+    for row in report.rows:
+        average = "" if row.average_rating is None else f"{row.average_rating:.1f}"
+        writer.writerow(
+            (
+                csv_safe(row.name),
+                row.review_count,
+                average,
+                row.good_count,
+                row.bad_count,
+                _signed(row.change),
+            )
+        )
+    return CSV_BOM + buffer.getvalue()
