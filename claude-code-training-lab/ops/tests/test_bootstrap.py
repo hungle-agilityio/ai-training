@@ -234,7 +234,6 @@ def test_manifest_lists_what_is_copied_and_every_listed_file_lands_in_the_target
         "ops/agent_tick.py",
         "ops/flow_config.py",
         "ops/bootstrap.py",
-        "ops/tests/test_agent_tick.py",
         ".claude/settings.json",
         ".claude/rules/workflow.md",
         ".claude/knowledge/decisions/ADR-018-stacked-pull-requests-and-retries.md",
@@ -357,7 +356,7 @@ def test_coverage_step_is_removed_from_the_checks_workflow(
     workflow = (target / ".github/workflows/checks.yml").read_text()
     assert "coverage report" not in workflow
     assert "Coverage gate" not in workflow
-    assert "Hook and skill tests" in workflow
+    assert "Hook and skill tests" not in workflow
 
 
 def test_eighteen_labels_are_created_with_force_and_a_failed_one_does_not_stop_the_rest(
