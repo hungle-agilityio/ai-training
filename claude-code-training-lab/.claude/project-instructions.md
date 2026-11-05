@@ -32,7 +32,7 @@ For every new request:
    - `Depends on #M` when it needs another open issue;
    - a link to the spec on `main` (full lane);
    - the labels `risk:low`, `risk:medium` or `risk:high`, plus `needs-ui` when users see a change;
-   - the labels printed by `python3 -I .claude/skills/create-issue/route_issue.py <body file>`, run on each issue body before it is posted. They come from its Files likely touched section:
+   - the labels printed by `python3 -I ../plugins/agent-flow/skills/create-issue/route_issue.py <body file>` (from the app folder), run on each issue body before it is posted. They come from its Files likely touched section:
      - `area:flow` for the workflow (`ops/`, `.claude/`, `.github/`, `specs/`, `docs/learning/`), `area:app` for the app and its hosting;
      - `agent:manual` when a path is one `before-edit-check` refuses in loop mode (`.claude/`, `.github/`, `.mcp.json`, the gate files, an existing test under `reviews/tests/`);
      - `agent:needs-permission` when a path has no `Edit(...)` allow rule in `.claude/settings.json`: the loop does not take it, and it becomes `agent:ready` once the missing rule is merged;

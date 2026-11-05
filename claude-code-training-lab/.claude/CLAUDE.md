@@ -7,7 +7,7 @@ Django app that collects customer reviews per branch (location), shows a score d
 - `reviewradar/`, `reviews/`: the code (layers in `rules/architecture.md`).
 - `in/`: what a client gives us (not committed). `out/`: what we show outside (reports, exports; git-ignored). Both are created when a feature needs them.
 - `docs/app/`: ReviewRadar issues, templates, project background. `docs/learning/`: the Claude Code training.
-- `.claude/`: `rules/` (loaded automatically), `knowledge/` (business rules, pitfalls, ADRs; read when planning or reviewing), `skills/`, `agents/`, `commands/`, `settings.json` (the hooks come from the `agent-flow` plugin, `../plugins/agent-flow/`).
+- `.claude/`: `rules/` (loaded automatically), `knowledge/` (business rules, pitfalls, ADRs; read when planning or reviewing), `skills/` (the app skills only), `settings.json`. The hooks, flow skills, commands and sub-agents come from the `agent-flow` plugin (`../plugins/agent-flow/`, ADR-020).
 - The git root is one level up (`../.github`). Open sessions in this folder (ADR-006).
 
 ## Commands
@@ -16,15 +16,15 @@ Django app that collects customer reviews per branch (location), shows a score d
 
 ## Workflow
 
-`/understand` → `/plan` → Gate 1 → `/implement` → `/test` → `/review` → `/verify` → Gate 2 → `/learn` → `/commit`. Difficulty, triggers and gates: `rules/workflow.md`. Sub-agents `analyst`, `planner`, `implementer`, `reviewer`, `test-runner`; send wide searches to `Explore`. A new feature starts from `templates/layered-feature.md`.
+`/agent-flow:understand` → `/agent-flow:plan` → Gate 1 → `/agent-flow:implement` → `/agent-flow:test` → `/agent-flow:review` → `/agent-flow:verify` → Gate 2 → `/agent-flow:learn` → `/agent-flow:commit`. Difficulty, triggers and gates: `rules/workflow.md`. Sub-agents `agent-flow:analyst`, `agent-flow:planner`, `agent-flow:implementer`, `agent-flow:reviewer`, `agent-flow:test-runner`; send wide searches to `Explore`. A new feature starts from `templates/layered-feature.md`.
 
-**Two halves (ADR-011, ADR-012).** The **Claude Code Project** (claude.ai/code or the phone app, ADR-010) takes a request to issues: analysis, `grill-me`, then a spec pull request (`specs/<feature>/`, templates in `docs/app/templates/spec/`) that you approve by saying "Merge PR spec", then one issue per task labelled `agent:ready` (or `agent:manual` when it changes `.claude/`). Easy work takes a fast lane: no spec pull request, the short spec goes in the issue and your "OK" is Gate 1. Every GitHub write goes from the Mac mini through Remote Control so it carries no Claude attribution (`.claude/project-instructions.md`, root `../CLAUDE.md`). Its threads do not write application code and open no pull request other than a spec pull request. Cloud threads do not load skills, agents, hooks or `settings.json`, so those rules are text there.
+**Two halves (ADR-011, ADR-012).** The **Claude Code Project** (claude.ai/code or the phone app, ADR-010) takes a request to issues: analysis, `agent-flow:grill-me`, then a spec pull request (`specs/<feature>/`, templates in `docs/app/templates/spec/`) that you approve by saying "Merge PR spec", then one issue per task labelled `agent:ready` (or `agent:manual` when it changes `.claude/`). Easy work takes a fast lane: no spec pull request, the short spec goes in the issue and your "OK" is Gate 1. Every GitHub write goes from the Mac mini through Remote Control so it carries no Claude attribution (`.claude/project-instructions.md`, root `../CLAUDE.md`). Its threads do not write application code and open no pull request other than a spec pull request. Cloud threads do not load skills, agents, hooks or `settings.json`, so those rules are text there.
 
-The **CLI loop** on the Mac mini builds it: `ops/start-loop.sh` runs a tick every 10 minutes in tmux (`ops/README.md`). Each tick starts up to `AGENT_CONCURRENCY` builds, one `claude -p` with `REVIEWRADAR_LOOP=1` per issue or pull request, each running `work-queue` in its own worktree. It takes issues labelled `agent:ready`, opens the pull request with the verify report and never merges. You merge on GitHub. ADR-008, ADR-009, ADR-014.
+The **CLI loop** on the Mac mini builds it: `ops/start-loop.sh` runs a tick every 10 minutes in tmux (`ops/README.md`). Each tick starts up to `AGENT_CONCURRENCY` builds, one `claude -p` with `REVIEWRADAR_LOOP=1` per issue or pull request, each running `agent-flow:work-queue` in its own worktree. It takes issues labelled `agent:ready`, opens the pull request with the verify report and never merges. You merge on GitHub. ADR-008, ADR-009, ADR-014.
 
 ## Where things go
 
-A rule: `rules/`. A decision: an ADR. A gotcha: `knowledge/KNOWN_PITFALLS.md`. Your preferences: memory. Evidence of a change: a verify report shared as a private artifact (`share-report`). A fact explained twice goes here; a procedure becomes a skill. Keep this file short.
+A rule: `rules/`. A decision: an ADR. A gotcha: `knowledge/KNOWN_PITFALLS.md`. Your preferences: memory. Evidence of a change: a verify report shared as a private artifact (`agent-flow:share-report`). A fact explained twice goes here; a procedure becomes a skill. Keep this file short.
 
 Project values of the flow: `ops/flow.toml`.
 
@@ -42,9 +42,10 @@ Project values of the flow: `ops/flow.toml`.
 | 2026-10-28 | The parallel-loop plan of 2026-10-27 (two sessions, `mkdir` lock); its issue was never posted | One tick script that starts several `claude -p` needs no lock | ADR-012, `/mnt/project-files/loop-parallel/` |
 | 2026-10-28 | The interactive loop session `REVIEWRADAR_LOOP=1 claude` with `/loop 30m use the work-queue skill` | One build at a time and no time limit; the tick in `ops/` runs several, each stopped after 45 minutes | ADR-014, `ops/README.md` |
 | 2026-10-28 | The loop's Review queue page and its `PushNotification` "queue empty" | Two builds at once would write one page; the `pr:*` labels show the state and the tick sends ntfy | ADR-009, ADR-014 |
-| 2026-10-29 | A conflict with `main` is always `pr:blocked` | The owner does not fix conflicts by hand; the merge step sends `/redo merge origin/main …` and the loop merges `main` into the branch (never a rebase) | ADR-015, `work-queue` section 1 |
-| 2026-10-29 | `/redo` as the only change request | The owner reviews the normal way: any comment or line comment is a change request, marked 👀 🚀 😕 by the loop | ADR-016, `work-queue` section 1 |
+| 2026-10-29 | A conflict with `main` is always `pr:blocked` | The owner does not fix conflicts by hand; the merge step sends `/redo merge origin/main …` and the loop merges `main` into the branch (never a rebase) | ADR-015, `agent-flow:work-queue` section 1 |
+| 2026-10-29 | `/redo` as the only change request | The owner reviews the normal way: any comment or line comment is a change request, marked 👀 🚀 😕 by the loop | ADR-016, `agent-flow:work-queue` section 1 |
 | 2026-10-29 | Merge only through a thread's `gh pr merge` | One merge route with fixed checks in code: the tick merges on the owner's approval comment; Claude builds never merge | ADR-016, `.claude/project-instructions.md` |
 | 2026-10-30 | Deploy on every green merge to `main` | The owner wants one release per sprint or epic | ADR-017, `ops/release.py` |
 | 2026-11-03 | The automatic Claude review on every pull request (`claude-review.yml`) | Each push cost a run on the owner's plan, and three runs on PR #155 each found new small points without settling; the owner reviews with Claude only on request | `@claude review this pull request` (`claude-mention.yml`), git history, #156 |
 | 2026-11-04 | The limit of 10 open loop pull requests (`WAITING_CAP`) | A night of small pull requests reached it and the tick started nothing more; builds stay limited by `AGENT_CONCURRENCY` | ADR-018, #164, git history |
+| 2026-11-05 | The copies of the hooks (`.claude/hooks/`), the 10 flow skills, the commands (`.claude/commands/`) and the sub-agents (`.claude/agents/`) in this folder | One copy in the `agent-flow` plugin, made generic for every project; a pull request branch can no longer run a weaker copy of its guards | `../plugins/agent-flow/`, ADR-020, git history, #222, #223 |

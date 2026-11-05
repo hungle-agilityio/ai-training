@@ -155,7 +155,7 @@ uv run pytest          # tests with coverage
 uv run coverage report --include="reviews/services.py,reviews/repositories.py" --fail-under=90   # coverage gate
 uv run pytest ../plugins/agent-flow/hooks/tests .claude/skills --no-cov   # tests of the hooks and the skills' scripts
 uv run python .claude/skills/check-in-browser/browser_check.py   # browser check (once: uv run playwright install chromium)
-uv run python .claude/skills/build-verify-report/build_report.py --title "<issue>" --browser   # every axis in one report
+uv run python ../plugins/agent-flow/skills/build-verify-report/build_report.py --title "<issue>" --no-ui   # every axis in one report
 uv run python .claude/skills/capture-before-after/before_after.py --base <ref>   # screenshots before and after a change
 ```
 
@@ -205,7 +205,7 @@ ReviewRadar is built as part of a **Claude Code training lab**: each step adds a
 <summary>What the lab has produced so far</summary>
 
 - **Skills** (`.claude/skills/`): `write-issue` (one complete issue file), `create-commit` (branches and commits that follow the project rules), `create-issue` and `create-pull-request` (publish on GitHub with the `gh` command), `draft-pull-request`, `review-pull-request`, `write-tests`, `diagnose-bug`, `grill-me`, `check-in-browser`, `capture-before-after`, `build-verify-report`, `share-report` and `work-queue` (the loop's build of one issue).
-- **Sub-agents** (`.claude/agents/`): `analyst` (analyses an issue against the code), `planner` (turns the analysis into a step-by-step plan), `implementer`, `reviewer` and `test-runner`.
+- **Sub-agents** (in the `agent-flow` plugin, `../plugins/agent-flow/agents/`): `analyst` (analyses an issue against the code), `planner` (turns the analysis into a step-by-step plan), `implementer`, `reviewer` and `test-runner`.
 - **Templates** (`docs/app/templates/`): issue templates and the README template.
 - **Issues** (`docs/app/issues/`): five seeded issues analysed and reproduced, and the reviews page, built and tested.
 - **Specs and the loop** (`specs/`, `design/`, `ops/`): a spec pull request per feature, then the loop on the Mac mini builds each issue and opens its pull request.

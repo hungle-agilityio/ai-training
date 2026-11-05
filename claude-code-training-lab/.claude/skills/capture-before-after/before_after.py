@@ -39,8 +39,20 @@ def real_run(args: list[str], cwd: Path) -> tuple[int, str]:
     return done.returncode, done.stdout + done.stderr
 
 
+def skill_file(folder: str, file: str) -> Path:
+    """A skill's program: in this project's skills, else in the agent-flow plugin of the repo."""
+    own = SKILLS / folder / f"{file}.py"
+    if own.is_file():
+        return own
+    for parent in SKILLS.parents:
+        candidate = parent / "plugins" / "agent-flow" / "skills" / folder / f"{file}.py"
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(f"the skill {folder} has no {file}.py")
+
+
 def load_skill(folder: str, file: str) -> Any:
-    spec = importlib.util.spec_from_file_location(file, SKILLS / folder / f"{file}.py")
+    spec = importlib.util.spec_from_file_location(file, skill_file(folder, file))
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
