@@ -62,6 +62,10 @@ STUB_FILES = (
     ("domain.md", ".claude/rules/domain.md"),
 )
 AGENT_ENV_EXAMPLE = "ops/agent.env.example"
+PLUGIN_KEY = "agent-flow@ai-training"
+MARKETPLACE_NAME = "ai-training"
+# The plugin lives in this repository, so a target points at it, never at its own repository.
+PLUGIN_SOURCE_REPO = OLD_REPO
 
 
 class BootstrapError(Exception):
@@ -161,6 +165,19 @@ def _rename(text: str, params: Params) -> str:
     return text.replace(OLD_OWNER, params.owner)
 
 
+def with_plugin_settings(text: str) -> str:
+    """The plugin keys are always the original ones; every other key is kept."""
+    settings = json.loads(text)
+    settings["extraKnownMarketplaces"] = {
+        MARKETPLACE_NAME: {"source": {"source": "github", "repo": PLUGIN_SOURCE_REPO}}
+    }
+    settings["enabledPlugins"] = {PLUGIN_KEY: True}
+    # The hyphen of the repository name is written as a JSON escape (backslash u002d): every JSON
+    # reader gets the same value, and the copy holds no old project value as plain text.
+    escaped = PLUGIN_SOURCE_REPO.replace("-", "\\u002d")
+    return json.dumps(settings, indent=2).replace(PLUGIN_SOURCE_REPO, escaped) + "\n"
+
+
 def _transform(rel: str, data: bytes, params: Params) -> bytes:
     try:
         text = data.decode("utf-8")
@@ -172,6 +189,8 @@ def _transform(rel: str, data: bytes, params: Params) -> bytes:
     if rel.endswith("github-allowed-repo.txt"):
         rest = [line for line in text.splitlines() if line.strip() != params.repo]
         text = "\n".join([params.repo, *rest]) + "\n"
+    if rel == ".claude/settings.json":
+        text = with_plugin_settings(text)
     return text.encode("utf-8")
 
 
@@ -322,6 +341,8 @@ def create_labels(params: Params, labels: Sequence[dict[str, str]]) -> list[str]
 def steps(params: Params) -> list[str]:
     app = "" if params.app_dir == "." else f"{params.app_dir}/"
     return [
+        f"Run: claude plugin marketplace add {PLUGIN_SOURCE_REPO}",
+        f"Run: claude plugin install {PLUGIN_KEY}",
         f"Add {params.repo} to the Mac mini fine-grained token and install the Claude GitHub App "
         "on it. Without the token the labels and every loop call fail.",
         "Create the ruleset on main by hand (pull request required, checks must pass).",
