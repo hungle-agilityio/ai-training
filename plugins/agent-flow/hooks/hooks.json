@@ -1,5 +1,5 @@
 {
-  "description": "The guards of the agent-flow loop: GitHub repository and publish guard, commit check, edit guard, report sharing gate, checks before finishing, format after edits.",
+  "description": "The guards of the agent-flow loop: GitHub repository and publish guard, commit check, edit guard, report sharing gate, checks before finishing, format after edits, and the plugin's own skill scripts without a prompt.",
   "hooks": {
     "PreToolUse": [
       {
@@ -12,6 +12,10 @@
           {
             "type": "command",
             "command": "/usr/bin/env python3 -I \"${CLAUDE_PLUGIN_ROOT}/hooks/before-commit-check.py\""
+          },
+          {
+            "type": "command",
+            "command": "/usr/bin/env python3 -I \"${CLAUDE_PLUGIN_ROOT}/hooks/before-skill-script-allow.py\""
           }
         ]
       },

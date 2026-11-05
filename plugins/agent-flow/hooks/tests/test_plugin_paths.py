@@ -276,7 +276,11 @@ def test_hooks_json_registers_the_same_events_and_matchers() -> None:
         return f'/usr/bin/env python3 -I "${{CLAUDE_PLUGIN_ROOT}}/hooks/{name}.py"'
 
     assert seen == {
-        ("PreToolUse", "Bash"): [cmd("before-github-command-check"), cmd("before-commit-check")],
+        ("PreToolUse", "Bash"): [
+            cmd("before-github-command-check"),
+            cmd("before-commit-check"),
+            cmd("before-skill-script-allow"),
+        ],
         ("PreToolUse", "Edit|Write|NotebookEdit"): [cmd("before-edit-check")],
         ("PreToolUse", "Artifact"): [cmd("before-artifact-publish")],
         ("Stop", ""): [cmd("before-finish-check")],
