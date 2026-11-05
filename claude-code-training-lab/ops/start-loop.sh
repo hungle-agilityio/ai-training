@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# Start the loop: a tmux session `rr-loop` that runs one tick every 10 minutes under caffeinate.
-# Spec: specs/loop-concurrency/spec.md (AC13). How to run: ops/README.md.
+# Start the loop: a tmux session (name from ops/flow.toml, `rr-loop` for ReviewRadar) that runs
+# one tick every 10 minutes under caffeinate.
+# Spec: specs/loop-concurrency/spec.md (AC13), specs/flow-bootstrap/spec.md (AC5).
+# How to run: ops/README.md.
 set -euo pipefail
 
-SESSION="rr-loop"
 LAB="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=flow-value.sh
+source "$LAB/ops/flow-value.sh"
+SESSION="$(flow_value loop.tmux_session)"
+STATE="$(flow_value loop.state_dir)"
 
 if ! command -v tmux >/dev/null; then
   echo "tmux is not installed: brew install tmux" >&2
@@ -21,7 +26,7 @@ tmux new-session -d -s "$SESSION" -c "$LAB" \
   "caffeinate -i bash -c 'while true; do date; uv run python ops/agent_tick.py; sleep 600; done'"
 uv run python ops/agent_tick.py started || echo "Could not send the 'loop started' message." >&2
 echo "Loop started in tmux session $SESSION (one tick every 10 minutes)."
-TOPIC="$(sed -n 's/^NTFY_TOPIC=//p' "$HOME/.reviewradar/agent.env" 2>/dev/null | tail -n 1 || true)"
+TOPIC="$(sed -n 's/^NTFY_TOPIC=//p' "$STATE/agent.env" 2>/dev/null | tail -n 1 || true)"
 if [ -n "$TOPIC" ]; then
   echo "Phone messages: https://ntfy.sh/$TOPIC"
 fi

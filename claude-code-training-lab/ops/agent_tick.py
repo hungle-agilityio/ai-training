@@ -24,8 +24,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Protocol
 
-REPO = "hungle-agilityio/ai-training"
-OWNER = "hungle-agilityio"
+try:
+    from ops import flow_config
+except ImportError:  # started as `python ops/agent_tick.py`: ops/ is the first path entry
+    import flow_config  # type: ignore[import-not-found,no-redef,unused-ignore]
+
+REPO = ""
+OWNER = ""
+NAME = ""
+APP_DIR = ""
+SETUP_COMMAND: tuple[str, ...] = ()
+CI_WORKFLOW = ""
+STATE_DIR = Path()
 MARKER = "<!-- work-queue -->"
 LOCK_MAX_AGE = 15 * 60
 RUN_LIMIT = 45 * 60
@@ -43,7 +53,7 @@ LOG_TAIL = 20
 SKIP_LABELS = {"agent:running", "agent:review", "agent:failed", "agent:manual"}
 PR_LABELS = {"pr:ready-for-review", "pr:changes-requested", "pr:blocked", "pr:ci-failed"}
 RED_CI = {"FAILURE", "ERROR", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE"}
-ALONE_WORDS = ("migrations/", "models.py")
+ALONE_WORDS: tuple[str, ...] = ()
 USAGE_LIMIT = re.compile(
     r"usage limit|limit reached|rate_limit|extra_usage|usage_limit|hit your .*limit", re.IGNORECASE
 )
@@ -74,15 +84,36 @@ COMMENT_ID = re.compile(r"(?:issuecomment-|discussion_r)(\d+)")
 DEPENDS_LINE = re.compile(r"^\W*Depends on\b(.*)$", re.IGNORECASE | re.MULTILINE)
 FILES_HEADING = re.compile(r"^##\s+Files likely touched\s*$", re.IGNORECASE | re.MULTILINE)
 BULLET_PATH = re.compile(r"^\s*[-*]\s+[^`\n]*`([^`\n]+)`", re.MULTILINE)
-LAB_PREFIX = "claude-code-training-lab/"
-NTFY_TITLE = "ReviewRadar"
+LAB_PREFIX = ""
+NTFY_TITLE = ""
 REMINDER_SECONDS = 6 * 3600
 SIGNED_OUT_TEXT = "Claude Code is not signed in"
 ENTRYPOINT = "claude-desktop"  # `claude -p` offers the Artifact tool only with this
-LOW_PRIORITY = re.compile(
-    r"(?:ReviewRadar )?(?:started #|working on PR #|waiting: |queue empty, |"
+LOW_PRIORITY = re.compile("")
+LOW_PRIORITY_TAIL = (
+    r"(?:started #|working on PR #|waiting: |queue empty, |"
     r"PR #\d+ merged \(#\d+\); main is now )"
 )
+
+
+def configure(config: flow_config.FlowConfig) -> None:
+    """Set the project values from the flow config (spec flow-bootstrap AC5 to AC11)."""
+    global REPO, OWNER, NAME, APP_DIR, SETUP_COMMAND, CI_WORKFLOW, STATE_DIR
+    global ALONE_WORDS, LAB_PREFIX, NTFY_TITLE, LOW_PRIORITY
+    REPO = config.project_repo
+    OWNER = config.project_owner
+    NAME = config.project_display_name
+    APP_DIR = config.project_app_dir
+    SETUP_COMMAND = config.loop_setup_command
+    CI_WORKFLOW = config.checks_ci_workflow
+    STATE_DIR = config.loop_state_dir
+    ALONE_WORDS = config.loop_alone_words
+    LAB_PREFIX = "" if APP_DIR == "." else f"{APP_DIR}/"
+    NTFY_TITLE = NAME
+    LOW_PRIORITY = re.compile(f"(?:{re.escape(NAME)} )?" + LOW_PRIORITY_TAIL)
+
+
+configure(flow_config.load())
 
 
 class Host(Protocol):
@@ -288,8 +319,7 @@ def sign_in_ok(tick: Tick) -> bool:
     if not marker.exists():
         marker.write_text("~/.claude")
         tick.notify(
-            f"ReviewRadar {SIGNED_OUT_TEXT} (~/.claude); builds wait. "
-            "Sign in with: claude auth login"
+            f"{NAME} {SIGNED_OUT_TEXT} (~/.claude); builds wait. Sign in with: claude auth login"
         )
     return False
 
@@ -377,7 +407,7 @@ def pr_message(pr: dict[str, Any], verb: str) -> str:
     """#68: one message with the pull request and report links, from the list already read."""
     number = pr["number"]
     return (
-        f"ReviewRadar PR #{number} {verb} for #{closes(pr)} ({status_label(pr)})\n"
+        f"{NAME} PR #{number} {verb} for #{closes(pr)} ({status_label(pr)})\n"
         f"https://github.com/{REPO}/pull/{number}\nReport: {report_link(pr)}"
     )
 
@@ -429,7 +459,7 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
         return
     if kind == "pr":
         tick.say(f"{key}: {reason}; worktree kept")
-        tick.notify(f"ReviewRadar build for pull request #{number} {reason}")
+        tick.notify(f"{NAME} build for pull request #{number} {reason}")
         return
     labels = names(tick.gh_json("issue", "view", number, "--json", "labels"))
     has_pr = any(closes(pr) == int(number) for pr in prs)
@@ -464,7 +494,7 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
     body += f"\n```\n{tail}\n```"
     tick.gh("issue", "comment", number, "--body", body)
     tick.say(f"{key}: {reason}; agent:failed, worktree kept")
-    tick.notify(f"ReviewRadar build for issue #{number} failed: {reason}")
+    tick.notify(f"{NAME} build for issue #{number} failed: {reason}")
     record_failure(tick, int(number), "stopped" if outcome == "0" else "transient", reason)
 
 
@@ -505,7 +535,7 @@ def record_failure(tick: Tick, number: int, kind: str, outcome: str) -> None:
     if retries >= RETRIES:
         if not old.get("told"):
             tick.notify(
-                f"ReviewRadar #{number} failed after {RETRIES} retries, needs you: "
+                f"{NAME} #{number} failed after {RETRIES} retries, needs you: "
                 f"https://github.com/{REPO}/issues/{number}"
             )
         record["told"] = True
@@ -589,7 +619,7 @@ def pause_for_limit(tick: Tick, key: str, number: str, worktree: Path) -> None:
     until = tick.host.now() + PAUSE_SECONDS
     (tick.home / "paused-until").write_text(str(int(until)))
     tick.say(f"{key}: plan limit reached, paused 60 minutes")
-    tick.notify(f"ReviewRadar loop paused 60 minutes: plan limit reached ({key})")
+    tick.notify(f"{NAME} loop paused 60 minutes: plan limit reached ({key})")
 
 
 def remove_worktree(tick: Tick, worktree: Path) -> None:
@@ -817,7 +847,7 @@ def main_is_red(tick: Tick) -> bool:
         "run",
         "list",
         "--workflow",
-        "checks.yml",
+        CI_WORKFLOW,
         "--branch",
         "main",
         "--status",
@@ -900,7 +930,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
             prompt = f"Use the work-queue skill for pull request #{pr['number']} only."
             count = redo_count(tick, pr)
             what = f"{count} change requests open" if count else "CI"
-            message = f"ReviewRadar working on PR #{pr['number']} ({what})"
+            message = f"{NAME} working on PR #{pr['number']} ({what})"
             chosen.append(
                 Target(key, pr["number"], prompt, branch=pr["headRefName"], message=message)
             )
@@ -956,7 +986,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
             continue
         prompt = f"Use the work-queue skill for issue #{issue['number']} only."
         title = issue.get("title") or ""
-        message = f"ReviewRadar started #{issue['number']}: {title}" if title else ""
+        message = f"{NAME} started #{issue['number']}: {title}" if title else ""
         stack: dict[str, Any] = {}
         if parent_pr is not None:
             branch = str(parent_pr["headRefName"])
@@ -966,7 +996,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
             )
             head_title = parent_pr.get("title") or title
             message = (
-                f"ReviewRadar started #{issue['number']} on top of PR "
+                f"{NAME} started #{issue['number']} on top of PR "
                 f"#{parent_pr['number']}: {head_title}"
             )
             stack = {
@@ -977,7 +1007,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         if retry:
             record = failed_record(tick, issue["number"]) or {}
             count = int(record.get("retries") or 0) + 1
-            message = f"ReviewRadar retrying #{issue['number']} ({count} of {RETRIES})"
+            message = f"{NAME} retrying #{issue['number']} ({count} of {RETRIES})"
         if runs_alone(issue):
             if running or chosen:
                 break
@@ -1021,8 +1051,8 @@ def start(tick: Tick, target: Target) -> bool:
         ]
     else:
         add = [*git, "worktree", "add", "--detach", str(worktree), "origin/main"]
-    lab = worktree / "claude-code-training-lab"
-    for step, cwd in ((add, None), (["uv", "sync", "--frozen"], lab)):
+    lab = worktree / APP_DIR
+    for step, cwd in ((add, None), ([*SETUP_COMMAND], lab)):
         code, out = tick.host.run(step, cwd=cwd)
         if code != 0:
             name = " ".join(step[:4]) if step[0] != "git" else " ".join(step[3:5])
@@ -1120,7 +1150,7 @@ def start_failed(tick: Tick, target: Target, step: str) -> None:
         if target.key.startswith("issue-")
         else (f"pull request #{target.number}")
     )
-    tick.notify(f"ReviewRadar build for {what} did not start: {step} failed")
+    tick.notify(f"{NAME} build for {what} did not start: {step} failed")
 
 
 def pull_main(tick: Tick) -> None:
@@ -1156,7 +1186,7 @@ def pull_main(tick: Tick) -> None:
         return
     last.write_text(reason)
     sent.write_text(str(tick.host.now()))
-    tick.notify(f"ReviewRadar main checkout not updated: {reason}")
+    tick.notify(f"{NAME} main checkout not updated: {reason}")
 
 
 def reminder_due(tick: Tick, sent: Path) -> bool:
@@ -1286,14 +1316,14 @@ def needs_you(tick: Tick, prs: list[dict[str, Any]]) -> None:
             if label in names(pr) and key not in seen:
                 seen.add(key)
                 tick.notify(
-                    f"ReviewRadar PR #{pr['number']} needs you: {label}\n"
+                    f"{NAME} PR #{pr['number']} needs you: {label}\n"
                     f"https://github.com/{REPO}/pull/{pr['number']}"
                 )
     seen_file.write_text("\n".join(sorted(seen)))
 
 
 def announce_one(tick: Tick, pr: dict[str, Any]) -> None:
-    head = f"ReviewRadar PR #{pr['number']} merged (#{closes(pr)})"
+    head = f"{NAME} PR #{pr['number']} merged (#{closes(pr)})"
     if tick.pull_problem:
         tick.notify(f"{head}; main checkout not updated: {tick.pull_problem}")
     else:
@@ -1378,7 +1408,7 @@ def refuse_merge(tick: Tick, pr: dict[str, Any], approval: Remark, reason: str) 
     if key not in seen:
         seen.add(key)
         record.write_text("\n".join(sorted(seen)))
-        tick.notify(f"ReviewRadar PR #{number} not merged: {reason}")
+        tick.notify(f"{NAME} PR #{number} not merged: {reason}")
 
 
 def parent_of(prs: list[dict[str, Any]], pr: dict[str, Any]) -> dict[str, Any] | None:
@@ -1400,7 +1430,7 @@ def wait_for_parent(
     key = f"{number}:{approval.id}"
     if key not in seen:
         record.write_text("\n".join(sorted(seen | {key})))
-        tick.notify(f"ReviewRadar PR #{number} not merged: it waits for its {what}")
+        tick.notify(f"{NAME} PR #{number} not merged: it waits for its {what}")
 
 
 def stacked_children(prs: list[dict[str, Any]]) -> list[tuple[dict[str, Any], dict[str, Any]]]:
@@ -1457,7 +1487,7 @@ def settle_children(tick: Tick, prs: list[dict[str, Any]]) -> None:
         have = mine.read_text().split() if mine.exists() else []
         mine.write_text("\n".join(sorted({*have, f"{number}:pr:blocked:{needs_you_head(child)}"})))
         tick.say(f"pr-{number}: parent PR #{up} closed without merge; pr:blocked")
-        tick.notify(f"ReviewRadar PR #{number} blocked: its parent PR #{up} was closed")
+        tick.notify(f"{NAME} PR #{number} blocked: its parent PR #{up} was closed")
 
 
 def move_children(tick: Tick, kids: list[dict[str, Any]], up: int) -> None:
@@ -1646,7 +1676,7 @@ def say_blocked(
         return
     for line in lines:
         tick.say(line)
-    message = "\n".join([f"ReviewRadar waiting: {count} ready issues blocked", *lines])
+    message = "\n".join([f"{NAME} waiting: {count} ready issues blocked", *lines])
     if last.exists() and last.read_text() == message:
         return
     last.write_text(message)
@@ -1671,7 +1701,7 @@ def queue_empty(tick: Tick, prs: list[dict[str, Any]]) -> None:
     ready = [i for i in issues if "agent:ready" in names(i) and not names(i) & SKIP_LABELS]
     if ready:
         return
-    message = f"ReviewRadar queue empty, {waiting} pull requests waiting"
+    message = f"{NAME} queue empty, {waiting} pull requests waiting"
     last = tick.home / "last-empty"
     if last.exists() and last.read_text() == message:
         return
@@ -1761,7 +1791,7 @@ def run_start(
     deadline: float,
 ) -> str:
     """One `claude -p`; its output is the session log, a missing Artifact tool stops it."""
-    env = {**claude_env(os.environ), "REVIEWRADAR_LOOP": "1"}
+    env = {**claude_env(os.environ), "FLOW_LOOP": "1", "REVIEWRADAR_LOOP": "1"}
     args = [
         "claude",
         "-p",
@@ -1833,7 +1863,7 @@ def run_start(
 def announce_started(host: Host, home: Path, name: str) -> int:
     """#167 AC5: one 'loop started' message; no lock, no tick."""
     tick = Tick(host, home, read_settings(home / "agent.env"))
-    tick.notify(f"ReviewRadar loop started on {name}")
+    tick.notify(f"{NAME} loop started on {name}")
     return 0
 
 
@@ -1841,7 +1871,7 @@ def main(argv: list[str]) -> int:
     if argv[:1] == ["run"] and len(argv) == 4:
         run_build(Path(argv[1]), Path(argv[2]), argv[3])
         return 0
-    home = Path(os.environ.get("REVIEWRADAR_HOME", Path.home() / ".reviewradar"))
+    home = Path(os.environ.get("FLOW_HOME") or os.environ.get("REVIEWRADAR_HOME") or STATE_DIR)
     home.mkdir(parents=True, exist_ok=True)
     if argv[:1] == ["started"]:
         return announce_started(RealHost(), home, socket.gethostname())
