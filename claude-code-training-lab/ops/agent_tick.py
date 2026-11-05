@@ -36,6 +36,7 @@ APP_DIR = ""
 SETUP_COMMAND: tuple[str, ...] = ()
 CI_WORKFLOW = ""
 STATE_DIR = Path()
+REPO_ENV = Path(__file__).resolve().parent / "agent.env"
 MARKER = "<!-- work-queue -->"
 LOCK_MAX_AGE = 15 * 60
 RUN_LIMIT = 45 * 60
@@ -266,6 +267,17 @@ def message_priority(message: str) -> str:
     if SIGNED_OUT_TEXT in message:
         return "urgent"
     return "low" if LOW_PRIORITY.match(message) else "high"
+
+
+def settings_file(home: Path) -> Path:
+    """#199 AC1: `ops/agent.env` when it exists, else `agent.env` in the state folder."""
+    return REPO_ENV if REPO_ENV.is_file() else home / "agent.env"
+
+
+def settings_line(home: Path) -> str:
+    """#199 AC3: names the settings file in use, never its values."""
+    path = settings_file(home)
+    return "settings: ops/agent.env" if path == REPO_ENV else f"settings: {path}"
 
 
 def read_settings(path: Path) -> Settings:
@@ -1712,8 +1724,9 @@ def queue_empty(tick: Tick, prs: list[dict[str, Any]]) -> None:
 
 def tick_once(host: Host, home: Path) -> list[str]:
     """One tick; returns what it did, line by line."""
-    settings = read_settings(home / "agent.env")
+    settings = read_settings(settings_file(home))
     tick = Tick(host, home, settings)
+    tick.say(settings_line(home))
     lock = home / "tick.lock"
     if not take_lock(host, lock):
         tick.say("another tick is running; nothing done")
@@ -1862,7 +1875,8 @@ def run_start(
 
 def announce_started(host: Host, home: Path, name: str) -> int:
     """#167 AC5: one 'loop started' message; no lock, no tick."""
-    tick = Tick(host, home, read_settings(home / "agent.env"))
+    tick = Tick(host, home, read_settings(settings_file(home)))
+    tick.say(settings_line(home))
     tick.notify(f"{NAME} loop started on {name}")
     return 0
 

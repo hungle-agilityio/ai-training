@@ -26,7 +26,16 @@ tmux new-session -d -s "$SESSION" -c "$LAB" \
   "caffeinate -i bash -c 'while true; do date; uv run python ops/agent_tick.py; sleep 600; done'"
 uv run python ops/agent_tick.py started || echo "Could not send the 'loop started' message." >&2
 echo "Loop started in tmux session $SESSION (one tick every 10 minutes)."
-TOPIC="$(sed -n 's/^NTFY_TOPIC=//p' "$STATE/agent.env" 2>/dev/null | tail -n 1 || true)"
+# Same rule as the tick: ops/agent.env when it exists, else agent.env in the state folder (#199).
+if [ -f "$LAB/ops/agent.env" ]; then
+  SETTINGS="$LAB/ops/agent.env"
+  SETTINGS_NAME="ops/agent.env"
+else
+  SETTINGS="$STATE/agent.env"
+  SETTINGS_NAME="$SETTINGS"
+fi
+echo "settings: $SETTINGS_NAME"
+TOPIC="$(sed -n 's/^NTFY_TOPIC=//p' "$SETTINGS" 2>/dev/null | tail -n 1 || true)"
 if [ -n "$TOPIC" ]; then
   echo "Phone messages: https://ntfy.sh/$TOPIC"
 fi

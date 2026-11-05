@@ -9,9 +9,10 @@
 3. Make the settings file, which is not committed:
 
    ```bash
-   mkdir -p ~/.reviewradar
-   cp ops/agent.env.example ~/.reviewradar/agent.env
+   cp ops/agent.env.example ops/agent.env
    ```
+
+   `ops/agent.env` is git-ignored and never committed. When it is missing, the tick and `start-loop.sh` still read `agent.env` in the state folder (below); only one file is read, the keys are not merged. The first line of each tick and the start message say which one (`settings: ops/agent.env`), never its values.
 
    Here and below, `~/.reviewradar` is the state folder from `ops/flow.toml` (`loop.state_dir`; `FLOW_HOME` or `REVIEWRADAR_HOME` override it), and `rr-loop` and `com.reviewradar.loop` are its `loop.tmux_session` and `loop.launchd_label`. The project values (repository, owner, app folder, display name, setup command, CI workflow) come from the same file; a second project has its own `ops/flow.toml` and its own state folder. Every build gets `FLOW_LOOP=1` and `REVIEWRADAR_LOOP=1`.
 
@@ -43,7 +44,7 @@ After a restart of the Mac mini the loop does not come back by itself. A launchd
 ## No messages?
 
 1. The loop runs: `tmux ls` shows `rr-loop`. If not, run `ops/start-loop.sh`.
-2. `ops/start-loop.sh` prints `Phone messages: https://ntfy.sh/<topic>` when `NTFY_TOPIC` is set in `~/.reviewradar/agent.env`; open that link to see the messages.
+2. `ops/start-loop.sh` prints `Phone messages: https://ntfy.sh/<topic>` when `NTFY_TOPIC` is set in the settings file (`ops/agent.env`, or `~/.reviewradar/agent.env` when that is missing); open that link to see the messages.
 3. The topic subscribed in the ntfy app is exactly the same name.
 4. Notifications are allowed for ntfy in the phone settings.
 
@@ -53,7 +54,7 @@ All under `~/.reviewradar/`:
 
 | Path | What |
 |---|---|
-| `agent.env` | the settings |
+| `agent.env` | the settings, read only when `ops/agent.env` in the checkout is missing |
 | `runs/<key>/log.txt` | the output of a running build (`<key>` is `issue-<n>` or `pr-<n>`) |
 | `runs/<key>/session-<n>.jsonl` | the whole session of start `<n>`, one JSON event per line |
 | `runs/done/<key>-<time>/` | the folder of an ended build, log and sessions included |
@@ -149,7 +150,7 @@ The log lines are in the tmux window and in the tick's output.
 
 Every message goes to ntfy when `NTFY_TOPIC` is set and to Slack when `SLACK_WEBHOOK_URL` is set (both, one or none). A failed Slack post writes the log line `Slack post failed` and does not stop the tick.
 
-**Slack, once:** create a Slack app (api.slack.com/apps, From scratch), turn on **Incoming Webhooks**, **Add New Webhook to Workspace** and pick a channel, copy the webhook URL into `~/.reviewradar/agent.env` as `SLACK_WEBHOOK_URL=...` (never into the repository), then set that channel's notifications to **All new messages** in the Slack app on the phone.
+**Slack, once:** create a Slack app (api.slack.com/apps, From scratch), turn on **Incoming Webhooks**, **Add New Webhook to Workspace** and pick a channel, copy the webhook URL into `ops/agent.env` as `SLACK_WEBHOOK_URL=...` (git-ignored; `SLACK_WEBHOOK_URL` is a secret and must never be committed), then set that channel's notifications to **All new messages** in the Slack app on the phone.
 
 Each ntfy post has the title `ReviewRadar` and a priority (#167). "Rings" is `yes` for `Priority: high` (the phone rings) and `no` for `Priority: low` (the message arrives silently in the ntfy app). A message not in this table is sent with `Priority: high`. Slack gets the plain text without a priority.
 
