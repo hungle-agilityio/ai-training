@@ -25,6 +25,15 @@ Each item must be something a person can check without technical help.
 1. \<user action, with the real names and numbers if specific data must exist>
 2. \<user action>
 
+## Screens to capture
+
+Only when users see the change (label `needs-ui`); leave the section out otherwise. One `json` block that the build copies unchanged into the browser check: every step has a `goto` page and a `capture` selector for the part that changes (the report shows the full page next to that close-up). Optional: `actions`, `expect`, `absent`, and `"sign_in": false` on the object for the sign-in page.
+
+```json
+{"steps": [{"name": "reviews-filters", "goto": "/reviews/",
+            "capture": "#filter-rating", "expect": ["Every customer review"]}]}
+```
+
 ## Expected result
 
 \<exact result>
