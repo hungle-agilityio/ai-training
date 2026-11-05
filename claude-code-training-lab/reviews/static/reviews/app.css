@@ -347,4 +347,7 @@ a.pager-link:hover { border-color: var(--brand); color: var(--brand); }
 }
 
 .report-table td, .report-table th[scope="col"]:not(:first-child) { text-align: right; }
+.change-up { color: var(--good); font-weight: 600; }
+.change-down { color: var(--bad); font-weight: 600; }
+.change-same, .change-none { color: var(--muted); }
 .report-note { padding: 12px 20px 16px; margin: 0; }

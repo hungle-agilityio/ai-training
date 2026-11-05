@@ -34,6 +34,7 @@
             <th scope="col">Average</th>
             <th scope="col">Good (4–5)</th>
             <th scope="col">Bad (1–2)</th>
+            <th scope="col">vs {{ report.previous_label }}</th>
           </tr>
         </thead>
         <tbody>
@@ -44,6 +45,15 @@
               <td>{% if row.average_rating is None %}—{% else %}{{ row.average_rating|floatformat:1 }}{% endif %}</td>
               <td>{{ row.good_count }}</td>
               <td>{{ row.bad_count }}</td>
+              {% if row.change is None %}
+                <td><span class="change-none" aria-label="No comparison">—</span></td>
+              {% elif row.change > 0 %}
+                <td><span class="change-up" aria-label="Up {{ row.change|floatformat:1 }} from {{ report.previous_label }}">▲ {{ row.change|floatformat:1 }}</span></td>
+              {% elif row.change < 0 %}
+                <td><span class="change-down" aria-label="Down {{ row.change|floatformat:1|cut:"-" }} from {{ report.previous_label }}">▼ {{ row.change|floatformat:1|cut:"-" }}</span></td>
+              {% else %}
+                <td><span class="change-same" aria-label="Same as {{ report.previous_label }}">0.0</span></td>
+              {% endif %}
             </tr>
           {% endfor %}
         </tbody>
