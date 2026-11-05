@@ -3,9 +3,11 @@
 # Spec: specs/notify-fix/spec.md (AC7). Run by hand on the Mac mini: ops/README.md, "Start at login".
 set -euo pipefail
 
-LABEL="com.reviewradar.loop"
 LAB="$(cd "$(dirname "$0")/.." && pwd)"
-STATE="$HOME/.reviewradar"
+# shellcheck source=flow-value.sh
+source "$LAB/ops/flow-value.sh"
+LABEL="$(flow_value loop.launchd_label)"
+STATE="$(flow_value loop.state_dir)"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 DOMAIN="gui/$(id -u)"
 

@@ -13,6 +13,8 @@
    cp ops/agent.env.example ~/.reviewradar/agent.env
    ```
 
+   Here and below, `~/.reviewradar` is the state folder from `ops/flow.toml` (`loop.state_dir`; `FLOW_HOME` or `REVIEWRADAR_HOME` override it), and `rr-loop` and `com.reviewradar.loop` are its `loop.tmux_session` and `loop.launchd_label`. The project values (repository, owner, app folder, display name, setup command, CI workflow) come from the same file; a second project has its own `ops/flow.toml` and its own state folder. Every build gets `FLOW_LOOP=1` and `REVIEWRADAR_LOOP=1`.
+
    Set `AGENT_CONCURRENCY` (1 to 3; the Mac mini uses 2) and, for phone notifications, `NTFY_TOPIC`, then subscribe to that topic in the ntfy app.
 
 ## Start, watch, stop
