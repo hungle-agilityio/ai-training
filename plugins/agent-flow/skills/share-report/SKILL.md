@@ -10,7 +10,7 @@ A report is built by `build-verify-report` and stays on this machine. Publishing
 ## Procedure
 
 1. Take the report folder: `out/verify/<time>/` (it holds `report.html` and `report.json`).
-2. Run the gate: `python3 -I <this skill's folder>/share_gate.py <report folder>`.
+2. Run the gate: `python3 -I <this skill's folder>/share_gate.py <report folder>` (`<this skill's folder>` is the base directory Claude Code gives when this skill loads: an absolute path in the installed plugin. Run the script from there as one plain command, with no pipe, redirection or `2>&1`, and never from `../plugins/agent-flow/` in the repository: only that plain call runs without a prompt, so any other form stops a loop build).
    - `BLOCKED: <reason>` (exit 1): **no link**. Keep the local file, tell the user in one line which condition failed (masking not clean, approval off, page too big, files missing). Do not try another way to publish.
    - `ALLOWED` (exit 0): continue.
 3. Publish with the Artifact tool, the file `report-share.html` (the same report written as artifact page content), a short icon word such as `report`, and a one-sentence description. Load the `artifact-design` skill first, as the tool asks; the page already follows its contract (two-word title, colour tokens with dark mode, no horizontal scroll). The artifact is private until the user shares it. If the report was shared before (`share.url` in `report.json`), republish to the same URL.
