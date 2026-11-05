@@ -49,8 +49,8 @@ def test_404_number_is_hidden_from_screen_readers(settings: LazySettings) -> Non
 def test_only_back_to_dashboard_is_the_main_button(settings: LazySettings) -> None:
     _, html = _get_missing_page(settings)
 
-    back = re.search(r'<a([^>]*)>\s*Back to Dashboard\s*</a>', html)
-    reviews = re.search(r'<a([^>]*)>\s*View all reviews\s*</a>', html)
+    back = re.search(r"<a([^>]*)>\s*Back to Dashboard\s*</a>", html)
+    reviews = re.search(r"<a([^>]*)>\s*View all reviews\s*</a>", html)
     assert back is not None and reviews is not None
     assert 'href="/dashboard/"' in back.group(1)
     assert 'href="/reviews/"' in reviews.group(1)
