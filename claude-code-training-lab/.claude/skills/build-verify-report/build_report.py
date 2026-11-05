@@ -2,11 +2,15 @@
 """Run every verify axis and write one report that a person can open and read.
 
 Usage: uv run python .claude/skills/build-verify-report/build_report.py --title "<issue>"
-       [--criteria FILE] [--review FILE] [--browser [--spec FILE]] [--no-open] [--out DIR]
+       [--criteria FILE] [--review FILE] [--browser --spec FILE | --no-ui] [--no-open] [--out DIR]
 
 The numbers in the report are read from the real output of each command by this program;
 nothing is retyped. It writes report.html (one self-contained page, screenshots embedded) and
 report.json to out/verify/<time>/, and opens the page unless --no-open is given.
+
+A task that changes a screen passes --browser with the issue's "Screens to capture" as --spec;
+each step shows its full page next to its close-up. A task that changes no screen passes --no-ui
+and gets no screenshots.
 
 Exit code: 0 PASS, 1 FAIL, 2 INCOMPLETE (some axis is NOT CONFIGURED, none failed).
 """
@@ -34,7 +38,9 @@ TOTAL_COVERAGE = re.compile(r"^TOTAL\s+\d+\s+\d+\s+(\d+)%", re.M)
 PASSED = re.compile(r"(\d+) passed")
 FAILED = re.compile(r"(\d+) failed")
 MYPY_FILES = re.compile(r"no issues found in (\d+) source files?")
-STATUSES = ("PASS", "FAIL", "NOT CONFIGURED")
+STATUSES = ("PASS", "FAIL", "NOT CONFIGURED", "NOT APPLICABLE")
+NO_UI_EVIDENCE = "the task changes no screen"
+NO_SCREENS = 'no screens given: pass --spec from the issue\'s "Screens to capture"'
 
 
 def real_run(args: list[str], cwd: Path) -> tuple[int, str]:
@@ -205,6 +211,13 @@ def browser_axis(result_dir: Path | None, code: int | None, output: str) -> dict
         f"{len(data['steps'])} step(s), {shots} screenshot{'s' if shots != 1 else ''}, "
         f"console {data['console_errors']} error(s), network {data['network_failures']} failure(s)"
     )
+    failed_captures = [
+        step["name"]
+        for step in data["steps"]
+        if any(str(p).startswith("capture:") for p in step.get("problems", []))
+    ]
+    if failed_captures:
+        detail += f"; capture failed in step {', '.join(failed_captures)}"
     leaked = data.get("masking", {}).get("status") == "findings"
     if leaked:
         kinds = sorted({k for f in data["masking"]["findings"] for k in f["kinds"]})
@@ -247,7 +260,9 @@ CSS = (
     "th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}"
     ".PASS{color:var(--pass);font-weight:700}.FAIL{color:var(--fail);font-weight:700}"
     ".NOT\\ CONFIGURED,.INCOMPLETE{color:var(--warn);font-weight:700}"
+    ".NOT\\ APPLICABLE{color:var(--muted);font-weight:700}"
     ".shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}"
+    ".shots .pair{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px}"
     ".shots figure{margin:0;background:var(--card);padding:8px;border-radius:8px}"
     ".shots img{width:100%;height:auto;border:1px solid var(--line);cursor:zoom-in}"
     "[hidden]{display:none!important}"
@@ -278,13 +293,25 @@ def render_body(report: dict[str, Any]) -> str:
         f"<td>{esc(a['evidence'])}</td></tr>"
         for a in report["axes"]
     )
+
+    def figure(path: str, caption: str) -> str:
+        data = base64.b64encode(Path(path).read_bytes()).decode()
+        return (
+            f'<figure><img alt="{esc(caption)}" src="data:image/png;base64,{data}">'
+            f"<figcaption>{esc(caption)}</figcaption></figure>"
+        )
+
+    close_ups: dict[str, str] = report.get("close_ups", {})
     shots = ""
     for path in report.get("screenshots", []):
-        data = base64.b64encode(Path(path).read_bytes()).decode()
-        shots += (
-            f'<figure><img alt="{esc(Path(path).stem)}" src="data:image/png;base64,{data}">'
-            f"<figcaption>{esc(Path(path).stem)}</figcaption></figure>"
-        )
+        name = Path(path).stem
+        if path in close_ups:
+            shots += (
+                f'<div class="pair">{figure(path, name)}'
+                f"{figure(close_ups[path], f'{name} (close-up)')}</div>"
+            )
+        else:
+            shots += figure(path, name)
     check = "".join(f"<li>{esc(item)}</li>" for item in report.get("check_yourself", []))
     review = f"<h2>Review</h2><pre>{esc(report['review'])}</pre>" if report.get("review") else ""
     return (
@@ -345,6 +372,7 @@ def build(
     open_report: bool,
     plant: str | None = None,
     spec: Path | None = None,
+    no_ui: bool = False,
 ) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
     axes = run_checks(root, run)
@@ -353,13 +381,20 @@ def build(
     _, diff = run(["git", "diff", "HEAD", "-U0"], root)
     axes.append(security_axis(diff))
     shots: list[str] = []
+    close_ups: dict[str, str] = {}
     masking: dict[str, Any] = {"status": "not run"}
-    if browser:
+    texts = [title, json.dumps(criteria or {}), review or ""]
+    if no_ui:
+        axes.append(axis("Browser", "NOT APPLICABLE", NO_UI_EVIDENCE))
+        masking = masking_status({"status": "clean", "findings": []}, texts)
+    elif browser and spec is None:
+        axes.append(axis("Browser", "FAIL", NO_SCREENS))
+    elif browser:
         script = SKILLS / "check-in-browser" / "browser_check.py"
         folder = out_dir / "browser"
         command = [sys.executable, str(script), "--out", str(folder)]
         command += ["--plant", plant] if plant else []
-        command += ["--spec", str(spec)] if spec else []
+        command += ["--spec", str(spec)]
         code, text = run(command, root)
         axes.append(
             browser_axis(folder if (folder / "result.json").is_file() else None, code, text)
@@ -367,7 +402,11 @@ def build(
         if (folder / "result.json").is_file():
             result = json.loads((folder / "result.json").read_text())
             shots = [str(folder / s["screenshot"]) for s in result["steps"] if s.get("screenshot")]
-            texts = [title, json.dumps(criteria or {}), review or ""]
+            close_ups = {
+                str(folder / s["screenshot"]): str(folder / s["element_screenshot"])
+                for s in result["steps"]
+                if s.get("screenshot") and s.get("element_screenshot")
+            }
             masking = masking_status(result["masking"], texts)
     else:
         axes.append(browser_axis(None, None, ""))
@@ -382,6 +421,7 @@ def build(
         "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "axes": axes,
         "screenshots": shots,
+        "close_ups": close_ups,
         "review": review or "",
         "masking": masking,
         "share": None,
@@ -408,9 +448,15 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--title", required=True, help="the issue, as a short title")
     parser.add_argument("--criteria", type=Path, help="JSON: criteria with status, check_yourself")
     parser.add_argument("--review", type=Path, help="text file; first line Status: PASS or FAIL")
-    parser.add_argument("--browser", action="store_true", help="run the browser check too")
+    screens = parser.add_mutually_exclusive_group()
+    screens.add_argument(
+        "--browser", action="store_true", help="run the browser check on the --spec screens"
+    )
+    screens.add_argument(
+        "--no-ui", action="store_true", help="the task changes no screen: no browser, no shots"
+    )
     parser.add_argument(
-        "--spec", type=Path, help="JSON steps for the browser check (default: the reviews pages)"
+        "--spec", type=Path, help='JSON steps from the issue\'s "Screens to capture"'
     )
     parser.add_argument("--no-open", action="store_true", help="do not open the report")
     parser.add_argument("--plant", help="add a review with this text, to test the scan only")
@@ -431,6 +477,7 @@ def main(argv: list[str]) -> int:
         not args.no_open,
         args.plant,
         args.spec,
+        no_ui=args.no_ui,
     )
     for item in report["axes"]:
         print(f"{item['status']:<15} {item['name']:<22} {item['evidence']}")
