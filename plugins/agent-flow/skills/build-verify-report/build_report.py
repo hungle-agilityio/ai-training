@@ -44,6 +44,8 @@ FAILED = re.compile(r"(\d+) failed")
 MYPY_FILES = re.compile(r"no issues found in (\d+) source files?")
 STATUSES = ("PASS", "FAIL", "NOT CONFIGURED", "NOT APPLICABLE")
 NO_UI_EVIDENCE = "the task changes no screen"
+# The plugin's own tests run as in CI: a build's loop mode must not leak into them (#243).
+WITHOUT_LOOP = ["env", "-u", "FLOW_LOOP", "-u", "REVIEWRADAR_LOOP"]
 NO_SCREENS = 'no screens given: pass --spec from the issue\'s "Screens to capture"'
 
 
@@ -104,7 +106,8 @@ def run_checks(root: Path, run: Runner) -> list[dict[str, str]]:
     suites = [str(PLUGIN_ROOT / "hooks" / "tests"), str(PLUGIN_ROOT / "skills")]
     suites += [".claude/skills"] if (root / ".claude" / "skills").is_dir() else []
     code, out = run(
-        ["uv", "run", "pytest", *suites, "-q", "--no-cov", "-p", "no:cacheprovider"], root
+        [*WITHOUT_LOOP, "uv", "run", "pytest", *suites, "-q", "--no-cov", "-p", "no:cacheprovider"],
+        root,
     )
     detail = f"{parse_pytest(out)['passed']} passed, {parse_pytest(out)['failed']} failed"
     axes.append(axis("Skill and hook tests", "PASS" if code == 0 else "FAIL", detail))
