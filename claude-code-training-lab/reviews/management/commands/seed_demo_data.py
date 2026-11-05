@@ -11,6 +11,7 @@ from reviews.repositories import create_review
 
 DEMO_USERNAME = "demo"
 DEMO_PASSWORD_VARIABLE = "REVIEWRADAR_DEMO_PASSWORD"
+DAYS_BETWEEN_REVIEWS = 20
 
 DEMO_REVIEWS: dict[str, list[tuple[int, str]]] = {
     "Airport": [
@@ -90,5 +91,5 @@ class Command(BaseCommand):
                 branch=branch,
                 rating=rating,
                 text=text,
-                created_at=now - timedelta(days=offset),
+                created_at=now - timedelta(days=offset * DAYS_BETWEEN_REVIEWS),
             )
