@@ -18,11 +18,12 @@ uv run python .claude/skills/check-in-browser/browser_check.py
 - Default steps: the dashboard, the reviews page, the Bad and Good filters, and a filter with no match.
 - Screenshots, one per step, and `result.json` go to `out/browser-check/<time>/` (git-ignored). The screenshots show demo data only.
 - For another page or flow, write a spec from the issue's "Steps to check the result" and pass it with `--spec`: a list of steps, each with a `name`, a `goto` address, optional `actions` (`select`, `fill`, `click` on a selector), and optional `expect` and `absent` texts. A step may also give `status`, the HTTP status its page must answer (for example 404 for an error page). A spec written as an object (`{"steps": [...]}`) may set `"debug": false` to run the app as in production (needed to see `404.html` or `500.html`) and `"viewport": "390x844"` for a narrow screen; `--debug-off` and `--viewport` do the same on the command line and win over the spec.
+- **Close-up of the changed part:** a step may give `"capture": "<css selector>"`. The step then saves the full page `NN-<name>.png` as before and the first visible match alone as `NN-<name>-element.png`; `result.json` lists them as `screenshot` and `element_screenshot`. If the selector matches nothing visible, the step fails with `capture: no visible element for <selector>` (exit code 1) and keeps no close-up. The masking scan covers the step as before, and a finding deletes both screenshots of that step. A step without `capture` is unchanged.
 
 ```
 {"steps": [{"name": "week-filter", "goto": "/reviews/",
             "actions": [{"fill": {"#filter-week": "2026-10-12"}}, {"click": "button.button-apply"}],
-            "expect": ["Week:"]}]}
+            "expect": ["Week:"], "capture": "#filter-week"}]}
 ```
 
 ## Read the result

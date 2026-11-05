@@ -397,6 +397,9 @@ def run_step(
         page.add_style_tag(content=BLUR_CSS)
     file = out_dir / f"{index:02d}-{step['name']}.png"
     page.screenshot(path=str(file), full_page=True)
+    element_file: Path | None = None
+    if "capture" in step:
+        element_file = capture_element(page, str(step["capture"]), file, record)
     body, title, url = page.inner_text("body"), page.title(), page.url.replace(base, "")
     seen.update(scan_text(f"{body}\n{title}\n{url}"))
     record.update({"url": redact(url), "title": redact(title), "screenshot": file.name})
@@ -406,7 +409,34 @@ def run_step(
     if seen:
         file.unlink(missing_ok=True)
         record["screenshot"] = ""
+        if element_file is not None:
+            element_file.unlink(missing_ok=True)
+            record["element_screenshot"] = ""
     return record, ok
+
+
+def capture_element(
+    page: Any, selector: str, page_file: Path, record: dict[str, Any]
+) -> Path | None:
+    """A step's "capture" saves the first visible match alone, next to the full page."""
+    record["element_screenshot"] = ""
+    element = page.locator(selector).first
+    try:
+        visible = element.count() > 0 and element.is_visible()
+    except Exception:  # an invalid selector is a missing element, never a crash
+        visible = False
+    if not visible:
+        record["problems"].append(f"capture: no visible element for {redact(selector)}")
+        return None
+    file = page_file.with_name(f"{page_file.stem}-element.png")
+    try:
+        element.screenshot(path=str(file), timeout=5000)
+    except Exception:
+        file.unlink(missing_ok=True)
+        record["problems"].append(f"capture: no visible element for {redact(selector)}")
+        return None
+    record["element_screenshot"] = file.name
+    return file
 
 
 def sign_in(page: Any, base: str, password: str) -> None:
