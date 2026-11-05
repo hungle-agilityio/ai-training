@@ -41,7 +41,10 @@ SCHEMA: dict[str, dict[str, str]] = {
         "protected_test_dirs": WORDS,
     },
     "release": {"timezone": STRING, "deploy_line": STRING},
+    "plugin": {"id": STRING, "marketplace": STRING},
 }
+# A file written before the plugin existed has no [plugin] table; the tick stops on the empty key.
+OPTIONAL_SECTIONS = {"plugin"}
 
 
 class FlowConfigError(Exception):
@@ -65,6 +68,8 @@ class FlowConfig:
     checks_protected_test_dirs: tuple[str, ...]
     release_timezone: str
     release_deploy_line: str
+    plugin_id: str = ""
+    plugin_marketplace: str = ""
 
 
 def _is_words(value: object) -> bool:
@@ -104,6 +109,8 @@ def _check(data: dict[str, Any], label: str) -> None:
             raise FlowConfigError(f"{label}: unknown {section}")
     for section, keys in SCHEMA.items():
         values = data.get(section)
+        if values is None and section in OPTIONAL_SECTIONS:
+            continue
         if not isinstance(values, dict):
             raise FlowConfigError(f"{label}: missing {section}.{next(iter(keys))}")
         for key in values:
@@ -123,7 +130,8 @@ def load(path: Path | None = None) -> FlowConfig:
         path = Path(named) if named else DEFAULT_PATH
     data = _read(path)
     _check(data, _label(path))
-    project, loop, checks, release = (data[s] for s in SCHEMA)
+    project, loop, checks, release = (data[s] for s in list(SCHEMA)[:4])
+    plugin = data.get("plugin", {})
     return FlowConfig(
         project_repo=project["repo"],
         project_owner=project["owner"],
@@ -140,6 +148,8 @@ def load(path: Path | None = None) -> FlowConfig:
         checks_protected_test_dirs=tuple(checks["protected_test_dirs"]),
         release_timezone=release["timezone"],
         release_deploy_line=release["deploy_line"],
+        plugin_id=plugin.get("id", ""),
+        plugin_marketplace=plugin.get("marketplace", ""),
     )
 
 

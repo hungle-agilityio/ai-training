@@ -26,3 +26,7 @@ protected_test_dirs = ["reviews/tests"]
 [release]
 timezone = "Asia/Ho_Chi_Minh"
 deploy_line = "Render deploys branch deploy after Checks pass."
+
+[plugin]
+id = "agent-flow@ai-training"
+marketplace = "ai-training"
