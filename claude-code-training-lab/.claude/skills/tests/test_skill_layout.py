@@ -1,4 +1,4 @@
-"""Every skill follows the layout in .claude/skills/README.md.
+"""Every skill, in the project and in the agent-flow plugin, follows .claude/skills/README.md.
 
 Run: uv run pytest .claude/skills/tests --no-cov -q
 """
@@ -9,7 +9,15 @@ from pathlib import Path
 import pytest
 
 SKILLS = Path(__file__).resolve().parents[1]
-FOLDERS = sorted(p for p in SKILLS.iterdir() if p.is_dir() and (p / "SKILL.md").is_file())
+PLUGIN_SKILLS = next(
+    f / "plugins" / "agent-flow" / "skills" for f in SKILLS.parents if (f / "plugins").is_dir()
+)
+FOLDERS = sorted(
+    p
+    for root in (SKILLS, PLUGIN_SKILLS)
+    for p in root.iterdir()
+    if p.is_dir() and (p / "SKILL.md").is_file()
+)
 NAME = re.compile(r"^[a-z]+(-[a-z]+){1,2}$")
 FORBIDDEN = {"github", "gitlab", "git", "claude", "helper", "utils", "misc"}
 
@@ -48,3 +56,30 @@ def test_a_skill_with_a_program_has_tests(folder: Path) -> None:
 
     if programs:
         assert list((folder / "tests").glob("test_*.py")), f"{folder.name}: no tests"
+
+
+def test_the_project_keeps_only_its_app_skills_and_the_flow_lives_in_the_plugin() -> None:
+    project = {p.name for p in SKILLS.iterdir() if not p.name.startswith((".", "_"))}
+
+    assert project == {
+        "README.md",
+        "tests",
+        "write-tests",
+        "diagnose-bug",
+        "check-in-browser",
+        "capture-before-after",
+    }
+    assert not (SKILLS.parent / "agents").exists()
+    assert not (SKILLS.parent / "commands").exists()
+    assert {p.name for p in PLUGIN_SKILLS.iterdir() if (p / "SKILL.md").is_file()} == {
+        "work-queue",
+        "grill-me",
+        "create-issue",
+        "write-issue",
+        "create-pull-request",
+        "draft-pull-request",
+        "build-verify-report",
+        "share-report",
+        "review-pull-request",
+        "create-commit",
+    }

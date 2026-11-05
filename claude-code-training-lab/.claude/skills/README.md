@@ -1,6 +1,6 @@
 # Skills base
 
-How every skill in this folder is built, so a new one can be written the same way. Names follow `rules/naming.md` (verb + object, kebab-case, at most 3 words, no tool names).
+How every skill is built, in this folder (the app skills) and in the `agent-flow` plugin (`../plugins/agent-flow/skills/`, the flow skills), so a new one can be written the same way. Names follow `rules/naming.md` (verb + object, kebab-case, at most 3 words, no tool names).
 
 ## Layout of a skill
 
@@ -21,7 +21,7 @@ How every skill in this folder is built, so a new one can be written the same wa
 
 ## Test pattern
 
-- A skill with a program has `tests/test_<program>.py`: one small sample input in, the expected output asserted, and one case per refusal the program makes. Tests run in CI (`uv run pytest ../plugins/agent-flow/hooks/tests .claude/skills`).
-- `.claude/skills/tests/test_skill_layout.py` checks the layout of every skill (name = folder, naming rule, a description, a program has tests).
+- A skill with a program has `tests/test_<program>.py`: one small sample input in, the expected output asserted, and one case per refusal the program makes. Tests run in CI (`uv run pytest ../plugins/agent-flow/hooks/tests ../plugins/agent-flow/skills .claude/skills`).
+- `.claude/skills/tests/test_skill_layout.py` checks the layout of every skill, here and in the plugin (name = folder, naming rule, a description, a program has tests).
 
 A skill without a program is a procedure for Claude and has no test of its own. Which skills have a program: look for `*.py` in the folder.

@@ -236,7 +236,6 @@ def test_manifest_lists_what_is_copied_and_every_listed_file_lands_in_the_target
         "ops/bootstrap.py",
         "ops/tests/test_agent_tick.py",
         ".claude/settings.json",
-        ".claude/skills/work-queue/SKILL.md",
         ".claude/rules/workflow.md",
         ".claude/knowledge/decisions/ADR-018-stacked-pull-requests-and-retries.md",
         ".claude/knowledge/decisions/README.md",
@@ -251,6 +250,7 @@ def test_manifest_lists_what_is_copied_and_every_listed_file_lands_in_the_target
         assert (target / expected).is_file(), expected
     assert not (target / "reviews").exists()
     assert not (target / ".claude/skills/diagnose-bug").exists()
+    assert not (target / ".claude/skills/work-queue/SKILL.md").exists()
 
 
 def test_entry_that_does_not_exist_is_reported_and_skipped(

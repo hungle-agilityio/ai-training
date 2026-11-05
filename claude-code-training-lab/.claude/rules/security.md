@@ -18,6 +18,6 @@
 
 ## Sharing reports
 
-- A verify report may be published as a **private** artifact link only when its masking check is `clean`, the page shows demo data only, and the standing approval in `.claude/skills/share-report/rules.md` is `on` (the user gave it on 2026-10-16 and can switch it off by editing one line).
+- A verify report may be published as a **private** artifact link only when its masking check is `clean`, the page shows demo data only, and the standing approval in the `share-report` skill's `rules.md` (`../plugins/agent-flow/skills/share-report/rules.md`) is `on` (the user gave it on 2026-10-16 and can switch it off by editing one line).
 - The gate in the `share-report` skill applies this, and the hook `before-artifact-publish` is a second layer for the Artifact tool (it writes `out/artifact-publish.log`; see `../plugins/agent-flow/hooks/README.md`). The loop's Review queue page (titles, links and verdicts only, no review text, no customer data) is published under the standing approval of ADR-009. Any other artifact is shared only with the user's approval of that item.
 - The link is posted as a comment on the issue, not inside the issue file. Screenshots and reports never contain real customer data.

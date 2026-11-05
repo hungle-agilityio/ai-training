@@ -14,46 +14,6 @@ path = ".claude/settings.json"
 
 [[copy]]
 scope = "app"
-path = ".claude/skills/work-queue"
-
-[[copy]]
-scope = "app"
-path = ".claude/skills/grill-me"
-
-[[copy]]
-scope = "app"
-path = ".claude/skills/create-issue"
-
-[[copy]]
-scope = "app"
-path = ".claude/skills/write-issue"
-
-[[copy]]
-scope = "app"
-path = ".claude/skills/create-pull-request"
-
-[[copy]]
-scope = "app"
-path = ".claude/skills/draft-pull-request"
-
-[[copy]]
-scope = "app"
-path = ".claude/skills/build-verify-report"
-
-[[copy]]
-scope = "app"
-path = ".claude/skills/share-report"
-
-[[copy]]
-scope = "app"
-path = ".claude/skills/review-pull-request"
-
-[[copy]]
-scope = "app"
-path = ".claude/skills/create-commit"
-
-[[copy]]
-scope = "app"
 path = ".claude/rules/workflow.md"
 
 [[copy]]

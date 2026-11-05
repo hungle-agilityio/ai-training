@@ -1,6 +1,6 @@
 # Git and GitHub rules
 
-The step-by-step procedure is in the skills `create-commit`, `create-issue` and `create-pull-request`. This file is only the format.
+The step-by-step procedure is in the skills `agent-flow:create-commit`, `agent-flow:create-issue` and `agent-flow:create-pull-request`. This file is only the format.
 
 ## Hard rules
 
@@ -46,6 +46,6 @@ Part of #1
 
 ## GitHub and pull requests
 
-- Remote: `origin` is the GitHub repository named in `project.repo` of `ops/flow.toml`; Claude can reach no other repository (the guard hook blocks it). Issues and pull requests are created with the `gh` command through the skills `create-issue` and `create-pull-request`.
+- Remote: `origin` is the GitHub repository named in `project.repo` of `ops/flow.toml`; Claude can reach no other repository (the guard hook blocks it). Issues and pull requests are created with the `gh` command through the skills `agent-flow:create-issue` and `agent-flow:create-pull-request`.
 - An issue is drafted and reviewed locally, and published on GitHub only after the user approves it (type, labels, assignee `hungle-agilityio`). The skill reports `title | link`.
-- Pull request: into `main`, title `[type] title` (for example `[BUG] dashboard show wrong score number`), description with What, Why, How tested, Evidence and One concern (built by `draft-pull-request`), ending with `Closes #<number>`. Created only after the user approves the preview.
+- Pull request: into `main`, title `[type] title` (for example `[BUG] dashboard show wrong score number`), description with What, Why, How tested, Evidence and One concern (built by `agent-flow:draft-pull-request`), ending with `Closes #<number>`. Created only after the user approves the preview.
