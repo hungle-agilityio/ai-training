@@ -13,7 +13,7 @@ Run exactly these five commands, in order, from the project root, and keep going
 2. `uv run mypy .`
 3. `uv run pytest -q`
 4. `uv run coverage report --include="reviews/services.py,reviews/repositories.py" --fail-under=90`
-5. `uv run pytest .claude/hooks/tests .claude/skills -q --no-cov -p no:cacheprovider`
+5. `uv run pytest ../plugins/agent-flow/hooks/tests .claude/skills -q --no-cov -p no:cacheprovider`
 
 Report:
 

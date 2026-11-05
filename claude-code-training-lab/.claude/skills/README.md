@@ -21,7 +21,7 @@ How every skill in this folder is built, so a new one can be written the same wa
 
 ## Test pattern
 
-- A skill with a program has `tests/test_<program>.py`: one small sample input in, the expected output asserted, and one case per refusal the program makes. Tests run in CI (`uv run pytest .claude/hooks/tests .claude/skills`).
+- A skill with a program has `tests/test_<program>.py`: one small sample input in, the expected output asserted, and one case per refusal the program makes. Tests run in CI (`uv run pytest ../plugins/agent-flow/hooks/tests .claude/skills`).
 - `.claude/skills/tests/test_skill_layout.py` checks the layout of every skill (name = folder, naming rule, a description, a program has tests).
 
 A skill without a program is a procedure for Claude and has no test of its own. Which skills have a program: look for `*.py` in the folder.

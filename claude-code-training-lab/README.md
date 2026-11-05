@@ -153,7 +153,7 @@ uv run ruff check .    # lint
 uv run mypy .          # types (strict)
 uv run pytest          # tests with coverage
 uv run coverage report --include="reviews/services.py,reviews/repositories.py" --fail-under=90   # coverage gate
-uv run pytest .claude/hooks/tests .claude/skills --no-cov   # tests of the hooks and the skills' scripts
+uv run pytest ../plugins/agent-flow/hooks/tests .claude/skills --no-cov   # tests of the hooks and the skills' scripts
 uv run python .claude/skills/check-in-browser/browser_check.py   # browser check (once: uv run playwright install chromium)
 uv run python .claude/skills/build-verify-report/build_report.py --title "<issue>" --browser   # every axis in one report
 uv run python .claude/skills/capture-before-after/before_after.py --base <ref>   # screenshots before and after a change

@@ -10,7 +10,7 @@
 
 ## GitHub access
 
-- **One repository only.** Claude may reach `hungle-agilityio/ai-training` and nothing else on GitHub. The name is in `.claude/hooks/github-allowed-repo.txt`.
+- **One repository only.** Claude may reach `hungle-agilityio/ai-training` and nothing else on GitHub. The name is `project.repo` in `ops/flow.toml`.
 - **Three layers:** (1) the credentials: a fine-grained token limited to that repository for the API and MCP (the SSH key stays registered and GitHub does not limit it to one repository, so for `git` the hook is the limit); (2) the hook `before-github-command-check` and the allow, ask and deny lists in `.claude/settings.json`; (3) this text. Only (1) and (2) enforce; this text explains.
 - **If a command is blocked,** do not look for a way around it: tell the user which rule stopped it and ask (in loop mode, record it in the report and go on).
 - **Never** read, print or write the token. It lives in an environment variable on the user's machine.
@@ -19,5 +19,5 @@
 ## Sharing reports
 
 - A verify report may be published as a **private** artifact link only when its masking check is `clean`, the page shows demo data only, and the standing approval in `.claude/skills/share-report/rules.md` is `on` (the user gave it on 2026-10-16 and can switch it off by editing one line).
-- The gate in the `share-report` skill applies this, and the hook `before-artifact-publish` is a second layer for the Artifact tool (it writes `out/artifact-publish.log`; see `.claude/hooks/README.md`). The loop's Review queue page (titles, links and verdicts only, no review text, no customer data) is published under the standing approval of ADR-009. Any other artifact is shared only with the user's approval of that item.
+- The gate in the `share-report` skill applies this, and the hook `before-artifact-publish` is a second layer for the Artifact tool (it writes `out/artifact-publish.log`; see `../plugins/agent-flow/hooks/README.md`). The loop's Review queue page (titles, links and verdicts only, no review text, no customer data) is published under the standing approval of ADR-009. Any other artifact is shared only with the user's approval of that item.
 - The link is posted as a comment on the issue, not inside the issue file. Screenshots and reports never contain real customer data.

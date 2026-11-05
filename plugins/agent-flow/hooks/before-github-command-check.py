@@ -3,7 +3,8 @@
 other than the allowed one, or that manage repositories, accounts or secrets.
 
 The call arrives as JSON on stdin. Exit code 2 blocks it and sends stderr back to Claude.
-The allowed repository is the first line of github-allowed-repo.txt (owner/name).
+The allowed repository is `project.repo` of the project's ops/flow.toml (owner/name); the
+project is CLAUDE_PROJECT_DIR, else the cwd of the call.
 If anything goes wrong while checking a command that looks relevant, the command is blocked.
 """
 
@@ -15,10 +16,10 @@ import re
 import shlex
 import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from importlib import util
 from pathlib import Path
-
-ALLOWED_FILE = Path(__file__).with_name("github-allowed-repo.txt")
+from typing import Any
 
 GH_TOP_LEVEL = {
     "issue", "pr", "label", "run", "workflow", "release", "repo", "api", "auth", "version", "help",
@@ -416,12 +417,38 @@ def check_command(command: str, allowed: str, loop: bool = False) -> list[str]:
     return list(dict.fromkeys(problems))
 
 
-def read_allowed() -> str:
-    for line in ALLOWED_FILE.read_text().splitlines():
-        line = line.strip()
-        if line and not line.startswith("#"):
-            return line.lower()
-    raise ValueError("github-allowed-repo.txt has no repository")
+def loader_path(app: Path, named: str | None) -> Path:
+    """ops/flow_config.py of the project, else beside FLOW_CONFIG, else of the session's project."""
+    candidates = [app / "ops" / "flow_config.py"]
+    if named:
+        candidates.append(Path(named).parent / "flow_config.py")
+    session = os.environ.get("CLAUDE_PROJECT_DIR")
+    if session:
+        candidates.append(Path(session) / "ops" / "flow_config.py")
+    return next((path for path in candidates if path.is_file()), candidates[0])
+
+
+def flow_config(env: Mapping[str, str], cwd: str | None = None) -> Any:
+    """The project's ops/flow.toml (CLAUDE_PROJECT_DIR, else the cwd), or FLOW_CONFIG's file."""
+    session = env.get("CLAUDE_PROJECT_DIR") or os.environ.get("CLAUDE_PROJECT_DIR")
+    app = Path(session or cwd or os.getcwd())
+    named = env.get("FLOW_CONFIG")
+    module_path = loader_path(app, named)
+    spec = util.spec_from_file_location("flow_config", module_path)
+    if spec is None or spec.loader is None:
+        raise OSError(f"cannot load {module_path}")
+    module = util.module_from_spec(spec)
+    sys.modules[spec.name] = module  # its dataclass looks its module up by name
+    spec.loader.exec_module(module)
+    return module.load(Path(named) if named else app / "ops" / "flow.toml")
+
+
+def read_allowed(env: Mapping[str, str] | None = None, cwd: str | None = None) -> str:
+    """The one repository that may be reached: project.repo of ops/flow.toml, lowercase."""
+    repo = str(flow_config(os.environ if env is None else env, cwd).project_repo).strip()
+    if not repo:
+        raise ValueError("ops/flow.toml has no project.repo")
+    return repo.lower()
 
 
 LOOP_VARS = ("FLOW_LOOP", "REVIEWRADAR_LOOP")
@@ -672,7 +699,7 @@ def publish_gate(command: str, cwd: str) -> int:
 
     loop = is_loop()
     try:
-        decision, reasons = check_publish(command, loop, run)
+        decision, reasons = check_publish(command, loop, run, read_allowed(os.environ, cwd))
         if loop:
             link_problems = report_link_problems(command, cwd)
             if link_problems:
@@ -709,8 +736,9 @@ def main() -> int:
     if RELEVANT.search(command) is None and TOKEN_USE.search(plain) is None:
         return 0
     try:
-        problems = check_command(command, read_allowed(), is_loop())
-        allowed_name = read_allowed()
+        cwd = str(payload.get("cwd") or "") or None
+        allowed_name = read_allowed(os.environ, cwd)
+        problems = check_command(command, allowed_name, is_loop())
     except Exception as error:  # fail closed for anything that looks relevant
         problems = [f"the guard could not check this command ({error})"]
         allowed_name = "the allowed repository"

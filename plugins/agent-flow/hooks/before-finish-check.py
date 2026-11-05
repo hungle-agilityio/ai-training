@@ -23,8 +23,6 @@ Runner = Callable[[list[str], Path], tuple[int, str]]
 
 TAIL_LINES = 30
 
-APP_DIR = Path(__file__).resolve().parents[2]
-FLOW_MODULE = APP_DIR / "ops" / "flow_config.py"
 LOOP_VARS = ("FLOW_LOOP", "REVIEWRADAR_LOOP")
 
 
@@ -33,16 +31,35 @@ def is_loop(env: Mapping[str, str]) -> bool:
     return any(env.get(name) == "1" for name in LOOP_VARS)
 
 
-def flow_config(env: Mapping[str, str]) -> Any:
-    """The flow config of the app folder this hook sits in, or the file named by FLOW_CONFIG."""
-    spec = util.spec_from_file_location("flow_config", FLOW_MODULE)
+def app_dir(env: Mapping[str, str], cwd: Path | str | None = None) -> Path:
+    """The project: CLAUDE_PROJECT_DIR, else the cwd of the call; never this hook's own folder."""
+    session = env.get("CLAUDE_PROJECT_DIR") or os.environ.get("CLAUDE_PROJECT_DIR")
+    return Path(session or cwd or os.getcwd())
+
+
+def loader_path(app: Path, named: str | None) -> Path:
+    """ops/flow_config.py of the project, else beside FLOW_CONFIG, else of the session's project."""
+    candidates = [app / "ops" / "flow_config.py"]
+    if named:
+        candidates.append(Path(named).parent / "flow_config.py")
+    session = os.environ.get("CLAUDE_PROJECT_DIR")
+    if session:
+        candidates.append(Path(session) / "ops" / "flow_config.py")
+    return next((path for path in candidates if path.is_file()), candidates[0])
+
+
+def flow_config(env: Mapping[str, str], cwd: Path | str | None = None) -> Any:
+    """The flow config of the project (ops/flow.toml), or the file named by FLOW_CONFIG."""
+    app = app_dir(env, cwd)
+    named = env.get("FLOW_CONFIG")
+    module_path = loader_path(app, named)
+    spec = util.spec_from_file_location("flow_config", module_path)
     if spec is None or spec.loader is None:
-        raise OSError(f"cannot load {FLOW_MODULE}")
+        raise OSError(f"cannot load {module_path}")
     module = util.module_from_spec(spec)
     sys.modules[spec.name] = module  # its dataclass looks its module up by name
     spec.loader.exec_module(module)
-    named = env.get("FLOW_CONFIG")
-    return module.load(Path(named) if named else APP_DIR / "ops" / "flow.toml")
+    return module.load(Path(named) if named else app / "ops" / "flow.toml")
 
 
 def real_run(args: list[str], cwd: Path) -> tuple[int, str]:
@@ -57,8 +74,8 @@ def real_run(args: list[str], cwd: Path) -> tuple[int, str]:
     return done.returncode, done.stdout + done.stderr
 
 
-def check_commands(env: Mapping[str, str]) -> list[list[str]]:
-    return [list(command) for command in flow_config(env).checks_commands]
+def check_commands(env: Mapping[str, str], project: Path | None = None) -> list[list[str]]:
+    return [list(command) for command in flow_config(env, project).checks_commands]
 
 
 def failures(project: Path, run: Runner, commands: list[list[str]]) -> list[str]:
@@ -77,7 +94,7 @@ def evaluate(payload: object, project: Path, env: Mapping[str, str], run: Runner
     if isinstance(payload, dict) and payload.get("stop_hook_active"):
         return []
     try:
-        commands = check_commands(env)
+        commands = check_commands(env, project)
     except Exception as error:  # fail closed: no config means no proof the checks pass
         return [f"the checks of ops/flow.toml could not be read ({error})"]
     return failures(project, run, commands)

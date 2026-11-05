@@ -8,8 +8,9 @@ in an interactive session this hook does nothing. In loop mode it fails closed.
 Refused in loop mode (names are compared without regard to letter case, the Mac file system
 ignores it):
   - anything in a .github or .claude folder, on any path, and .mcp.json: the loop must not
-    change its own rules, only a person does. In .claude/knowledge/ a new file is allowed, a
-    file that already exists on main is not;
+    change its own rules, only a person does. The same for the flow plugin's source: plugins/
+    and .claude-plugin/ at the root of the git repository. In .claude/knowledge/ a new file is
+    allowed, a file that already exists on main is not;
   - pyproject.toml, uv.lock, conftest.py and the other tool config files (ruff.toml, mypy.ini,
     pytest.ini, .coveragerc, ...): they set the lint, type, test and coverage gates;
   - a test file that already exists on main under a folder of `checks.protected_test_dirs` in
@@ -37,8 +38,6 @@ GATE_FILES = {
     ".mypy.ini", "setup.cfg", "pytest.ini", "tox.ini", ".coveragerc",
 }
 
-APP_DIR = Path(__file__).resolve().parents[2]
-FLOW_MODULE = APP_DIR / "ops" / "flow_config.py"
 LOOP_VARS = ("FLOW_LOOP", "REVIEWRADAR_LOOP")
 
 
@@ -47,21 +46,42 @@ def is_loop(env: Mapping[str, str]) -> bool:
     return any(env.get(name) == "1" for name in LOOP_VARS)
 
 
-def flow_config(env: Mapping[str, str]) -> Any:
-    """The flow config of the app folder this hook sits in, or the file named by FLOW_CONFIG."""
-    spec = util.spec_from_file_location("flow_config", FLOW_MODULE)
+def app_dir(env: Mapping[str, str], cwd: Path | str | None = None) -> Path:
+    """The project: CLAUDE_PROJECT_DIR, else the cwd of the call; never this hook's own folder."""
+    session = env.get("CLAUDE_PROJECT_DIR") or os.environ.get("CLAUDE_PROJECT_DIR")
+    return Path(session or cwd or os.getcwd())
+
+
+def loader_path(app: Path, named: str | None) -> Path:
+    """ops/flow_config.py of the project, else beside FLOW_CONFIG, else of the session's project."""
+    candidates = [app / "ops" / "flow_config.py"]
+    if named:
+        candidates.append(Path(named).parent / "flow_config.py")
+    session = os.environ.get("CLAUDE_PROJECT_DIR")
+    if session:
+        candidates.append(Path(session) / "ops" / "flow_config.py")
+    return next((path for path in candidates if path.is_file()), candidates[0])
+
+
+def flow_config(env: Mapping[str, str], cwd: Path | str | None = None) -> Any:
+    """The flow config of the project (ops/flow.toml), or the file named by FLOW_CONFIG."""
+    app = app_dir(env, cwd)
+    named = env.get("FLOW_CONFIG")
+    module_path = loader_path(app, named)
+    spec = util.spec_from_file_location("flow_config", module_path)
     if spec is None or spec.loader is None:
-        raise OSError(f"cannot load {FLOW_MODULE}")
+        raise OSError(f"cannot load {module_path}")
     module = util.module_from_spec(spec)
     sys.modules[spec.name] = module  # its dataclass looks its module up by name
     spec.loader.exec_module(module)
-    named = env.get("FLOW_CONFIG")
-    return module.load(Path(named) if named else APP_DIR / "ops" / "flow.toml")
+    return module.load(Path(named) if named else app / "ops" / "flow.toml")
 
 
-def protected_test_parts(env: Mapping[str, str]) -> list[tuple[str, ...]]:
+def protected_test_parts(
+    env: Mapping[str, str], project: Path | None = None
+) -> list[tuple[str, ...]]:
     """Each folder of `checks.protected_test_dirs`, split into lowercase parts."""
-    dirs = flow_config(env).checks_protected_test_dirs
+    dirs = flow_config(env, project).checks_protected_test_dirs
     found = [tuple(p.casefold() for p in d.split("/") if p not in ("", ".")) for d in dirs]
     return [parts for parts in found if parts]
 
@@ -80,6 +100,30 @@ def real_run(args: list[str], cwd: Path) -> tuple[int, str]:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return 127, ""
     return done.returncode, done.stdout
+
+
+PLUGIN_DIRS = {"plugins", ".claude-plugin"}
+
+
+def git_root(path: Path, run: Runner) -> Path | None:
+    """The root of the git repository the path is in, or None when there is none."""
+    folder = path.parent
+    while not folder.exists() and folder != folder.parent:
+        folder = folder.parent
+    code, top = run(["git", "rev-parse", "--show-toplevel"], folder)
+    return Path(top.strip()).resolve() if code == 0 and top.strip() else None
+
+
+def in_plugin_source(path: Path, run: Runner) -> bool:
+    """plugins/ and .claude-plugin/ at the git root hold the flow plugin and its marketplace."""
+    root = git_root(path, run)
+    if root is None:
+        return False
+    try:
+        first = path.relative_to(root).parts[:1]
+    except ValueError:
+        return False
+    return bool(first) and first[0].casefold() in PLUGIN_DIRS
 
 
 def on_main(path: Path, project: Path, run: Runner) -> bool | None:
@@ -123,12 +167,17 @@ def evaluate(file_path: str, project: Path, env: Mapping[str, str], run: Runner)
                 reason = "is already on main" if known else "could not be compared with main"
                 return [f"{path.name} {reason}; only a person changes existing knowledge files"]
         return [f"{path.name} is a rule file; the loop never changes its own rules, ask the user"]
+    if in_plugin_source(path, run):
+        return [
+            f"{path.name} is part of the flow plugin; the loop never changes its own rules, "
+            "ask the user"
+        ]
     if name in GATE_FILES:
         return [f"{path.name} sets the lint, type, test or dependency gates; ask the user"]
     if env.get("ALLOW_TEST_EDIT") == "1":
         return []
     try:
-        folders = protected_test_parts(env)
+        folders = protected_test_parts(env, project)
     except Exception as error:  # fail closed
         return [f"{path.name} not checked: ops/flow.toml could not be read ({error})"]
     if under_any(parts, folders):

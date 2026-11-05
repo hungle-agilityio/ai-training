@@ -1,6 +1,6 @@
 # Rules of share-report
 
-The gate (`share_gate.py`) and the hook (`.claude/hooks/before-artifact-publish.py`) read the two settings below. Change a setting by editing its line.
+The gate (`share_gate.py`) and the hook (`before-artifact-publish` of the `agent-flow` plugin) read the two settings below. Change a setting by editing its line.
 
 - standing-approval: on
 - max-size-mb: 15

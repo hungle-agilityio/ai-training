@@ -11,7 +11,7 @@ Everything that leaves this machine goes through GitHub: issues and pull request
 
 | Setting | Value |
 |---|---|
-| Repository | the one named in `.claude/hooks/github-allowed-repo.txt` (the guard hook blocks every other repository) |
+| Repository | the one named in `project.repo` of `ops/flow.toml` (the guard hook blocks every other repository) |
 | Default assignee | `hungle-agilityio` |
 | Pull request base | `main` |
 

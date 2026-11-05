@@ -83,8 +83,17 @@ BLUR_CSS = "[data-sensitive]{filter:blur(6px) !important;}"
 REDACTED = "[redacted]"
 
 
+def plugin_hook(name: str) -> Path:
+    """A hook of the agent-flow plugin: plugins/agent-flow/hooks/<name> at the git root."""
+    for folder in Path(__file__).resolve().parents:
+        candidate = folder / "plugins" / "agent-flow" / "hooks" / name
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(f"the agent-flow plugin hook {name} was not found")
+
+
 def secret_pattern() -> re.Pattern[str]:
-    path = Path(__file__).resolve().parents[2] / "hooks" / "before-commit-check.py"
+    path = plugin_hook("before-commit-check.py")
     spec = importlib.util.spec_from_file_location("commit_hook", path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

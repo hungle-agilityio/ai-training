@@ -10,10 +10,6 @@ path = "ops"
 
 [[copy]]
 scope = "app"
-path = ".claude/hooks"
-
-[[copy]]
-scope = "app"
 path = ".claude/settings.json"
 
 [[copy]]

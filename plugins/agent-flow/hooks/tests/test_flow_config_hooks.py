@@ -1,6 +1,7 @@
 """The hooks read ops/flow.toml. Run: uv run pytest .claude/hooks/tests --no-cov -q"""
 
 import json
+import os
 import subprocess
 import tomllib
 from importlib import util
@@ -11,7 +12,7 @@ from typing import Any
 import pytest
 
 HOOKS = Path(__file__).resolve().parents[1]
-APP = HOOKS.parents[1]
+APP = Path(os.environ["CLAUDE_PROJECT_DIR"])
 FLOW_TOML = APP / "ops" / "flow.toml"
 BLOCKED_TEST = "is a test that is already on main; fix the code, not the test"
 
@@ -188,12 +189,9 @@ def test_every_hook_naming_the_old_variable_also_takes_flow_loop() -> None:
             assert "FLOW_LOOP" in text, hook.name
 
 
-# AC5: github-allowed-repo.txt stays the guard's source and matches project.repo
+# AC5: the guard's repository is project.repo of ops/flow.toml (github-allowed-repo.txt is gone)
 
 
 def test_allowed_repo_file_matches_project_repo() -> None:
-    lines = (HOOKS / "github-allowed-repo.txt").read_text().splitlines()
-    first = next(line.strip() for line in lines if line.strip() and not line.startswith("#"))
     repo = tomllib.loads(FLOW_TOML.read_text())["project"]["repo"]
-    assert first == repo
     assert GITHUB.read_allowed() == repo.lower()
