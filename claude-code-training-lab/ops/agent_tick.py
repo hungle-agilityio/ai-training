@@ -78,6 +78,7 @@ LAB_PREFIX = "claude-code-training-lab/"
 NTFY_TITLE = "ReviewRadar"
 REMINDER_SECONDS = 6 * 3600
 SIGNED_OUT_TEXT = "Claude Code is not signed in"
+ENTRYPOINT = "claude-desktop"  # `claude -p` offers the Artifact tool only with this
 LOW_PRIORITY = re.compile(
     r"(?:ReviewRadar )?(?:started #|working on PR #|waiting: |queue empty, |"
     r"PR #\d+ merged \(#\d+\); main is now )"
@@ -156,8 +157,6 @@ class Settings:
     concurrency: int
     ntfy_topic: str
     slack_url: str = ""
-    claude_config_dir: str = ""
-    claude_entrypoint: str = ""
 
 
 @dataclass(frozen=True)
@@ -254,25 +253,20 @@ def read_settings(path: Path) -> Settings:
         concurrency=int(raw),
         ntfy_topic=values.get("NTFY_TOPIC", ""),
         slack_url=values.get("SLACK_WEBHOOK_URL", ""),
-        claude_config_dir=os.path.expanduser(values.get("CLAUDE_CONFIG_DIR", "")),
-        claude_entrypoint=values.get("CLAUDE_CODE_ENTRYPOINT", ""),
     )
 
 
-def claude_env(settings: Settings) -> dict[str, str]:
-    """#172 AC1: the Claude Code variables agent.env sets; an empty value sets nothing."""
-    pairs = {
-        "CLAUDE_CONFIG_DIR": settings.claude_config_dir,
-        "CLAUDE_CODE_ENTRYPOINT": settings.claude_entrypoint,
-    }
-    return {key: value for key, value in pairs.items() if value}
+def claude_env(base: Mapping[str, str]) -> dict[str, str]:
+    """AC1, AC2: one Claude Code, the default `~/.claude`, with the Artifact entrypoint."""
+    env = {key: value for key, value in base.items() if key != "CLAUDE_CONFIG_DIR"}
+    env["CLAUDE_CODE_ENTRYPOINT"] = ENTRYPOINT
+    return env
 
 
 def signed_in(tick: Tick) -> bool | None:
     """#172 AC2: `claude auth status` with the build environment; None when unreadable."""
-    prefix = [f"{key}={value}" for key, value in claude_env(tick.settings).items()]
-    command = ["claude", "auth", "status"]
-    _, out = tick.host.run(["env", *prefix, *command] if prefix else command)
+    command = ["env", "-u", "CLAUDE_CONFIG_DIR", f"CLAUDE_CODE_ENTRYPOINT={ENTRYPOINT}"]
+    _, out = tick.host.run([*command, "claude", "auth", "status"])
     try:
         data = json.loads(out)
     except ValueError:
@@ -290,13 +284,12 @@ def sign_in_ok(tick: Tick) -> bool:
     if state:
         marker.unlink(missing_ok=True)
         return True
-    folder = tick.settings.claude_config_dir or "~/.claude"
-    tick.say(f"{SIGNED_OUT_TEXT} ({folder}); no build started")
+    tick.say(f"{SIGNED_OUT_TEXT} (~/.claude); no build started")
     if not marker.exists():
-        marker.write_text(folder)
+        marker.write_text("~/.claude")
         tick.notify(
-            f"ReviewRadar {SIGNED_OUT_TEXT} ({folder}); builds wait. "
-            f"Sign in with: CLAUDE_CONFIG_DIR={folder} claude auth login"
+            f"ReviewRadar {SIGNED_OUT_TEXT} (~/.claude); builds wait. "
+            "Sign in with: claude auth login"
         )
     return False
 
@@ -467,10 +460,6 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
         "agent:running,agent:ready",
     )
     body = f"{MARKER}\nThe loop build {reason}."
-    if outcome == "no-artifact" and not (
-        tick.settings.claude_entrypoint or os.environ.get("CLAUDE_CODE_ENTRYPOINT")
-    ):
-        body += " CLAUDE_CODE_ENTRYPOINT is not set in agent.env."
     body += f" Last {LOG_TAIL} lines of the log:\n"
     body += f"\n```\n{tail}\n```"
     tick.gh("issue", "comment", number, "--body", body)
@@ -1730,9 +1719,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
     return tick.log
 
 
-def run_build(
-    run: Path, folder: Path, prompt: str, extra_env: Mapping[str, str] | None = None
-) -> str:
+def run_build(run: Path, folder: Path, prompt: str) -> str:
     """The background wrapper: up to 3 starts of `claude -p`, 45 minutes in all; writes `exit`."""
     deadline = time.monotonic() + RUN_LIMIT
     outcome = "no-artifact"
@@ -1740,7 +1727,7 @@ def run_build(
         if number > 1 and time.monotonic() >= deadline:
             outcome = "timeout"
             break
-        outcome = run_start(run, folder, prompt, number, deadline, extra_env)
+        outcome = run_start(run, folder, prompt, number, deadline)
         if outcome != "no-artifact":
             break
     (run / "exit").write_text(outcome)
@@ -1772,10 +1759,9 @@ def run_start(
     prompt: str,
     number: int,
     deadline: float,
-    extra_env: Mapping[str, str] | None = None,
 ) -> str:
     """One `claude -p`; its output is the session log, a missing Artifact tool stops it."""
-    env = {**os.environ, **(extra_env or {}), "REVIEWRADAR_LOOP": "1"}
+    env = {**claude_env(os.environ), "REVIEWRADAR_LOOP": "1"}
     args = [
         "claude",
         "-p",
@@ -1853,13 +1839,7 @@ def announce_started(host: Host, home: Path, name: str) -> int:
 
 def main(argv: list[str]) -> int:
     if argv[:1] == ["run"] and len(argv) == 4:
-        where = Path(os.environ.get("REVIEWRADAR_HOME", Path.home() / ".reviewradar"))
-        settings = read_settings(where / "agent.env")
-        extra = claude_env(settings)
-        if extra:
-            run_build(Path(argv[1]), Path(argv[2]), argv[3], extra)
-        else:
-            run_build(Path(argv[1]), Path(argv[2]), argv[3])
+        run_build(Path(argv[1]), Path(argv[2]), argv[3])
         return 0
     home = Path(os.environ.get("REVIEWRADAR_HOME", Path.home() / ".reviewradar"))
     home.mkdir(parents=True, exist_ok=True)
