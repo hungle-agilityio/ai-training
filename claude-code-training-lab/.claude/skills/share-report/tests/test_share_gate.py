@@ -13,7 +13,11 @@ from types import ModuleType
 import pytest
 
 SKILL = Path(__file__).resolve().parents[1]
-HOOK = SKILL.parents[1] / "hooks" / "before-artifact-publish.py"
+HOOK = next(
+    f / "plugins/agent-flow/hooks/before-artifact-publish.py"
+    for f in SKILL.parents
+    if (f / "plugins/agent-flow/hooks").is_dir()
+)
 
 
 def load(path: Path, name: str) -> ModuleType:
@@ -113,7 +117,10 @@ def hook(file_path: Path, project: Path, tool: str = "Artifact", action: str | N
         capture_output=True,
         text=True,
         check=False,
-        env={"SHARE_RULES_FILE": str(project / "rules.md")},
+        env={
+            "SHARE_RULES_FILE": str(project / "rules.md"),
+            "CLAUDE_PROJECT_DIR": str(SKILL.parents[2]),
+        },
     )
     return done.returncode
 

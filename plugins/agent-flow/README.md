@@ -2,7 +2,9 @@
 
 The issue-to-pull-request flow as a Claude Code plugin: the guard hooks, the flow skills, the slash commands and the sub-agents of a loop that builds labelled issues. It is listed by the marketplace `ai-training` at the root of this repository (`.claude-plugin/marketplace.json`).
 
-This version is the empty skeleton. The hooks move in with #222 and the skills, commands and sub-agents with #223 (spec: `claude-code-training-lab/specs/flow-plugin/spec.md`).
+It holds the guard hooks (`hooks/`, see `hooks/README.md`). The skills, commands and sub-agents move in with #223 (spec: `claude-code-training-lab/specs/flow-plugin/spec.md`).
+
+A project turns the plugin on in its `.claude/settings.json` (`extraKnownMarketplaces` and `enabledPlugins`), and the hooks read that project's `ops/flow.toml` through `$CLAUDE_PROJECT_DIR`. The installed plugin only changes when its version does, so every change here raises the version in `.claude-plugin/plugin.json`.
 
 ## Install
 

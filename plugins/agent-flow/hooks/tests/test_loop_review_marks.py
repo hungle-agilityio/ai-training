@@ -11,7 +11,7 @@ from types import ModuleType
 import pytest
 
 HOOKS = Path(__file__).resolve().parents[1]
-LAB = HOOKS.parents[1]
+LAB = Path(os.environ["CLAUDE_PROJECT_DIR"])
 GITHUB_HOOK = HOOKS / "before-github-command-check.py"
 ALLOWED = "hungle-agilityio/ai-training"
 REPO = f"repos/{ALLOWED}"

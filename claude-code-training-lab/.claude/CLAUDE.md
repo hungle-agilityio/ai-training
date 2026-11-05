@@ -7,7 +7,7 @@ Django app that collects customer reviews per branch (location), shows a score d
 - `reviewradar/`, `reviews/`: the code (layers in `rules/architecture.md`).
 - `in/`: what a client gives us (not committed). `out/`: what we show outside (reports, exports; git-ignored). Both are created when a feature needs them.
 - `docs/app/`: ReviewRadar issues, templates, project background. `docs/learning/`: the Claude Code training.
-- `.claude/`: `rules/` (loaded automatically), `knowledge/` (business rules, pitfalls, ADRs; read when planning or reviewing), `skills/`, `agents/`, `commands/`, `hooks/`, `settings.json`.
+- `.claude/`: `rules/` (loaded automatically), `knowledge/` (business rules, pitfalls, ADRs; read when planning or reviewing), `skills/`, `agents/`, `commands/`, `settings.json` (the hooks come from the `agent-flow` plugin, `../plugins/agent-flow/`).
 - The git root is one level up (`../.github`). Open sessions in this folder (ADR-006).
 
 ## Commands

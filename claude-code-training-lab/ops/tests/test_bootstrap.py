@@ -235,7 +235,6 @@ def test_manifest_lists_what_is_copied_and_every_listed_file_lands_in_the_target
         "ops/flow_config.py",
         "ops/bootstrap.py",
         "ops/tests/test_agent_tick.py",
-        ".claude/hooks/before-finish-check.py",
         ".claude/settings.json",
         ".claude/skills/work-queue/SKILL.md",
         ".claude/rules/workflow.md",
@@ -274,7 +273,7 @@ def test_app_folder_goes_under_the_target_and_checks_workflow_points_at_it(
     assert run("--no-labels", app_dir="web") == 0
 
     assert (target / "web/ops/agent_tick.py").is_file()
-    assert (target / "web/.claude/hooks/before-finish-check.py").is_file()
+    assert not (target / "web/.claude/hooks").exists()
     assert (target / "CLAUDE.md").is_file()
     workflow = (target / ".github/workflows/checks.yml").read_text()
     assert "working-directory: web" in workflow
@@ -337,8 +336,7 @@ def test_no_old_value_is_left_in_any_copied_file(
 def test_allowed_repo_file_starts_with_the_new_repo(run: Run, target: Path, home: Path) -> None:
     assert run("--no-labels") == 0
 
-    first = (target / ".claude/hooks/github-allowed-repo.txt").read_text().splitlines()[0]
-    assert first == REPO
+    assert not (target / ".claude/hooks/github-allowed-repo.txt").exists()
 
 
 def test_stubs_have_headings_and_the_todo_line(run: Run, target: Path, home: Path) -> None:

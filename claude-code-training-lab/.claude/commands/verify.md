@@ -19,7 +19,7 @@ Use the `build-verify-report` skill. In short:
 | Types | `uv run mypy .` |
 | Tests | `uv run pytest -q` |
 | Coverage | 90% on services and repositories |
-| Skill and hook tests | `uv run pytest .claude/hooks/tests .claude/skills` |
+| Skill and hook tests | `uv run pytest ../plugins/agent-flow/hooks/tests .claude/skills` |
 | Issue | each criterion of the issue, from the criteria file |
 | Query count | asserted for list and dashboard pages |
 | Security | no secret-like string in the diff (`.claude/rules/security.md`) |

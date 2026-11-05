@@ -112,60 +112,15 @@
   "env": {
     "GH_REPO": "hungle-agilityio/ai-training"
   },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/usr/bin/env python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/before-github-command-check.py\""
-          },
-          {
-            "type": "command",
-            "command": "/usr/bin/env python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/before-commit-check.py\""
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write|NotebookEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/usr/bin/env python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/before-edit-check.py\""
-          }
-        ]
-      },
-      {
-        "matcher": "Artifact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/usr/bin/env python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/before-artifact-publish.py\""
-          }
-        ]
+  "extraKnownMarketplaces": {
+    "ai-training": {
+      "source": {
+        "source": "github",
+        "repo": "hungle-agilityio/ai-training"
       }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/usr/bin/env python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/before-finish-check.py\""
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/usr/bin/env python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/after-edit-format.py\""
-          }
-        ]
-      }
-    ]
+    }
+  },
+  "enabledPlugins": {
+    "agent-flow@ai-training": true
   }
 }

@@ -21,12 +21,20 @@ from types import ModuleType
 
 CLAUDE_DIR = Path(__file__).resolve().parents[2]
 SETTINGS = CLAUDE_DIR / "settings.json"
-EDIT_HOOK = CLAUDE_DIR / "hooks" / "before-edit-check.py"
 FLOW_MODULE = CLAUDE_DIR.parent / "ops" / "flow_config.py"
 FLOW_FOLDERS = ("ops/", ".claude/", ".github/", "specs/", "docs/learning/")
 SECTION = re.compile(r"^##\s+Files likely touched\s*$(.*?)(?=^##\s|\Z)", re.M | re.S)
 BULLET_PATH = re.compile(r"^\s*[-*]\s+`([^`]+)`(.*)$", re.M)
 EDIT_RULE = re.compile(r"^Edit\((.+)\)$")
+
+
+def plugin_hook(name: str) -> Path:
+    """A hook of the agent-flow plugin: plugins/agent-flow/hooks/<name> at the git root."""
+    for folder in Path(__file__).resolve().parents:
+        candidate = folder / "plugins" / "agent-flow" / "hooks" / name
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(f"the agent-flow plugin hook {name} was not found")
 
 
 def load_module(name: str, path: Path) -> ModuleType:
@@ -38,6 +46,7 @@ def load_module(name: str, path: Path) -> ModuleType:
     return module
 
 
+EDIT_HOOK = plugin_hook("before-edit-check.py")
 HOOK = load_module("before_edit_check", EDIT_HOOK)
 FLOW = load_module("flow_config", FLOW_MODULE)
 
