@@ -296,9 +296,7 @@ def test_the_browser_check_gets_the_spec_of_the_issue(tmp_path: Path) -> None:
     spec = tmp_path / "spec.json"
 
     BUILD.build(root, tmp_path / "out", run, "I", None, None, True, False, spec=spec)
-    BUILD.build(root, tmp_path / "out2", run, "I", None, None, True, False)
 
     browser = [c for c in commands if any("browser_check.py" in part for part in c)]
-    assert len(browser) == 2
+    assert len(browser) == 1
     assert browser[0][browser[0].index("--spec") + 1] == str(spec)
-    assert "--spec" not in browser[1]

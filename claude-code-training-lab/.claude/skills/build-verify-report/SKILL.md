@@ -11,11 +11,12 @@ One command runs every axis, reads the numbers from the real output (nothing is 
 
 ```
 uv run python .claude/skills/build-verify-report/build_report.py --title "<issue title>" \
-  --criteria <criteria file> [--review <review file>] [--browser] [--no-open]
+  --criteria <criteria file> [--review <review file>] (--browser --spec <file> | --no-ui) [--no-open]
 ```
 
-- `--browser` also runs the `check-in-browser` skill and puts its screenshots in the report. Use it for any issue that changes what users see.
-- `--spec <file>` (with `--browser`) gives the browser check the steps of the issue instead of the default reviews pages, so the screenshots in the report show the feature. In the report a click on a screenshot opens it full size; click again or press Escape to close it.
+- **A task that changes a screen:** `--browser --spec <file>`, where the file is the issue's `## Screens to capture` block copied unchanged. It runs the `check-in-browser` skill on those steps only, and the report shows each step's full page next to its close-up (`<name> (close-up)`) when the step gives `capture`. There are no default pages any more: `--browser` without `--spec` makes the Browser axis `FAIL` with `no screens given: pass --spec from the issue's "Screens to capture"`. A step whose `capture` matched nothing visible makes the Browser axis `FAIL` and names the step. In the report a click on a screenshot opens it full size; click again or press Escape to close it.
+- **A task that changes no screen:** `--no-ui`. No browser runs, the Browser axis reads `NOT APPLICABLE` (`the task changes no screen`) and the report has no screenshots. `NOT APPLICABLE` does not make the verdict `INCOMPLETE`. The masking status is then `clean` when no report text holds personal data, so the report can still be shared.
+- `--browser` and `--no-ui` together are refused (exit code 2). With neither, the Browser axis is `NOT CONFIGURED`.
 - The report is `out/verify/<time>/report.html` (one self-contained page, git-ignored) and `report.json`. It opens by itself unless `--no-open` is given.
 - It takes about half a minute: it runs the same checks as the automatic checks on GitHub.
 
@@ -48,7 +49,7 @@ Give the user the verdict, the path of the report and the failed axes, then stop
 
 ## Masking
 
-The report carries a `masking` status (`clean`, `findings` or `not run`) in `report.json`: clean only when the browser run was clean and no text of the report (title, criteria, review) holds personal data. Findings make the Browser axis FAIL and block sharing. `--plant "<text>"` is for testing the scan only.
+The report carries a `masking` status (`clean`, `findings` or `not run`) in `report.json`: clean only when the browser run was clean (or `--no-ui` was given) and no text of the report (title, criteria, review) holds personal data. Findings make the Browser axis FAIL and block sharing. `--plant "<text>"` is for testing the scan only.
 
 ## Rules
 
