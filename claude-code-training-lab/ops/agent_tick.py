@@ -1726,7 +1726,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
     """One tick; returns what it did, line by line."""
     settings = read_settings(settings_file(home))
     tick = Tick(host, home, settings)
-    tick.say(settings_line(home))
+    print(settings_line(home))  # first line of the tick's output; not in the returned log
     lock = home / "tick.lock"
     if not take_lock(host, lock):
         tick.say("another tick is running; nothing done")

@@ -51,20 +51,26 @@ def test_missing_repo_file_falls_back_to_state_file(folders: tuple[Path, Path]) 
 # AC3
 
 
-def test_tick_first_line_names_repo_file_without_values(folders: tuple[Path, Path]) -> None:
+def test_tick_first_line_names_repo_file_without_values(
+    folders: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
     home, repo_env = folders
     repo_env.write_text(f"AGENT_CONCURRENCY=2\nSLACK_WEBHOOK_URL={SECRET}\n")
-    lines = agent_tick.tick_once(FakeHost(), home)
-    assert lines[0] == "settings: ops/agent.env"
-    assert all(SECRET not in line for line in lines)
+    agent_tick.tick_once(FakeHost(), home)
+    out = capsys.readouterr().out
+    assert out.splitlines()[0] == "settings: ops/agent.env"
+    assert SECRET not in out
 
 
-def test_tick_first_line_names_state_file_on_fallback(folders: tuple[Path, Path]) -> None:
+def test_tick_first_line_names_state_file_on_fallback(
+    folders: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
     home, _ = folders
     (home / "agent.env").write_text(f"SLACK_WEBHOOK_URL={SECRET}\n")
-    lines = agent_tick.tick_once(FakeHost(), home)
-    assert lines[0] == f"settings: {home / 'agent.env'}"
-    assert all(SECRET not in line for line in lines)
+    agent_tick.tick_once(FakeHost(), home)
+    out = capsys.readouterr().out
+    assert out.splitlines()[0] == f"settings: {home / 'agent.env'}"
+    assert SECRET not in out
 
 
 def test_started_names_the_file_and_prints_no_value(
