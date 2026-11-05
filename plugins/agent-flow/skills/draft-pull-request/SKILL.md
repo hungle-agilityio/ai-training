@@ -14,6 +14,8 @@ uv run python <this skill's folder>/draft_pr.py --title "[FEAT] ..." --what "...
   [--issue N] --report out/verify/<folder> (--compare out/before-after/<folder> | --no-visual) [--out DIR]
 ```
 
+`<this skill's folder>` is the base directory Claude Code gives when this skill loads: an absolute path in the installed plugin. Run the script from there as one plain command, with no pipe, redirection or `2>&1`, and never from `../plugins/agent-flow/` in the repository: only that plain call runs without a prompt, so any other form stops a loop build.
+
 Output (default `out/pr-draft/<branch>/`, git-ignored): `pr-body.md`, `images/` and `draft.json`.
 
 ## What it checks
