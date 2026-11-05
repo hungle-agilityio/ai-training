@@ -55,6 +55,16 @@ def reports(request: HttpRequest) -> HttpResponse:
     return render(request, "reviews/reports.html", {"report": report})
 
 
+def reports_export(request: HttpRequest) -> HttpResponse:
+    report = report_service.monthly_report(ReportMonthForm(request.GET).month(), timezone.now())
+    response = HttpResponse(
+        report_service.report_csv(report), content_type="text/csv; charset=utf-8"
+    )
+    filename = report_service.report_filename(report)
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
 def dashboard_api(request: HttpRequest) -> JsonResponse:
     scores = services.branch_scores()
     return JsonResponse({"branches": [asdict(score) for score in scores]})

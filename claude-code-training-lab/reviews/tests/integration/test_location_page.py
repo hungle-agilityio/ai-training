@@ -86,7 +86,7 @@ def test_latest_reviews_are_five_newest_with_link_to_all(riverside: Branch) -> N
     assert 'data-sensitive="review-text"' in html
     assert f'href="/reviews/?location={riverside.pk}"' in html
     assert "See all reviews" in html
-    assert "<th scope=\"col\">Location</th>" not in html
+    assert '<th scope="col">Location</th>' not in html
 
 
 def test_same_time_reviews_show_higher_id_first(db: None) -> None:

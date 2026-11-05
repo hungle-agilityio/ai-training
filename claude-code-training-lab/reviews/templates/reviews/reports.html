@@ -3,7 +3,11 @@
 {% block title %}Monthly report · ReviewRadar{% endblock %}
 {% block heading %}Monthly report{% endblock %}
 {% block subtitle %}Reviews and average score per location for one month (Vietnam time).{% endblock %}
-{% block actions %}{% endblock %}
+{% block actions %}
+<div class="export-action">
+  <a class="button" href="{% url 'reports-export' %}?month={{ report.month_value }}">Export CSV</a>
+</div>
+{% endblock %}
 
 {% block content %}
 <section class="panel">
