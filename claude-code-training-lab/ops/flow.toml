@@ -1,0 +1,28 @@
+# The project values of the flow, read by ops/flow_config.py. No key has a default in code.
+
+[project]
+repo = "hungle-agilityio/ai-training"
+owner = "hungle-agilityio"
+app_dir = "claude-code-training-lab"
+display_name = "ReviewRadar"
+slug = "reviewradar"
+
+[loop]
+state_dir = "~/.reviewradar"
+tmux_session = "rr-loop"
+launchd_label = "com.reviewradar.loop"
+setup_command = ["uv", "sync", "--frozen"]
+alone_words = ["migrations/", "models.py"]
+
+[checks]
+commands = [
+    ["uv", "run", "ruff", "check", "."],
+    ["uv", "run", "mypy", "."],
+    ["uv", "run", "pytest", "-q", "--no-cov", "-p", "no:cacheprovider"],
+]
+ci_workflow = "Checks"
+protected_test_dirs = ["reviews/tests"]
+
+[release]
+timezone = "Asia/Ho_Chi_Minh"
+deploy_line = "Render deploys branch deploy after Checks pass."
