@@ -19,6 +19,20 @@ class PageForm(forms.Form):
         return value
 
 
+class ReportMonthForm(forms.Form):
+    """Month picker of the Monthly report. A wrong value is ignored: the report shows this month."""
+
+    def month(self) -> date | None:
+        raw = str(self.data.get("month", ""))
+        year, _, number = raw.partition("-")
+        if len(year) != 4 or len(number) != 2 or not (year + number).isdigit():
+            return None
+        try:
+            return date(int(year), int(number), 1)
+        except ValueError:
+            return None
+
+
 class ReviewFilterForm(forms.Form):
     """Filters of the Reviews page. A wrong value is ignored; the other filters still apply."""
 

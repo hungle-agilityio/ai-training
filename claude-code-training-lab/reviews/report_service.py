@@ -44,6 +44,10 @@ class MonthlyReport:
     options: list[MonthOption]
     rows: list[ReportRow]
 
+    @property
+    def has_reviews(self) -> bool:
+        return any(row.review_count for row in self.rows)
+
 
 def _label(month: date) -> str:
     return f"{MONTH_NAMES[month.month - 1]} {month.year}"

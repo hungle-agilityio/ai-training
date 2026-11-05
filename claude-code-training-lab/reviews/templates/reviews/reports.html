@@ -1,0 +1,59 @@
+{% extends "reviews/base.html" %}
+
+{% block title %}Monthly report · ReviewRadar{% endblock %}
+{% block heading %}Monthly report{% endblock %}
+{% block subtitle %}Reviews and average score per location for one month (Vietnam time).{% endblock %}
+{% block actions %}{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <header class="panel-head">
+    <h2>Locations</h2>
+    <p>{{ report.label }}</p>
+  </header>
+  <form class="filters" method="get" action="{% url 'reports' %}" aria-label="Choose a month">
+    <div class="field">
+      <label for="report-month">Month</label>
+      <select id="report-month" name="month">
+        {% for option in report.options %}
+          <option value="{{ option.value }}"{% if option.label == report.label %} selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button class="button button-apply" type="submit">Show</button>
+    </div>
+  </form>
+  {% if report.rows %}
+    <div class="table-wrap">
+      <table class="table report-table">
+        <thead>
+          <tr>
+            <th scope="col">Location</th>
+            <th scope="col">Reviews</th>
+            <th scope="col">Average</th>
+            <th scope="col">Good (4–5)</th>
+            <th scope="col">Bad (1–2)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report.rows %}
+            <tr>
+              <th scope="row"><a href="{% url 'location' row.branch_id %}">{{ row.name }}</a></th>
+              <td>{{ row.review_count }}</td>
+              <td>{% if row.average_rating is None %}—{% else %}{{ row.average_rating|floatformat:1 }}{% endif %}</td>
+              <td>{{ row.good_count }}</td>
+              <td>{{ row.bad_count }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if not report.has_reviews %}<p class="muted report-note">No reviews in {{ report.label }}.</p>{% endif %}
+  {% else %}
+    <div class="empty">
+      <h2>No locations yet</h2>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
