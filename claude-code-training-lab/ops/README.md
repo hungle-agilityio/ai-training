@@ -1,6 +1,6 @@
 # The loop on the Mac mini
 
-`agent_tick.py` is one tick of the loop. `start-loop.sh` runs a tick every 10 minutes in a tmux window. Each tick tidies the builds that ended, then starts up to `AGENT_CONCURRENCY` builds, each one `claude -p "Use the work-queue skill for issue #N only."` (or "pull request #N") in its own worktree, stopped after 45 minutes. Inside each build the `work-queue` skill does the work, as before. Spec: `specs/loop-concurrency/spec.md`; decision: ADR-014.
+`agent_tick.py` is one tick of the loop. `start-loop.sh` runs a tick every 5 minutes in a tmux window. Each tick tidies the builds that ended, then starts up to `AGENT_CONCURRENCY` builds, each one `claude -p "Use the work-queue skill for issue #N only."` (or "pull request #N") in its own worktree, stopped after 45 minutes. Inside each build the `work-queue` skill does the work, as before. Spec: `specs/loop-concurrency/spec.md`; decision: ADR-014.
 
 ## Install once
 

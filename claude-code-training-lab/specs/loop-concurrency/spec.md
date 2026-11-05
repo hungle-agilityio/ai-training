@@ -2,7 +2,7 @@
 
 ## Summary
 
-A new tick, `ops/agent_tick.py`, replaces the interactive `/loop 30m use the work-queue skill` session. `ops/start-loop.sh` runs the tick every 10 minutes in a tmux window. Each tick picks work, claims it, and starts one `claude -p` per piece of work in its own worktree, up to `AGENT_CONCURRENCY` at once. Each `claude -p` runs the `work-queue` skill for exactly one issue or one pull request. Nothing in the app changes.
+A new tick, `ops/agent_tick.py`, replaces the interactive `/loop 30m use the work-queue skill` session. `ops/start-loop.sh` runs the tick every 5 minutes in a tmux window. Each tick picks work, claims it, and starts one `claude -p` per piece of work in its own worktree, up to `AGENT_CONCURRENCY` at once. Each `claude -p` runs the `work-queue` skill for exactly one issue or one pull request. Nothing in the app changes.
 
 ## Acceptance criteria
 
@@ -23,7 +23,7 @@ A new tick, `ops/agent_tick.py`, replaces the interactive `/loop 30m use the wor
   - ended because the Claude plan limit was reached (the log says the usage limit was hit): put the issue back to `agent:ready` (remove `agent:running`), remove the worktree, pause new builds for 60 minutes (`~/.reviewradar/paused-until`), send an ntfy message. Never `agent:failed` for this.
 - **AC11. Pause.** While `paused-until` is in the future, the tick starts no build; it still does AC10.
 - **AC12. Notifications.** With `NTFY_TOPIC` set, the tick sends one ntfy message (`https://ntfy.sh/<topic>`) when: a build failed (AC10), the plan limit paused the loop (AC10), or nothing is left to do and no build is running ("queue empty, N pull requests waiting"). "Queue empty" is sent again only after something changed.
-- **AC13. Start script.** `ops/start-loop.sh` opens (or reuses) a tmux session `rr-loop` that runs the tick every 10 minutes under `caffeinate -i`, so the Mac mini does not sleep. It refuses to start when the session already exists, and prints how to attach and how to stop.
+- **AC13. Start script.** `ops/start-loop.sh` opens (or reuses) a tmux session `rr-loop` that runs the tick every 5 minutes under `caffeinate -i`, so the Mac mini does not sleep. It refuses to start when the session already exists, and prints how to attach and how to stop.
 - **AC14. Tests.** `ops/tests/` covers AC1 to AC12 with `gh`, `git`, `claude` and the clock faked (no network). `uv run ruff check .` and `uv run mypy .` pass on `ops/`. The CI step "Hook and skill tests" in `.github/workflows/checks.yml` also runs `ops/tests`.
 - **AC15. How to run.** `ops/README.md` says what to install (`brew install tmux`), how to make `agent.env`, how to start, watch (`tmux attach -t rr-loop`) and stop the loop, where the logs are, and that the old `/loop` work-queue session must be stopped first.
 
