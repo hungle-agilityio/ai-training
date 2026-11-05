@@ -1,13 +1,13 @@
 """Set up the flow in a clone of a new, empty repository from six values.
 
-Spec: specs/flow-bootstrap/spec.md (AC21 to AC31). It copies what `ops/bootstrap_manifest.toml`
-lists, renames it, writes `ops/flow.toml`, stubs, the labels and `agent.env`, and prints the steps
-only the owner can do. It never commits, never pushes and runs no `gh` command but
-`gh label create`. Standard library only.
+Spec: specs/flow-bootstrap/spec.md (AC21 to AC31), specs/bootstrap-gaps/spec.md. It copies what
+`ops/bootstrap_manifest.toml` lists, renames it, writes `ops/flow.toml`, stubs, the labels and
+`agent.env`, and prints the steps only the owner can do. It never commits, never pushes and runs
+no `gh` command but `gh label create`. Standard library only.
 
     uv run python ops/bootstrap.py --target <folder> --repo <owner/name> --owner <login> \
         --app-dir <folder or .> --name <display name> --slug <slug> --ntfy-topic <topic> \
-        [--dry-run] [--no-labels]
+        [--code-dirs <a,b,...>] [--dry-run] [--no-labels]
 """
 
 from __future__ import annotations
@@ -51,6 +51,32 @@ FLAGS = (
     ("ntfy_topic", "--ntfy-topic"),
 )
 COVERAGE_STEP = re.compile(r"^ +- name: Coverage gate.*?(?=^ +- name:|\Z)", re.S | re.M)
+HOOK_TESTS_STEP = re.compile(r"^ +- name: Hook and skill tests.*?(?=^ +- name:|\Z)", re.S | re.M)
+# Allow rules of ReviewRadar's own app; the copy keeps every other rule.
+APP_RULES = (
+    "Edit(./reviews/**)",
+    "Edit(./reviewradar/**)",
+    "Bash(uv run python manage.py:*)",
+    "Edit(//**/render.yaml)",
+)
+APP_RULE_PREFIX = "Bash(uv run python .claude/skills/"
+APP_ENV_KEYS = ("FLOW_COVERAGE_INCLUDE", "FLOW_COVERAGE_FAIL_UNDER")
+TESTS_DIR = "tests"
+PROJECT_INSTRUCTIONS = ".claude/project-instructions.md"
+SECURITY_RULES = ".claude/rules/security.md"
+PLUGIN_FILE = re.compile(r"`\.\./plugins/agent-flow/((?:skills|hooks)/[^`]+)`")
+ROUTE_ISSUE = (
+    "`python3 -I ../plugins/agent-flow/skills/create-issue/route_issue.py <body file>` "
+    "(from the app folder)"
+)
+ROUTE_ISSUE_NEW = (
+    "`route_issue.py <body file>` of the installed agent-flow plugin's `create-issue` skill "
+    "(run it from the skill's base directory, as one plain command)"
+)
+ROOT_INTRO = re.compile(r"^The project is `[^`]*` \([^)]*\)\. ", re.M)
+IMPORT_LINE = re.compile(r"^@(\S+)\s*$")
+PYPROJECT_STUB = "pyproject.toml.stub"
+FLOW_TEST_STUB = "test_flow_config.py"
 CHECKS_COMMANDS = [
     ["uv", "run", "ruff", "check", "."],
     ["uv", "run", "mypy", "."],
@@ -83,6 +109,7 @@ class Params:
     ntfy_topic: str
     dry_run: bool
     labels: bool
+    code_dirs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -96,6 +123,7 @@ class Planned:
 class Plan:
     files: tuple[Planned, ...]
     skipped: tuple[str, ...]
+    has_pyproject: bool = False
 
 
 def parse(argv: Sequence[str]) -> Params:
@@ -104,6 +132,7 @@ def parse(argv: Sequence[str]) -> Params:
         parser.add_argument(flag, default=None)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--no-labels", action="store_true")
+    parser.add_argument("--code-dirs", default=None)
     args = parser.parse_args(argv)
     missing = [flag for dest, flag in FLAGS if not getattr(args, dest)]
     if missing:
@@ -115,6 +144,7 @@ def parse(argv: Sequence[str]) -> Params:
     app_path = Path(args.app_dir)
     if app_path.is_absolute() or ".." in app_path.parts:
         raise BootstrapError(f"--app-dir {args.app_dir!r} must be a folder inside the repository")
+    code_dirs = parse_code_dirs(args.code_dirs)
     return Params(
         target=Path(args.target),
         repo=args.repo,
@@ -125,7 +155,25 @@ def parse(argv: Sequence[str]) -> Params:
         ntfy_topic=args.ntfy_topic,
         dry_run=args.dry_run,
         labels=not args.no_labels,
+        code_dirs=code_dirs,
     )
+
+
+def parse_code_dirs(value: str | None) -> tuple[str, ...]:
+    """Each folder is a relative path inside the app folder; anything else stops the run."""
+    if value is None:
+        return ()
+    folders: list[str] = []
+    for raw in value.split(","):
+        item = raw.strip()
+        folder = Path(item)
+        if not item or folder.is_absolute() or ".." in folder.parts:
+            raise BootstrapError(
+                f"--code-dirs {value!r}: {item!r} must be a folder inside the app folder "
+                "(relative, no ..)"
+            )
+        folders.append(folder.as_posix())
+    return tuple(folders)
 
 
 def check_target(params: Params) -> None:
@@ -178,25 +226,72 @@ def with_plugin_settings(text: str) -> str:
     return json.dumps(settings, indent=2).replace(PLUGIN_SOURCE_REPO, escaped) + "\n"
 
 
+def adapt_settings(text: str, code_dirs: Sequence[str]) -> str:
+    """Drop the rules and env of ReviewRadar's app; add an Edit rule per code folder and tests."""
+    settings = json.loads(text)
+    allow: list[str] = settings["permissions"]["allow"]
+    allow = [r for r in allow if r not in APP_RULES and not r.startswith(APP_RULE_PREFIX)]
+    wanted = list(dict.fromkeys([*code_dirs, TESTS_DIR]))
+    at = allow.index("Edit(./out/**)") if "Edit(./out/**)" in allow else len(allow)
+    allow[at:at] = [f"Edit(./{folder}/**)" for folder in wanted]
+    settings["permissions"]["allow"] = allow
+    for key in APP_ENV_KEYS:
+        settings.get("env", {}).pop(key, None)
+    return json.dumps(settings, indent=2) + "\n"
+
+
+def adapt_root_claude(text: str, params: Params) -> str:
+    """The heading is the repository name; the first line names the app folder and the project."""
+    lines = text.splitlines()
+    for number, line in enumerate(lines):
+        if line.startswith("# "):
+            lines[number] = "# " + params.repo.split("/", 1)[1]
+            break
+    folder = "./" if params.app_dir == "." else f"{params.app_dir}/"
+    text = "\n".join(lines) + "\n"
+    return ROOT_INTRO.sub(lambda _: f"The project is `{folder}` ({params.name}). ", text, count=1)
+
+
+def drop_unwritten_imports(text: str, written: set[Path], target: Path) -> str:
+    """An `@path` line stays only when bootstrap writes that file."""
+    kept = []
+    for line in text.splitlines():
+        match = IMPORT_LINE.match(line)
+        if match is None or (target / match.group(1)) in written:
+            kept.append(line)
+    return "\n".join(kept) + "\n"
+
+
 def _transform(rel: str, data: bytes, params: Params) -> bytes:
     try:
         text = data.decode("utf-8")
     except UnicodeDecodeError:
         return data
     if rel.endswith("workflows/checks.yml"):
-        text = COVERAGE_STEP.sub("", text)
+        text = HOOK_TESTS_STEP.sub("", COVERAGE_STEP.sub("", text))
+    if rel == "CLAUDE.md":
+        text = adapt_root_claude(text, params)
+    if rel == PROJECT_INSTRUCTIONS:
+        text = text.replace(ROUTE_ISSUE, ROUTE_ISSUE_NEW).replace("reviews/tests/", "tests/")
+    if rel in (PROJECT_INSTRUCTIONS, SECURITY_RULES):
+        text = PLUGIN_FILE.sub(r"`\1` inside the installed agent-flow plugin", text)
     text = _rename(text, params)
     if rel.endswith("github-allowed-repo.txt"):
         rest = [line for line in text.splitlines() if line.strip() != params.repo]
         text = "\n".join([params.repo, *rest]) + "\n"
     if rel == ".claude/settings.json":
-        text = with_plugin_settings(text)
+        text = with_plugin_settings(adapt_settings(text, params.code_dirs))
     return text.encode("utf-8")
 
 
 def _excluded(rel: Path, base: Path, exclude: Sequence[str]) -> bool:
     inside = rel.relative_to(base)
-    return bool(set(exclude) & set(inside.parts)) or inside.as_posix() in exclude
+    name = inside.as_posix()
+    return (
+        bool(set(exclude) & set(inside.parts))
+        or name in exclude
+        or any(name.startswith(item + "/") for item in exclude)
+    )
 
 
 def _flow_toml(params: Params) -> str:
@@ -267,7 +362,24 @@ def build_plan(params: Params, manifest: dict[str, Any]) -> Plan:
         dest = dest_app / rel
         text = (STUBS / stub).read_text().replace("{name}", params.name)
         planned[dest] = Planned(dest, text.encode(), 0o644)
-    return Plan(tuple(sorted(planned.values(), key=lambda p: p.dest)), tuple(skipped))
+    has_pyproject = (dest_app / "pyproject.toml").exists()
+    if not has_pyproject:
+        project_stub = (STUBS / PYPROJECT_STUB).read_text().replace("{slug}", params.slug)
+        test_stub = (STUBS / FLOW_TEST_STUB).read_text().replace("{repo}", params.repo)
+        for rel, content in (
+            ("pyproject.toml", project_stub),
+            ("tests/__init__.py", ""),
+            (f"tests/{FLOW_TEST_STUB}", test_stub),
+        ):
+            planned[dest_app / rel] = Planned(dest_app / rel, content.encode(), 0o644)
+    root_claude = params.target / "CLAUDE.md"
+    if root_claude in planned:
+        item = planned[root_claude]
+        text = drop_unwritten_imports(item.data.decode("utf-8"), set(planned), params.target)
+        planned[root_claude] = Planned(root_claude, text.encode("utf-8"), item.mode)
+    return Plan(
+        tuple(sorted(planned.values(), key=lambda p: p.dest)), tuple(skipped), has_pyproject
+    )
 
 
 def check_free(plan: Plan, params: Params) -> None:
@@ -338,15 +450,27 @@ def create_labels(params: Params, labels: Sequence[dict[str, str]]) -> list[str]
     return failed
 
 
-def steps(params: Params) -> list[str]:
+def steps(params: Params, has_pyproject: bool = False) -> list[str]:
     app = "" if params.app_dir == "." else f"{params.app_dir}/"
+    extra: list[str] = []
+    if has_pyproject:
+        extra.append(
+            f"{app}pyproject.toml already exists and was kept: add pytest, ruff and mypy to its "
+            "dev dependencies and make sure `uv run pytest -q` finds at least one test."
+        )
+    if not params.code_dirs:
+        extra.append(
+            "Add an Edit(./<folder>/**) rule to .claude/settings.json for each code folder, or "
+            "new issues will get agent:needs-permission."
+        )
     return [
         f"Run: claude plugin marketplace add {PLUGIN_SOURCE_REPO}",
-        f"Run: claude plugin install {PLUGIN_KEY}",
+        f"Run: claude plugin install {PLUGIN_KEY} --scope project",
         f"Add {params.repo} to the Mac mini fine-grained token and install the Claude GitHub App "
         "on it. Without the token the labels and every loop call fail.",
         "Create the ruleset on main by hand (pull request required, checks must pass).",
-        "Run uv sync, then make the first commit and push of main yourself.",
+        "Run uv sync, then make the first commit (with the uv.lock it creates) and push of main "
+        "yourself.",
         f"Create a Claude Project, attach {params.repo}, paste "
         f"{app}.claude/project-instructions.md, approve the folder for Remote Control, "
         f"and start Remote Control sessions inside {app or './'}.",
@@ -355,12 +479,13 @@ def steps(params: Params) -> list[str]:
         "Run bash ops/install-launchd.sh once.",
         f"Subscribe to the ntfy topic {params.ntfy_topic} on your phone.",
         "Keep the total AGENT_CONCURRENCY of all loops on this Mac mini at 2 to 3.",
+        *extra,
     ]
 
 
-def _print_steps(params: Params) -> None:
+def _print_steps(params: Params, has_pyproject: bool) -> None:
     print("\nSteps for you:")
-    for number, text in enumerate(steps(params), start=1):
+    for number, text in enumerate(steps(params, has_pyproject), start=1):
         print(f"{number}. {text}")
 
 
@@ -388,7 +513,7 @@ def run(params: Params) -> int:
             if failed:
                 print("labels not created: " + ", ".join(failed))
         print(write_agent_env(params))
-    _print_steps(params)
+    _print_steps(params, plan.has_pyproject)
     return 0
 
 
