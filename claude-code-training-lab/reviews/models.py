@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -26,3 +27,20 @@ class Review(models.Model):
 
     def __str__(self) -> str:
         return f"{self.branch_id}: {self.rating}"
+
+
+class ReviewReply(models.Model):
+    review = models.OneToOneField(Review, on_delete=models.CASCADE, related_name="reply")
+    text = models.TextField()
+    replied_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+
+    def __str__(self) -> str:
+        return f"reply to {self.review_id}"
