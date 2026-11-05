@@ -345,3 +345,6 @@ a.pager-link:hover { border-color: var(--brand); color: var(--brand); }
   .trend-col { font-size: 10.5px; }
   .trend-count { font-size: 9.5px; white-space: normal; }
 }
+
+.report-table td, .report-table th[scope="col"]:not(:first-child) { text-align: right; }
+.report-note { padding: 12px 20px 16px; margin: 0; }
