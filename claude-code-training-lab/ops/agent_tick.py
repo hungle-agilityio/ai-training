@@ -1,6 +1,6 @@
 """One tick of the loop: tidy ended builds, then start up to AGENT_CONCURRENCY new ones.
 
-Run by `ops/start-loop.sh` every 10 minutes. Spec: specs/loop-concurrency/spec.md (AC1 to AC12).
+Run by `ops/start-loop.sh` every 5 minutes. Spec: specs/loop-concurrency/spec.md (AC1 to AC12).
 `python ops/agent_tick.py` runs one tick; `python ops/agent_tick.py run <key> <folder> <prompt>`
 is the background wrapper of one build (started by the tick, not by hand).
 """

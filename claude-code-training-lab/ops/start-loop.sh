@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Start the loop: a tmux session (name from ops/flow.toml, `rr-loop` for ReviewRadar) that runs
-# one tick every 10 minutes under caffeinate.
+# one tick every 5 minutes under caffeinate.
 # Spec: specs/loop-concurrency/spec.md (AC13), specs/flow-bootstrap/spec.md (AC5).
 # How to run: ops/README.md.
 set -euo pipefail
@@ -23,9 +23,9 @@ fi
 
 echo "Stop the old '/loop 30m use the work-queue skill' session first, if it still runs."
 tmux new-session -d -s "$SESSION" -c "$LAB" \
-  "caffeinate -i bash -c 'while true; do date; uv run python ops/agent_tick.py; sleep 600; done'"
+  "caffeinate -i bash -c 'while true; do date; uv run python ops/agent_tick.py; sleep 300; done'"
 uv run python ops/agent_tick.py started || echo "Could not send the 'loop started' message." >&2
-echo "Loop started in tmux session $SESSION (one tick every 10 minutes)."
+echo "Loop started in tmux session $SESSION (one tick every 5 minutes)."
 # Same rule as the tick: ops/agent.env when it exists, else agent.env in the state folder (#199).
 if [ -f "$LAB/ops/agent.env" ]; then
   SETTINGS="$LAB/ops/agent.env"
