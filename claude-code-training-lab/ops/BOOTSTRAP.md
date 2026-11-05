@@ -27,7 +27,13 @@ uv run python ops/bootstrap.py --target <folder> --repo <owner/name> --owner <lo
 - Creates the 18 labels with `gh label create ... --force` (skip with `--no-labels`; a failed
   label is reported and the others still run).
 - Writes `~/.<slug>/agent.env` from `ops/agent.env.example`; an existing one is kept.
-- Prints the 8 steps only you can do. `--dry-run` prints the plan and writes nothing.
+- Turns the `agent-flow` plugin on: the copied `.claude/settings.json` gets `extraKnownMarketplaces`
+  (`ai-training`, the `hungle-agilityio/ai-training` repository) and `enabledPlugins`
+  (`agent-flow@ai-training`); other keys are kept. No hooks, flow skills, commands or sub-agents
+  are copied.
+- Prints the 10 steps only you can do; the first two install the plugin:
+  `claude plugin marketplace add hungle-agilityio/ai-training`, then
+  `claude plugin install agent-flow@ai-training`. `--dry-run` prints the plan and writes nothing.
 
 ## What it never does
 
