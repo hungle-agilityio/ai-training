@@ -211,6 +211,10 @@ protected_test_dirs = ["tests"]
 [release]
 timezone = "Asia/Ho_Chi_Minh"
 deploy_line = ""
+
+[plugin]
+id = "agent-flow@ai-training"
+marketplace = "ai-training"
 """
 
 

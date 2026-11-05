@@ -46,10 +46,17 @@ STARTS = 3
 RETRIES = 3
 ALL_PR_LIMIT = 100
 OPEN_PR_LIMIT = 40
-HINT = (
+BASE_HINT = (
     "If the Artifact tool is listed only as a deferred tool, load it with ToolSearch "
     '(query "select:Artifact") before you decide that it is missing.'
 )
+HINT = BASE_HINT
+PLUGIN_ID = ""
+PLUGIN_MARKETPLACE = ""
+PLUGIN_LIMIT = 60
+PLUGIN_NOTIFY_SECONDS = 60 * 60
+TIMED_OUT = 124
+VERSION = re.compile(r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?")
 LOG_TAIL = 20
 SKIP_LABELS = {"agent:running", "agent:review", "agent:failed", "agent:manual"}
 PR_LABELS = {"pr:ready-for-review", "pr:changes-requested", "pr:blocked", "pr:ci-failed"}
@@ -100,7 +107,12 @@ LOW_PRIORITY_TAIL = (
 def configure(config: flow_config.FlowConfig) -> None:
     """Set the project values from the flow config (spec flow-bootstrap AC5 to AC11)."""
     global REPO, OWNER, NAME, APP_DIR, SETUP_COMMAND, CI_WORKFLOW, STATE_DIR
-    global ALONE_WORDS, LAB_PREFIX, NTFY_TITLE, LOW_PRIORITY
+    global ALONE_WORDS, LAB_PREFIX, NTFY_TITLE, LOW_PRIORITY, PLUGIN_ID, PLUGIN_MARKETPLACE, HINT
+    PLUGIN_ID = config.plugin_id
+    PLUGIN_MARKETPLACE = config.plugin_marketplace
+    HINT = BASE_HINT
+    if PLUGIN_ID:
+        HINT += f" The work-queue skill of this prompt is `{PLUGIN_ID.split('@')[0]}:work-queue`."
     REPO = config.project_repo
     OWNER = config.project_owner
     NAME = config.project_display_name
@@ -137,6 +149,16 @@ class RealHost:
 
     def run(self, args: Sequence[str], cwd: Path | None = None) -> tuple[int, str]:
         done = subprocess.run(list(args), cwd=cwd, capture_output=True, text=True)
+        return done.returncode, done.stdout + done.stderr
+
+    def run_limited(self, args: Sequence[str], seconds: int) -> tuple[int, str]:
+        """Like `run`, but a command that takes over `seconds` is stopped and returns 124."""
+        try:
+            done = subprocess.run(list(args), capture_output=True, text=True, timeout=seconds)
+        except subprocess.TimeoutExpired:
+            return TIMED_OUT, f"timed out after {seconds} seconds"
+        except OSError as error:
+            return 127, str(error)
         return done.returncode, done.stdout + done.stderr
 
     def spawn(self, args: Sequence[str], log: Path) -> int:
@@ -1165,6 +1187,47 @@ def start_failed(tick: Tick, target: Target, step: str) -> None:
     tick.notify(f"{NAME} build for {what} did not start: {step} failed")
 
 
+def require_plugin_keys() -> None:
+    """AC23: a missing [plugin] key stops the tick with the key's name."""
+    for key, value in (("id", PLUGIN_ID), ("marketplace", PLUGIN_MARKETPLACE)):
+        if not value:
+            raise flow_config.FlowConfigError(f"ops/flow.toml: missing plugin.{key}")
+
+
+def plugin_failure(tick: Tick, kind: str, code: int, out: str) -> None:
+    """AC22: log the failure; one ntfy message per kind per hour."""
+    lines = out.strip().splitlines()
+    reason = lines[0][:200] if lines else f"exit {code}"
+    tick.say(f"plugin {kind} failed: {reason}; going on with the installed version")
+    sent = tick.home / "plugin-notified" / kind
+    try:
+        if tick.host.now() - float(sent.read_text()) < PLUGIN_NOTIFY_SECONDS:
+            return
+    except (OSError, ValueError):
+        pass
+    sent.parent.mkdir(parents=True, exist_ok=True)
+    sent.write_text(str(tick.host.now()))
+    tick.notify(f"{NAME} plugin {kind} failed: {reason}; builds use the installed version")
+
+
+def update_plugin(tick: Tick) -> None:
+    """AC21, AC22: marketplace update, then plugin update, each limited to 60 seconds."""
+    require_plugin_keys()
+    steps = (
+        ("marketplace-update", ["claude", "plugin", "marketplace", "update", PLUGIN_MARKETPLACE]),
+        ("plugin-update", ["claude", "plugin", "update", PLUGIN_ID]),
+    )
+    version = ""
+    for kind, command in steps:
+        code, out = tick.host.run_limited(command, PLUGIN_LIMIT)  # type: ignore[attr-defined]
+        if code != 0:
+            plugin_failure(tick, kind, code, out)
+        elif kind == "plugin-update":
+            found = VERSION.findall(out)
+            version = found[-1] if found else ""
+    tick.say(f"plugin {PLUGIN_ID}: version {version or 'unknown'}")
+
+
 def pull_main(tick: Tick) -> None:
     """#74 AC2, AC3: fast-forward the main checkout when it is on main with no tracked change."""
     git = ["git", "-C", str(REPO_ROOT)]
@@ -1732,6 +1795,8 @@ def tick_once(host: Host, home: Path) -> list[str]:
         tick.say("another tick is running; nothing done")
         return tick.log
     try:
+        if hasattr(host, "run_limited"):  # a host that cannot limit a command (a test fake) skips
+            update_plugin(tick)
         pull_main(tick)
         prs = loop_pull_requests(tick)
         sync_review(tick, prs, tidy_ready(tick))
@@ -1889,7 +1954,11 @@ def main(argv: list[str]) -> int:
     home.mkdir(parents=True, exist_ok=True)
     if argv[:1] == ["started"]:
         return announce_started(RealHost(), home, socket.gethostname())
-    tick_once(RealHost(), home)
+    try:
+        tick_once(RealHost(), home)
+    except flow_config.FlowConfigError as error:
+        print(error, file=sys.stderr)
+        return 2
     return 0
 
 
