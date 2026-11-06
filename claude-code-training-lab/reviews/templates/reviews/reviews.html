@@ -42,6 +42,14 @@
       </select>
     </div>
     <div class="field">
+      <label for="filter-reply">Reply</label>
+      <select id="filter-reply" name="reply">
+        <option value=""{% if not page.reply %} selected{% endif %}>All</option>
+        <option value="yes"{% if page.reply == "yes" %} selected{% endif %}>Replied</option>
+        <option value="no"{% if page.reply == "no" %} selected{% endif %}>Not replied</option>
+      </select>
+    </div>
+    <div class="field">
       <label for="filter-week">Week of</label>
       <input id="filter-week" type="date" name="week" value="{{ page.week_value }}" placeholder="YYYY-MM-DD">
     </div>
@@ -74,6 +82,7 @@
             <th scope="col">Review text</th>
             <th scope="col">Sentiment</th>
             <th scope="col">Date</th>
+            <th scope="col">Reply</th>
           </tr>
         </thead>
         <tbody>
@@ -92,6 +101,9 @@
               </td>
               <td><span class="badge badge-{{ row.sentiment }}">{{ row.sentiment_label }}</span></td>
               <td class="nowrap"><time datetime="{{ row.created_at|date:'c' }}" title="{{ row.created_at|full_review_date }}">{{ row.created_at|relative_review_date }}</time></td>
+              <td class="nowrap">
+                {% if row.has_reply %}<span class="reply-status reply-done">Replied</span> <a class="row-link" href="{% url 'review-reply' row.review_id %}">Edit reply</a>{% else %}<span class="reply-status reply-open">Not replied</span> <a class="row-link" href="{% url 'review-reply' row.review_id %}">Reply</a>{% endif %}
+              </td>
             </tr>
           {% endfor %}
         </tbody>

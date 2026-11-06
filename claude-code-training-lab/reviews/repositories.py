@@ -56,7 +56,7 @@ def rating_counts() -> RatingCounts:
 
 
 def list_recent_reviews(limit: int) -> Sequence[Review]:
-    return list(Review.objects.select_related("branch").order_by("-created_at")[:limit])
+    return list(Review.objects.select_related("branch", "reply").order_by("-created_at")[:limit])
 
 
 def branch_rating_totals_for(pk: int) -> BranchTotals | None:
@@ -92,12 +92,16 @@ def reviews_newest_first(
     ratings: tuple[int, int] | None = None,
     created_range: tuple[datetime, datetime] | None = None,
     words: Sequence[str] = (),
+    replied: bool | None = None,
 ) -> QuerySet[Review]:
     """Newest first. `ratings` is (lowest, highest) stars; `created_range` is [start, end).
 
     Every normalised word in `words` must be part of the stored search text.
+    `replied` True keeps reviews with a reply, False those without, None all.
     """
-    reviews = Review.objects.select_related("branch").order_by("-created_at", "-id")
+    reviews = Review.objects.select_related("branch", "reply").order_by("-created_at", "-id")
+    if replied is not None:
+        reviews = reviews.filter(reply__isnull=not replied)
     if branch_id is not None:
         reviews = reviews.filter(branch_id=branch_id)
     if ratings is not None:
