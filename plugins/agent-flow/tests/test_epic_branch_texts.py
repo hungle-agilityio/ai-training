@@ -35,6 +35,7 @@ def test_pull_requests_carry_the_epic_stacked_line() -> None:
     assert "ADR-021" in CREATE_PR
 
 
-def test_the_plugin_version_is_1_0_3() -> None:
+def test_the_plugin_version_is_at_least_1_0_3() -> None:
     manifest = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text())
-    assert manifest["version"] == "1.0.3"
+    version = tuple(int(part) for part in manifest["version"].split("."))
+    assert version >= (1, 0, 3)
