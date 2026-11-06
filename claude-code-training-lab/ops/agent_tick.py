@@ -25,8 +25,9 @@ from pathlib import Path
 from typing import Any, Protocol
 
 try:
-    from ops import flow_config
+    from ops import epic_branch, flow_config
 except ImportError:  # started as `python ops/agent_tick.py`: ops/ is the first path entry
+    import epic_branch  # type: ignore[import-not-found,no-redef,unused-ignore]
     import flow_config  # type: ignore[import-not-found,no-redef,unused-ignore]
 
 REPO = ""
@@ -1696,6 +1697,15 @@ def keep_branch(tick: Tick, branch: str) -> None:
     record.write_text("\n".join(sorted(have | {branch})))
 
 
+def keep_epic_branches(tick: Tick, prs: list[dict[str, Any]]) -> None:
+    """#263: one branch per epic with the green, ready pull requests of its tasks."""
+    try:
+        issues = open_issue_list(tick)
+        epic_branch.EpicBranches(tick, REPO, REPO_ROOT, NAME).keep(prs, issues)
+    except (RuntimeError, ValueError) as error:
+        tick.say(f"epic branches: {error}; next tick")
+
+
 def delete_kept_branches(tick: Tick, prs: list[dict[str, Any]]) -> None:
     """#180 AC3: delete each kept branch once nothing open is based on it; a failure is retried."""
     record = tick.home / "branch-delete"
@@ -1919,6 +1929,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
         settle_children(tick, prs)
         merge_approved(tick, prs, running)
         settle_children(tick, prs)
+        keep_epic_branches(tick, prs)
         delete_kept_branches(tick, prs)
         tidy_ended(tick, prs)
         tidy_worktrees(tick, prs, running)

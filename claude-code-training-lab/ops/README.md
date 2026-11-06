@@ -101,6 +101,19 @@ When the parent is merged, each open pull request based on its branch is given b
 
 A failed stacked issue also records `parent`, the head commit of #Q; a `stopped` failure is retried when that head moved (`the parent pull request #<Q> moved from <old> to <new>`), stacked again if #P still qualifies, from `origin/main` once #P is closed.
 
+## The epic branch
+
+A task belongs to an epic when its issue body has the line `Part of the epic #<N>` and #N is an open issue labelled `epic`. Each tick (`ops/epic_branch.py`, after the merge step) keeps one branch per such epic, `epic/<N>-<slug>`: the slug is the epic title without `Epic:`, lowercase, other characters than letters and digits replaced by `-`, at most 40 characters (#236 "Epic: reply to reviews" gives `epic/236-reply-to-reviews`).
+
+- The branch is created from `origin/main` the first time a pull request of one of the epic's tasks is open, not a draft, `pr:ready-for-review` and green on every check (at least one check).
+- Every such pull request whose head commit is not in the branch is merged into it with `git merge --no-ff` (never a rebase), then the branch is pushed. A pull request with new commits after review is merged again once it is green and ready again. The merges happen in a throw-away worktree under `~/.reviewradar/epic-work/<N>`; the main checkout is not touched. Only the tick pushes or deletes `epic/*`; a build never does.
+- When `origin/main` has commits the branch lacks, it is merged into the branch with a merge commit and pushed.
+- A conflict with a pull request: the merge is aborted, the branch stays as it was, and the tick posts once per head commit on that pull request `/redo merge origin/epic/<N>-<slug> into this branch and fix the conflict` (`~/.reviewradar/epic-redo`). A conflict with `main`: nothing else is merged into the branch, and one message per hour names it (`~/.reviewradar/epic-conflict-<N>`).
+- The log has one line per epic per tick: `epic #<N>: branch epic/<N>-<slug>, <k> pull requests in it`, or `..., conflict with main`.
+- When the epic issue is closed and no open pull request has the branch as its base, the branch is deleted on GitHub and in the main checkout.
+
+Tests: `ops/tests/test_epic_branch.py`.
+
 ## The Artifact tool check
 
 A build needs the `Artifact` tool to publish its verify report. Each build starts `claude -p` with `--output-format stream-json`, reads the tool list of the first `init` event and starts again (three starts at most) when `Artifact` is missing.
