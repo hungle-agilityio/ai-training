@@ -41,7 +41,7 @@ uv run python ops/bootstrap.py --target <folder> --repo <owner/name> --owner <lo
 Spec: `specs/bootstrap-gaps/spec.md`.
 
 - Writes `pyproject.toml` (from `ops/bootstrap_stubs/pyproject.toml.stub`), `tests/__init__.py` and
-  `tests/test_flow_config.py` when the app folder has no `pyproject.toml`; an existing one is kept
+  `tests/test_flow_config.py` (from `ops/bootstrap_stubs/test_flow_config.py.stub`) when the app folder has no `pyproject.toml`; an existing one is kept
   and a step says what to add.
 - The root `CLAUDE.md` is about the new project and imports only files bootstrap writes.
 - `.claude/settings.json` loses the allow rules and coverage env of ReviewRadar's app.

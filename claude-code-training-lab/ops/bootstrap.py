@@ -76,7 +76,8 @@ ROUTE_ISSUE_NEW = (
 ROOT_INTRO = re.compile(r"^The project is `[^`]*` \([^)]*\)\. ", re.M)
 IMPORT_LINE = re.compile(r"^@(\S+)\s*$")
 PYPROJECT_STUB = "pyproject.toml.stub"
-FLOW_TEST_STUB = "test_flow_config.py"
+FLOW_TEST_STUB = "test_flow_config.py.stub"
+FLOW_TEST_NAME = "test_flow_config.py"
 CHECKS_COMMANDS = [
     ["uv", "run", "ruff", "check", "."],
     ["uv", "run", "mypy", "."],
@@ -369,7 +370,7 @@ def build_plan(params: Params, manifest: dict[str, Any]) -> Plan:
         for rel, content in (
             ("pyproject.toml", project_stub),
             ("tests/__init__.py", ""),
-            (f"tests/{FLOW_TEST_STUB}", test_stub),
+            (f"tests/{FLOW_TEST_NAME}", test_stub),
         ):
             planned[dest_app / rel] = Planned(dest_app / rel, content.encode(), 0o644)
     root_claude = params.target / "CLAUDE.md"
