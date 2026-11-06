@@ -1211,21 +1211,28 @@ def plugin_failure(tick: Tick, kind: str, code: int, out: str) -> None:
 
 
 def update_plugin(tick: Tick) -> None:
-    """AC21, AC22: marketplace update, then plugin update, each limited to 60 seconds."""
+    """Update the marketplace, the main checkout and the user scope (what builds use), 60 s each."""
     require_plugin_keys()
     steps = (
         ("marketplace-update", ["claude", "plugin", "marketplace", "update", PLUGIN_MARKETPLACE]),
         ("plugin-update", ["claude", "plugin", "update", PLUGIN_ID]),
+        ("plugin-update-user", ["claude", "plugin", "update", PLUGIN_ID, "--scope", "user"]),
     )
-    version = ""
+    versions: dict[str, str] = {}
     for kind, command in steps:
+        if kind == "plugin-update-user" and "plugin-update" not in versions:
+            break  # #246: the main-checkout update failed; the user one would fail the same way
         code, out = tick.host.run_limited(command, PLUGIN_LIMIT)  # type: ignore[attr-defined]
         if code != 0:
             plugin_failure(tick, kind, code, out)
-        elif kind == "plugin-update":
+        elif kind != "marketplace-update":
             found = VERSION.findall(out)
-            version = found[-1] if found else ""
-    tick.say(f"plugin {PLUGIN_ID}: version {version or 'unknown'}")
+            versions[kind] = found[-1] if found else ""
+    main, user = versions.get("plugin-update", ""), versions.get("plugin-update-user", "")
+    line = f"plugin {PLUGIN_ID}: version {user or main or 'unknown'}"
+    if user and main and user != main:
+        line += f" (main checkout {main})"
+    tick.say(line)
 
 
 def pull_main(tick: Tick) -> None:
