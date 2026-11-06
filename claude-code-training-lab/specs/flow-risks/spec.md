@@ -21,7 +21,7 @@ Six small changes to the flow; nothing visible to users of the app. One CI check
 
 ### Stale runs (T3)
 
-- **AC8.** `running_keys` and `finish_runs` treat a run whose `pid` file is older than `RUN_LIMIT` plus 15 minutes (by the file's mtime) as ended, even when `os.kill(pid, 0)` succeeds. No process is signalled.
+- **AC8.** `start` writes the start time (`tick.host.now()`, whole seconds) to a file `started` in the run folder next to `pid`. `running_keys` and `finish_runs` treat a run whose `started` time is more than `RUN_LIMIT` plus 15 minutes before `tick.host.now()` as ended, even when `os.kill(pid, 0)` succeeds. A run folder without a `started` file (started before this change) is judged by the pid alone, as today. No process is signalled. The time comes from the host clock, never from a file's mtime, so the existing tests with a faked clock keep passing unchanged.
 - **AC9.** Such a run ends with outcome `gone` (no `exit` file) or its `exit` file's value, and is handled by `handle_end` as today (agent:failed, comment, failure record kind `transient`), so the normal retry applies.
 
 ### No retry after a decision stop (T4, T5)
@@ -48,7 +48,7 @@ Six small changes to the flow; nothing visible to users of the app. One CI check
 - Large data: AC7 caps removals at 10 per tick; the 29 folders today go in three ticks.
 - Permissions: the tick runs as the owner on the Mac mini; `git worktree remove --force` drops uncommitted changes of a closed build only, its commits stay on the `archive/` branch.
 - A worktree with no branch (detached): removed without a rename.
-- A run whose `pid` file is missing: unchanged (skipped, as today).
+- A run whose `pid` file is missing: unchanged (skipped, as today). A `started` file that is not a number: judged by the pid alone.
 - A decision marker from an earlier run: ignored, only comments posted during this run count.
 
 ## Decisions
@@ -57,7 +57,7 @@ Six small changes to the flow; nothing visible to users of the app. One CI check
 |---|---|---|---|
 | Q1 How CI enforces the plugin bump | A script compares the version at base and head when `plugins/agent-flow/` changed | A test with a stored content hash | States the rule directly; no extra file to keep in step |
 | Q2 When the tick removes a kept worktree | Issue or pull request closed; moved-aside folders after 3 days; branch archived first | Also failed builds of open issues after 14 days; only report the size | Closed work needs no checkout; commits stay on the archive branch |
-| Q3 Fallback for a stale pid | Run older than 45 + 15 minutes counts as ended, nothing is killed | Compare the process start time with `ps` | Simple, no macOS-specific parsing; a real build is stopped at 45 minutes |
+| Q3 Fallback for a stale pid | Run started more than 45 + 15 minutes ago (time written by the tick) counts as ended, nothing is killed | Compare the process start time with `ps` | Simple, no macOS-specific parsing; a real build is stopped at 45 minutes |
 | Q4a How a build says "needs the owner" | A `<!-- needs-decision -->` line in its stop comment | A new label `agent:needs-decision` | No new label; the comment is written today |
 | Q4b Issues that change what existing tests assert | Name them; `agent:ready` outside protected test folders, `agent:manual` inside | Always `agent:manual` | The hook already allows edits outside `reviews/tests/`; the loop keeps the work |
 | Q5 Template test collected by `pytest ops` | Rename to `.stub` | `norecursedirs` in `pyproject.toml` | No gate-file change |
