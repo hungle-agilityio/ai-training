@@ -1,0 +1,32 @@
+{% extends "reviews/base.html" %}
+{% load static %}
+
+{% block title %}Settings · ReviewRadar{% endblock %}
+{% block heading %}Settings{% endblock %}
+{% block subtitle %}Your account and how ReviewRadar is set up.{% endblock %}
+{% block actions %}{% endblock %}
+
+{% block head %}<link rel="stylesheet" href="{% static 'reviews/settings.css' %}">{% endblock %}
+
+{% block content %}
+{% if saved %}<p class="notice" id="password-saved" role="status">Password changed.</p>{% endif %}
+<section class="panel settings-panel" id="settings-account">
+  <h2>Account</h2>
+  <p class="settings-row"><span class="muted">Username</span> <strong data-sensitive>{{ request.user.get_username }}</strong></p>
+  <p class="muted">To change your username, ask your ReviewRadar admin.</p>
+
+  <h3>Change password</h3>
+  <form class="settings-form" method="post" action="{% url 'settings' %}">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="settings-field">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.errors %}<div id="{{ field.auto_id }}_error">{% for error in field.errors %}<p class="settings-error">{{ error }}</p>{% endfor %}</div>{% endif %}
+    </div>
+    {% endfor %}
+    <p class="muted settings-hint" id="id_new_password1_helptext">At least 8 characters, not only numbers, not a common password and not like your username.</p>
+    <button type="submit" class="button">Change password</button>
+  </form>
+</section>
+{% endblock %}
