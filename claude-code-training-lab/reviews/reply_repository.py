@@ -36,6 +36,11 @@ def reviews_without_reply() -> QuerySet[Review]:
     )
 
 
+def review_with_branch(review_id: int) -> Review | None:
+    """The review and its location in one query."""
+    return Review.objects.select_related("branch").filter(pk=review_id).first()
+
+
 def review_with_reply(review_id: int) -> Review | None:
     """The review, its location, its reply and the reply's user in one query."""
     return (
