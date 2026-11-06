@@ -1,9 +1,10 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from django.db.models import Count, Q, QuerySet, Sum
+from django.db.models import Count, DurationField, ExpressionWrapper, F, Q, QuerySet, Sum
 from django.db.models.functions import Coalesce
+from django.utils import timezone
 
 from reviews.models import Branch, Review
 from reviews.search_text import normalize_for_search
@@ -15,17 +16,46 @@ class BranchTotals:
     name: str
     review_count: int
     rating_total: int
+    # Bad reviews (1 to 2 stars): counted for reply speed, with a reply, replied in time
+    bad_counted: int = 0
+    bad_replied: int = 0
+    bad_replied_in_time: int = 0
+    # Seconds from review to first reply, summed over the bad reviews with a reply
+    reply_seconds: float = 0.0
 
 
-def branch_rating_totals() -> list[BranchTotals]:
-    """Review count and rating sum of every branch in one query, ordered by id.
+REPLY_WINDOW = timedelta(hours=24)
+BAD_RATINGS = (1, 2)
 
-    Keep it to a single join: a second join would multiply both numbers.
+
+def branch_rating_totals(*, now: datetime | None = None) -> list[BranchTotals]:
+    """Review count, rating sum and reply speed of every branch in one query, ordered by id.
+
+    Keep it to a single join: a second join would multiply the numbers. The reply is
+    one-to-one, so joining it adds no rows. A bad review with no reply counts only once
+    it is more than 24 hours old.
     """
+    now = now or timezone.now()
+    bad = Q(reviews__rating__range=BAD_RATINGS)
+    has_reply = Q(reviews__reply__isnull=False)
+    counted = bad & (has_reply | Q(reviews__created_at__lt=now - REPLY_WINDOW))
+    in_time = (
+        bad & has_reply & Q(reviews__reply__created_at__lte=F("reviews__created_at") + REPLY_WINDOW)
+    )
+    gap = ExpressionWrapper(
+        F("reviews__reply__created_at") - F("reviews__created_at"), output_field=DurationField()
+    )
     rows = (
         Branch.objects.order_by("id")
         .values("id", "name")
-        .annotate(review_count=Count("reviews"), rating_total=Coalesce(Sum("reviews__rating"), 0))
+        .annotate(
+            review_count=Count("reviews"),
+            rating_total=Coalesce(Sum("reviews__rating"), 0),
+            bad_counted=Count("reviews", filter=counted),
+            bad_replied=Count("reviews", filter=bad & has_reply),
+            bad_replied_in_time=Count("reviews", filter=in_time),
+            reply_gap=Sum(gap, filter=bad & has_reply),
+        )
     )
     return [
         BranchTotals(
@@ -33,6 +63,10 @@ def branch_rating_totals() -> list[BranchTotals]:
             name=str(row["name"]),
             review_count=int(row["review_count"]),
             rating_total=int(row["rating_total"]),
+            bad_counted=int(row["bad_counted"]),
+            bad_replied=int(row["bad_replied"]),
+            bad_replied_in_time=int(row["bad_replied_in_time"]),
+            reply_seconds=row["reply_gap"].total_seconds() if row["reply_gap"] else 0.0,
         )
         for row in rows
     ]

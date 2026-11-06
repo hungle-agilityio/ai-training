@@ -29,4 +29,11 @@
     <button type="submit" class="button">Change password</button>
   </form>
 </section>
+
+<section class="panel settings-panel" id="settings-suggestions">
+  <h2>Reply suggestions</h2>
+  <p class="settings-row"><span class="badge {{ suggestions.badge }}">{{ suggestions.label }}</span></p>
+  <p class="muted">{{ suggestions.detail }}</p>
+  {% if suggestions.model %}<p class="settings-row">Model: {{ suggestions.model }}</p>{% endif %}
+</section>
 {% endblock %}

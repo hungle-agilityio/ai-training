@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 
 from django.core.paginator import Paginator
 from django.db.models import QuerySet
+from django.utils import timezone
 
 from reviews import repositories
 from reviews.models import Review
@@ -84,6 +85,80 @@ class BranchRow:
     bar_percent: int
     status: str
     status_label: str
+    reply_percent: int | None = None
+
+
+@dataclass(frozen=True)
+class ReplySpeed:
+    counted: int = 0
+    replied: int = 0
+    replied_in_time: int = 0
+    percent: int | None = None
+    average_hours: float | None = None
+    average_label: str = ""
+
+
+SECONDS_PER_HOUR = Decimal(3600)
+DAYS_FROM_HOURS = Decimal(48)
+
+
+def reply_share_percent(replied_in_time: int, counted: int) -> int | None:
+    """Whole percent of counted bad reviews replied in 24 hours, half up; None when none counted."""
+    if counted == 0:
+        return None
+    share = Decimal(replied_in_time) * 100 / Decimal(counted)
+    return int(share.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+
+def _mean_hours(total_seconds: float, count: int) -> Decimal:
+    return Decimal(total_seconds) / SECONDS_PER_HOUR / Decimal(count)
+
+
+def average_reply_hours(total_seconds: float, count: int) -> float | None:
+    """Mean reply time in hours to one decimal, half up; None when no review has a reply."""
+    if count == 0:
+        return None
+    return float(_mean_hours(total_seconds, count).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
+
+def reply_time_label(total_seconds: float, count: int) -> str:
+    """Hours under 48, days from 48; the choice uses the unrounded mean."""
+    if count == 0:
+        return ""
+    hours = _mean_hours(total_seconds, count)
+    if hours < DAYS_FROM_HOURS:
+        return f"{hours.quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)} h"
+    days = (hours / 24).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+    return f"{days} days"
+
+
+def _reply_speed(counted: int, replied: int, in_time: int, seconds: float) -> ReplySpeed:
+    return ReplySpeed(
+        counted=counted,
+        replied=replied,
+        replied_in_time=in_time,
+        percent=reply_share_percent(in_time, counted),
+        average_hours=average_reply_hours(seconds, replied),
+        average_label=reply_time_label(seconds, replied),
+    )
+
+
+def reply_speed_of(totals: repositories.BranchTotals) -> ReplySpeed:
+    return _reply_speed(
+        totals.bad_counted,
+        totals.bad_replied,
+        totals.bad_replied_in_time,
+        totals.reply_seconds,
+    )
+
+
+def total_reply_speed(rows: Sequence[repositories.BranchTotals]) -> ReplySpeed:
+    return _reply_speed(
+        sum(row.bad_counted for row in rows),
+        sum(row.bad_replied for row in rows),
+        sum(row.bad_replied_in_time for row in rows),
+        sum(row.reply_seconds for row in rows),
+    )
 
 
 @dataclass(frozen=True)
@@ -120,6 +195,7 @@ class DashboardOverview:
     branches: list[BranchRow]
     rating_bars: list[RatingBar]
     recent_reviews: list[ReviewRow]
+    reply_speed: ReplySpeed = ReplySpeed()
 
 
 def branch_status(average: float) -> tuple[str, str]:
@@ -213,9 +289,17 @@ def location_page(pk: int) -> LocationPage | None:
     )
 
 
-def dashboard_overview(recent_limit: int = 6) -> DashboardOverview:
+def dashboard_overview(recent_limit: int = 6, now: datetime | None = None) -> DashboardOverview:
     rows = []
-    for score in branch_scores():
+    totals_list = repositories.branch_rating_totals(now=now or timezone.now())
+    for totals in totals_list:
+        score = BranchScore(
+            branch_id=totals.branch_id,
+            name=totals.name,
+            review_count=totals.review_count,
+            average_rating=average_from_totals(totals.rating_total, totals.review_count),
+        )
+        reply_percent = reply_speed_of(totals).percent
         if score.average_rating is None:
             # No reviews yet: no score, no bar, no status, and not "needs attention"
             rows.append(
@@ -227,6 +311,7 @@ def dashboard_overview(recent_limit: int = 6) -> DashboardOverview:
                     bar_percent=0,
                     status="",
                     status_label="",
+                    reply_percent=reply_percent,
                 )
             )
             continue
@@ -240,6 +325,7 @@ def dashboard_overview(recent_limit: int = 6) -> DashboardOverview:
                 bar_percent=round(score.average_rating / 5 * 100),
                 status=status,
                 status_label=label,
+                reply_percent=reply_percent,
             )
         )
 
@@ -268,6 +354,7 @@ def dashboard_overview(recent_limit: int = 6) -> DashboardOverview:
         branches=rows,
         rating_bars=bars,
         recent_reviews=recent,
+        reply_speed=total_reply_speed(totals_list),
     )
 
 
