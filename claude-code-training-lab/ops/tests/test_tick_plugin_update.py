@@ -13,6 +13,7 @@ from ops.tests.test_agent_tick import NOW, FakeHost
 
 MARKETPLACE_CMD = ["claude", "plugin", "marketplace", "update", "ai-training"]
 UPDATE_CMD = ["claude", "plugin", "update", "agent-flow@ai-training"]
+USER_UPDATE_CMD = [*UPDATE_CMD, "--scope", "user"]
 
 
 @dataclass
@@ -41,8 +42,8 @@ def plugin_calls(host: PluginHost) -> list[list[str]]:
 def test_plugin_commands_run_first_with_a_60_second_limit(tmp_path: Path) -> None:
     host = PluginHost(clock=NOW)
     tick(host, tmp_path)
-    assert plugin_calls(host) == [MARKETPLACE_CMD, UPDATE_CMD]
-    assert [seconds for _, seconds in host.limits] == [60, 60]
+    assert plugin_calls(host) == [MARKETPLACE_CMD, UPDATE_CMD, USER_UPDATE_CMD]
+    assert [seconds for _, seconds in host.limits] == [60, 60, 60]
     first_other = next(i for i, c in enumerate(host.calls) if c[0] != "claude")
     assert host.calls.index(MARKETPLACE_CMD) < first_other
 
@@ -65,15 +66,16 @@ def test_an_unchanged_plugin_logs_the_version_it_reports(tmp_path: Path) -> None
 
 
 @pytest.mark.parametrize(
-    ("failing", "kind"), [("marketplace", "marketplace-update"), ("update", "plugin-update")]
+    ("failing", "kind", "commands"),
+    [("marketplace", "marketplace-update", 3), ("update", "plugin-update", 2)],
 )
 def test_a_failed_command_is_logged_notified_and_the_tick_goes_on(
-    tmp_path: Path, failing: str, kind: str
+    tmp_path: Path, failing: str, kind: str, commands: int
 ) -> None:
     host = PluginHost(plugin_answers={failing: (1, "network down")})
     log = tick(host, tmp_path)
     assert any(kind in line and "network down" in line for line in log)
-    assert len(plugin_calls(host)) == 2
+    assert len(plugin_calls(host)) == commands
     assert any(c[0] == "gh" for c in host.calls)  # the tick went on past the update
 
 
