@@ -1253,6 +1253,8 @@ def start(tick: Tick, target: Target) -> bool:
             start_failed(tick, target, name)
             return False
     (tick.home / "start-failed" / target.key).unlink(missing_ok=True)
+    if target.key.startswith("pr-"):
+        write_round(tick, worktree, lab, target.number)
     if target.key.startswith("issue-"):
         stacked = tick.home / "stacked" / str(target.number)
         if target.stack_branch:
@@ -1312,6 +1314,18 @@ def start(tick: Tick, target: Target) -> bool:
     if target.message:
         tick.notify(target.message)
     return True
+
+
+def write_round(tick: Tick, worktree: Path, lab: Path, number: int) -> None:
+    """The head a pull request round starts from: its stop hook asks for a republished report."""
+    code, out = tick.host.run(["git", "-C", str(worktree), "rev-parse", "HEAD"])
+    head = out.strip() if code == 0 else ""
+    if not head:
+        tick.say(f"pr-{number}: start head unknown; the report check is skipped")
+        return
+    folder = lab / "out"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "pr-round.json").write_text(json.dumps({"head": head, "pr": number}))
 
 
 def archive_branches(tick: Tick, target: Target, aside: Path | None) -> None:
