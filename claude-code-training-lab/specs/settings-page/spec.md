@@ -2,7 +2,7 @@
 
 ## Summary
 
-The sidebar item "Settings" stops being a disabled "Soon" item and links to a new page `/settings/`. The page has two panels. "Account" shows the username and a form to change one's own password with Django's `PasswordChangeForm` (current password, new password twice, Django's four password validators); the user stays signed in and their other sessions are signed out. "Reply suggestions" shows, read-only, whether the "Suggest a reply" button of epic #281 is on, in demo mode or off, and the model it uses; it never shows the API key. No model, no migration, no new package. The live site changes at the release task of this epic (ADR-017).
+The sidebar item "Settings" stops being a disabled "Soon" item and links to a new page `/settings/`. The page has two panels. "Account" shows the username and a form to change one's own password with Django's `PasswordChangeForm` (current password, new password twice, Django's four password validators); the user stays signed in and their other sessions are signed out. "Reply suggestions" shows, read-only, whether the "Suggest a reply" button of epic #281 is on, in demo mode or off, and the model it uses; it never shows the API key. No model, no migration, no new package. The live site changes at the owner's next release (ADR-017).
 
 ## Acceptance criteria
 
@@ -30,9 +30,9 @@ Reply suggestions panel (T2):
 - **AC13.** `GET /settings/` still makes at most 2 database queries (AC8).
 - **AC14.** Tests in new files `reviews/tests/unit/test_settings_service.py` and `reviews/tests/integration/test_settings_suggestions.py` cover AC11 to AC13 for each mode (settings overridden with pytest-django's `settings` fixture, a fake key such as `sk-test-not-real` that must not appear in the page), never the network.
 
-Release (T3):
+After the release (the owner releases and checks it):
 
-- **AC15.** After the merge of T1 and T2, `ops/release.py` releases the epic. On Render, signed in as `demo`: "Settings" in the sidebar opens `/settings/` and shows `demo`; a wrong current password shows the error of AC6; the Reply suggestions panel shows `On` and the model when `ANTHROPIC_API_KEY` is set on Render, otherwise `Off`.
+- **AC15.** After the merge of T1 and T2 and the owner's next release (`ops/release.py`, ADR-017), on Render, signed in as `demo`: "Settings" in the sidebar opens `/settings/` and shows `demo`; a wrong current password shows the error of AC6; the Reply suggestions panel shows `On` and the model when `ANTHROPIC_API_KEY` is set on Render, otherwise `Off`.
 
 ## Edge cases
 
@@ -55,7 +55,7 @@ Release (T3):
 | Q5 Reply suggestions panel | Read-only status On / Demo / Off and the model, never the key; depends on #282 | Leave it out | Staff learn why the button is hidden; settings stay environment variables |
 | Q6 Lock after wrong passwords | No (follow-up) | Lock 15 minutes after 5 failures | Same choice as spec `auth` Q8; keeps the epic small |
 | Q7 After a successful change | Stay on `/settings/` with "Password changed." | Go to the dashboard | The user sees the result where they acted |
-| Q8 Tasks | T1 page and password; T2 suggestions panel (after T1 and #282); T3 release | One task | Small pull requests; T2 waits only for what it needs; the owner wants a deploy task per epic |
+| Q8 Tasks | T1 page and password; T2 suggestions panel (after T1 and #282) | One task | Small pull requests; T2 waits only for what it needs; the owner releases and deploys by hand |
 
 ## Design
 

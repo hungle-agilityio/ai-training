@@ -1,6 +1,6 @@
 # Tasks: settings-page
 
-Three tasks. T2 builds on T1 (same template) and on #282 (`reply_suggestion.suggestion_mode()`). T3 is the release of the epic, done by the owner's release command, so it is `agent:manual`. No task changes `pyproject.toml`, `uv.lock` or `.claude/`, and none adds a migration.
+Two tasks. T2 builds on T1 (same template) and on #282 (`reply_suggestion.suggestion_mode()`). No task changes `pyproject.toml`, `uv.lock` or `.claude/`, and none adds a migration.
 
 ## T1: Settings page with change password
 
@@ -23,11 +23,5 @@ Three tasks. T2 builds on T1 (same template) and on #282 (`reply_suggestion.sugg
 - **Screens to capture:** `/settings/` (fresh demo database, DEBUG on, no key, so the panel shows Demo) → `#settings-suggestions`
 - **Label:** `agent:ready`, `area:app`
 
-## T3: Release the Settings page epic to Render
 
-- **ACs:** AC15
-- **Files likely touched:** none (the release only moves branches and a tag)
-- **Depends on:** T1, T2
-- **Risk:** low
-- **needs-ui:** no
-- **Label:** `agent:manual`, `area:app` (format of #278)
+AC15 is checked by the owner after the release.
