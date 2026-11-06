@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -39,3 +41,6 @@ jobs:
         run: uv run coverage report --include="reviews/services.py,reviews/repositories.py" --fail-under=90
       - name: Hook and skill tests
         run: uv run pytest ../plugins/agent-flow/hooks/tests ../plugins/agent-flow/skills ../plugins/agent-flow/tests .claude/skills ops/tests -q --no-cov -p no:cacheprovider
+      - name: Plugin version is bumped when the plugin changes
+        if: github.event_name == 'pull_request'
+        run: uv run python ops/check_plugin_version.py "${{ github.event.pull_request.base.sha }}" HEAD
