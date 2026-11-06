@@ -34,6 +34,12 @@
       <p class="kpi-value">{{ overview.attention_count }}</p>
       <p class="kpi-hint">{% if overview.attention_count %}Rated below 3.0{% else %}All locations are healthy{% endif %}</p>
     </article>
+    <article class="kpi" id="kpi-needs-reply">
+      <p class="kpi-label">Need a reply</p>
+      <p class="kpi-value">{{ overview.needs_reply_count }}</p>
+      <p class="kpi-hint">{% if overview.needs_reply_count %}Reviews with no reply yet{% else %}Every review has a reply{% endif %}</p>
+      <p class="kpi-hint"><a class="row-link" href="/replies/">Open reply drafts</a></p>
+    </article>
   </section>
 
   <div class="grid">

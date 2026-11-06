@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-from django.db.models import Count, QuerySet, Sum
+from django.db.models import Count, Q, QuerySet, Sum
 from django.db.models.functions import Coalesce
 
 from reviews.models import Branch, Review
@@ -38,9 +38,21 @@ def branch_rating_totals() -> list[BranchTotals]:
     ]
 
 
-def rating_counts() -> dict[int, int]:
-    rows = Review.objects.values("rating").annotate(total=Count("id"))
-    return {row["rating"]: row["total"] for row in rows}
+@dataclass(frozen=True)
+class RatingCounts:
+    by_rating: dict[int, int]
+    unreplied: int
+
+
+def rating_counts() -> RatingCounts:
+    """Reviews per rating and the reviews with no reply, in one query."""
+    rows = Review.objects.values("rating").annotate(
+        total=Count("id"), unreplied=Count("id", filter=Q(reply__isnull=True))
+    )
+    return RatingCounts(
+        by_rating={int(row["rating"]): int(row["total"]) for row in rows},
+        unreplied=sum(int(row["unreplied"]) for row in rows),
+    )
 
 
 def list_recent_reviews(limit: int) -> Sequence[Review]:
