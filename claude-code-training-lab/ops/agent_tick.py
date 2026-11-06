@@ -43,6 +43,7 @@ WORKTREE_ASIDE_DAYS = 3
 WORKTREE_TIDY_LIMIT = 10
 LOCK_MAX_AGE = 15 * 60
 RUN_LIMIT = 45 * 60
+RUN_STALE = RUN_LIMIT + 15 * 60
 PAUSE_SECONDS = 60 * 60
 MAX_TURNS = 80
 STARTS = 3
@@ -374,14 +375,25 @@ def take_lock(host: Host, lock: Path) -> bool:
     return True
 
 
+def build_alive(tick: Tick, run: Path) -> bool:
+    """A build lives when its pid lives and it started less than limit + 15 minutes ago."""
+    pid_file = run / "pid"
+    if not pid_file.exists() or not tick.host.alive(int(pid_file.read_text().strip())):
+        return False
+    try:
+        began = int((run / "started").read_text().strip())
+    except (OSError, ValueError):
+        return True
+    return tick.host.now() - began <= RUN_STALE
+
+
 def running_keys(tick: Tick) -> dict[str, bool]:
     """Key of each build whose wrapper is alive, and whether it runs alone."""
     found: dict[str, bool] = {}
     if not tick.runs.exists():
         return found
     for run in sorted(tick.runs.iterdir()):
-        pid_file = run / "pid"
-        if pid_file.exists() and tick.host.alive(int(pid_file.read_text().strip())):
+        if build_alive(tick, run):
             found[run.name] = (run / "alone").exists()
     return found
 
@@ -462,7 +474,7 @@ def finish_runs(tick: Tick, prs: list[dict[str, Any]]) -> None:
         pid_file = run / "pid"
         if not run.is_dir() or not pid_file.exists():
             continue
-        if tick.host.alive(int(pid_file.read_text().strip())):
+        if build_alive(tick, run):
             continue
         exit_file = run / "exit"
         outcome = exit_file.read_text().strip() if exit_file.exists() else "gone"
@@ -1145,6 +1157,7 @@ def start(tick: Tick, target: Target) -> bool:
     ]
     pid = tick.host.spawn(wrapper, run / "log.txt")
     (run / "pid").write_text(str(pid))
+    (run / "started").write_text(str(int(tick.host.now())))
     tick.say(f"{target.key}: started (pid {pid})")
     if target.message:
         tick.notify(target.message)
