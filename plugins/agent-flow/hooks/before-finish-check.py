@@ -5,7 +5,8 @@ Runs as a Stop hook. Exit code 2 sends stderr back to Claude and keeps it workin
 Loop mode is on when FLOW_LOOP=1 or REVIEWRADAR_LOOP=1; in an interactive session this hook
 does nothing. The checks are `checks.commands` of ops/flow.toml, run in order.
 A pull request round (the tick wrote out/pr-round.json) that added commits must also have
-republished its verify report to a link (an `allowed ... url=` line in out/artifact-publish.log).
+republished its verify report to a link (an `allowed ... url=` line in out/artifact-publish.log),
+built at the new HEAD, and with screenshots when the issue has needs-ui (`"ui": true`).
 A second stop in a row is always allowed (stop_hook_active), so a stuck issue ends in the
 report as failed instead of looping for ever.
 """
@@ -14,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Callable, Mapping
@@ -105,13 +107,52 @@ def report_problems(project: Path, run: Runner) -> list[str]:
         lines = (project / "out" / "artifact-publish.log").read_text().splitlines()
     except OSError:
         lines = []
-    if any(" allowed " in line and " url=https://" in f" {line}" for line in lines):
-        return []
-    return [
-        f"PR #{data.get('pr')}: this round added commits but did not republish the verify report. "
-        "Rebuild it (build-verify-report, same mode as the issue), then republish "
-        "report-share.html with share-report to the link in the pull request body, the same URL."
+    published = [
+        line for line in lines if " allowed " in line and " url=https://" in f" {line}"
     ]
+    if not published:
+        return [
+            f"PR #{data.get('pr')}: this round added commits but did not republish the verify "
+            "report. Rebuild it (build-verify-report, same mode as the issue), then republish "
+            "report-share.html with share-report to the link in the pull request body, "
+            "the same URL."
+        ]
+    return stale_report(project, published[-1], out.strip(), data)
+
+
+def stale_report(project: Path, line: str, head: str, data: dict[str, Any]) -> list[str]:
+    """The republished report shows this round's code: built at HEAD, with fresh screenshots."""
+    pr = data.get("pr")
+    match = re.search(r"(?:^|\s)file_path=(\S+)", line)
+    report: dict[str, Any] | None = None
+    if match:
+        page = Path(match.group(1))
+        try:
+            loaded = json.loads(((project / page).parent / "report.json").read_text())
+            report = loaded if isinstance(loaded, dict) else None
+        except (OSError, ValueError):
+            report = None
+    mode = " (--browser --spec with the issue's Screens to capture block)" if data.get("ui") else ""
+    rebuild = (
+        f"Rebuild it with build-verify-report at this commit{mode}, "
+        "then republish its report-share.html to the same link."
+    )
+    if report is None:
+        if data.get("ui"):
+            return [f"PR #{pr}: the republished page has no report.json beside it. {rebuild}"]
+        return []
+    commit = str(report.get("commit") or "")
+    if not commit or not head.startswith(commit):
+        return [
+            f"PR #{pr}: the republished report was built at {commit or 'an unknown commit'}, "
+            f"not at HEAD {head[:7]}, so it shows old code and old screenshots. {rebuild}"
+        ]
+    if data.get("ui") and not report.get("screenshots"):
+        return [
+            f"PR #{pr}: the issue has needs-ui but the republished report has no screenshots, "
+            f"so the page still shows the screens of an earlier commit. {rebuild}"
+        ]
+    return []
 
 
 def evaluate(payload: object, project: Path, env: Mapping[str, str], run: Runner) -> list[str]:
