@@ -1,6 +1,6 @@
 # Tasks: reply-speed
 
-Three tasks. T2 depends on T1 only so that its screenshots show the demo numbers of AC8; the two share no file. T3 is the release, done by hand.
+Two tasks. T2 depends on T1 only so that its screenshots show the demo numbers of AC8; the two share no file. The release and the check on the live site are done by the owner, outside these tasks.
 
 ## T1: Demo replies with realistic reply times
 
@@ -21,11 +21,3 @@ Three tasks. T2 depends on T1 only so that its screenshots show the demo numbers
 - **Screens to capture:** `/dashboard/` on a fresh demo database → `#kpi-reply-speed`, and `/dashboard/` → `#location-scores`
 - **Label:** `agent:ready`, `area:app`
 
-## T3: Reply speed: deploy to the live site
-
-- **ACs:** release, then AC8 checked on the live site
-- **Files likely touched:** none
-- **Depends on:** T1, T2
-- **Risk:** low
-- **needs-ui:** no
-- **Label:** `agent:manual`, `area:app`
