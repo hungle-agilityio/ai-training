@@ -1,6 +1,9 @@
 from dataclasses import asdict
+from typing import cast
 
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_not_required
+from django.contrib.auth.models import User
 from django.http import (
     Http404,
     HttpRequest,
@@ -16,7 +19,14 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from reviews import reply_service, reply_suggestion, report_service, services, trend_service
-from reviews.forms import PageForm, ReplyForm, ReportMonthForm, ReviewFilterForm, SavedForm
+from reviews.forms import (
+    AccountPasswordForm,
+    PageForm,
+    ReplyForm,
+    ReportMonthForm,
+    ReviewFilterForm,
+    SavedForm,
+)
 
 SITE_ICON = "reviews/icon.svg"
 
@@ -56,6 +66,19 @@ def replies(request: HttpRequest) -> HttpResponse:
     page = reply_service.replies_page(PageForm(request.GET).page_number())
     saved = SavedForm(request.GET).is_saved()
     return render(request, "reviews/replies.html", {"page": page, "saved": saved})
+
+
+@require_http_methods(["GET", "POST"])
+def settings_page(request: HttpRequest) -> HttpResponse:
+    form = AccountPasswordForm(
+        cast(User, request.user), request.POST if request.method == "POST" else None
+    )
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        update_session_auth_hash(request, form.user)
+        return redirect(reverse("settings") + "?saved=1")
+    saved = SavedForm(request.GET).is_saved()
+    return render(request, "reviews/settings.html", {"form": form, "saved": saved})
 
 
 @require_http_methods(["GET", "POST"])
