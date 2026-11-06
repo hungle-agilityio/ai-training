@@ -97,6 +97,10 @@ GREEN_CHECKS = {"SUCCESS", "NEUTRAL", "SKIPPED"}
 COMMENT_ID = re.compile(r"(?:issuecomment-|discussion_r)(\d+)")
 DEPENDS_LINE = re.compile(r"^\W*Depends on\b(.*)$", re.IGNORECASE | re.MULTILINE)
 FILES_HEADING = re.compile(r"^##\s+Files likely touched\s*$", re.IGNORECASE | re.MULTILINE)
+TEST_EDITS_HEADING = re.compile(
+    r"^##\s+Existing tests that change\s*$", re.IGNORECASE | re.MULTILINE
+)
+TEST_EDITS_FILE = "test-edits"
 BULLET_PATH = re.compile(r"^\s*[-*]\s+[^`\n]*`([^`\n]+)`", re.MULTILINE)
 LAB_PREFIX = ""
 NTFY_TITLE = ""
@@ -233,6 +237,7 @@ class Target:
     stack_head: str = ""
     stack_prs: tuple[int, ...] = ()
     ui: bool = False
+    test_edits: tuple[str, ...] = ()
 
 
 @dataclass
@@ -900,6 +905,22 @@ def files_of(body: str) -> set[str]:
     return paths
 
 
+def test_edits_of(body: str) -> tuple[str, ...]:
+    """The test files named under '## Existing tests that change' (`path::test` or `path`)."""
+    heading = TEST_EDITS_HEADING.search(body)
+    if heading is None:
+        return ()
+    section = body[heading.end() :]
+    following = re.search(r"^##\s", section, re.MULTILINE)
+    section = section[: following.start()] if following else section
+    paths = set()
+    for raw in BULLET_PATH.findall(section):
+        path = raw.split("::", 1)[0].strip().removeprefix("./").removeprefix(LAB_PREFIX)
+        if path:
+            paths.add(path)
+    return tuple(sorted(paths))
+
+
 def runs_alone(issue: dict[str, Any]) -> bool:
     """risk:high, a migration or model change, or no files listed (an empty body is not checked)."""
     body = issue.get("body") or ""
@@ -1117,6 +1138,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
                     branch=pr["headRefName"],
                     message=message,
                     ui=issue_needs_ui(tick, closes(pr)),
+                    test_edits=issue_test_edits(tick, closes(pr)),
                 )
             )
     if any(running.values()) or tick.main_red:
@@ -1214,11 +1236,28 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
                 break
             chosen.append(
                 Target(
-                    key, issue["number"], prompt, alone=True, message=message, retry=retry, **stack
+                    key,
+                    issue["number"],
+                    prompt,
+                    alone=True,
+                    message=message,
+                    retry=retry,
+                    test_edits=test_edits_of(issue.get("body") or ""),
+                    **stack,
                 )
             )
             break
-        chosen.append(Target(key, issue["number"], prompt, message=message, retry=retry, **stack))
+        chosen.append(
+            Target(
+                key,
+                issue["number"],
+                prompt,
+                message=message,
+                retry=retry,
+                test_edits=test_edits_of(issue.get("body") or ""),
+                **stack,
+            )
+        )
         for path in files:
             busy.setdefault(path, issue["number"])
             owners.setdefault(path, set()).add(issue["number"])
@@ -1307,6 +1346,11 @@ def start(tick: Tick, target: Target) -> bool:
     run.mkdir(parents=True, exist_ok=True)
     if target.alone:
         (run / "alone").touch()
+    edits = run / TEST_EDITS_FILE
+    if target.test_edits:
+        edits.write_text("\n".join(target.test_edits) + "\n")
+    else:
+        edits.unlink(missing_ok=True)
     wrapper = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -1322,6 +1366,20 @@ def start(tick: Tick, target: Target) -> bool:
     if target.message:
         tick.notify(target.message)
     return True
+
+
+def issue_test_edits(tick: Tick, number: int | None) -> tuple[str, ...]:
+    """A pull request round may edit the existing tests its open issue names."""
+    if number is None:
+        return ()
+    try:
+        issues = open_issue_list(tick)
+    except RuntimeError:
+        return ()
+    for item in issues:
+        if item["number"] == number:
+            return test_edits_of(item.get("body") or "")
+    return ()
 
 
 def issue_needs_ui(tick: Tick, number: int | None) -> bool:
@@ -2201,6 +2259,10 @@ def run_start(
 ) -> str:
     """One `claude -p`; its output is the session log, a missing Artifact tool stops it."""
     env = {**claude_env(os.environ), "FLOW_LOOP": "1", "REVIEWRADAR_LOOP": "1"}
+    env.pop("FLOW_TEST_EDITS", None)
+    edits = run / TEST_EDITS_FILE
+    if edits.is_file():
+        env["FLOW_TEST_EDITS"] = edits.read_text().strip()
     args = [
         "claude",
         "-p",

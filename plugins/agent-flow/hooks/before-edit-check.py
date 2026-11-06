@@ -14,7 +14,9 @@ ignores it):
   - pyproject.toml, uv.lock, conftest.py and the other tool config files (ruff.toml, mypy.ini,
     pytest.ini, .coveragerc, ...): they set the lint, type, test and coverage gates;
   - a test file that already exists on main under a folder of `checks.protected_test_dirs` in
-    ops/flow.toml, unless ALLOW_TEST_EDIT=1: fix the code, not the test.
+    ops/flow.toml, unless ALLOW_TEST_EDIT=1: fix the code, not the test. A file that the
+    issue lists under `## Existing tests that change` is allowed: the tick passes those paths,
+    relative to the project folder, one per line in FLOW_TEST_EDITS.
 """
 
 from __future__ import annotations
@@ -149,6 +151,22 @@ def on_main(path: Path, project: Path, run: Runner) -> bool | None:
     return None
 
 
+def listed_test_edit(path: Path, project: Path, env: Mapping[str, str]) -> bool:
+    """The issue names this test file under `## Existing tests that change` (FLOW_TEST_EDITS)."""
+    listed = {
+        line.strip().removeprefix("./").casefold()
+        for line in env.get("FLOW_TEST_EDITS", "").splitlines()
+        if line.strip()
+    }
+    if not listed:
+        return False
+    try:
+        rel = path.relative_to(project).as_posix().casefold()
+    except ValueError:
+        return False
+    return rel in listed
+
+
 def evaluate(file_path: str, project: Path, env: Mapping[str, str], run: Runner) -> list[str]:
     if not is_loop(env):
         return []
@@ -184,7 +202,7 @@ def evaluate(file_path: str, project: Path, env: Mapping[str, str], run: Runner)
         known = on_main(path, project, run)
         if known is None:
             return [f"{path.name} could not be compared with main, so it is not edited"]
-        if known:
+        if known and not listed_test_edit(path, project, env):
             return [f"{path.name} is a test that is already on main; fix the code, not the test"]
     return []
 
