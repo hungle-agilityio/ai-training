@@ -38,6 +38,9 @@ CI_WORKFLOW = ""
 STATE_DIR = Path()
 REPO_ENV = Path(__file__).resolve().parent / "agent.env"
 MARKER = "<!-- work-queue -->"
+WORKTREE_NAME = re.compile(r"^(issue|pr)-(\d+)(?:-(\d{9,}))?$")
+WORKTREE_ASIDE_DAYS = 3
+WORKTREE_TIDY_LIMIT = 10
 LOCK_MAX_AGE = 15 * 60
 RUN_LIMIT = 45 * 60
 PAUSE_SECONDS = 60 * 60
@@ -1171,6 +1174,53 @@ def archive_branches(tick: Tick, target: Target, aside: Path | None) -> None:
         tick.say(f"{target.key}: branch {branch} renamed to archive/{branch}-{stamp}")
 
 
+def tidy_worktrees(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> None:
+    """#255: remove kept worktrees of closed work and old moved-aside ones; archive the branch."""
+    folder = tick.home / "worktrees"
+    if not folder.exists():
+        return
+    open_issues = {item["number"] for item in open_issue_list(tick)}
+    pr_state = {pr["number"]: pr.get("state") for pr in prs}
+    removed = 0
+    for path in sorted(folder.iterdir()):
+        found = WORKTREE_NAME.match(path.name)
+        if found is None or not path.is_dir() or path.name in running:
+            continue
+        kind, number, stamp = found.group(1), int(found.group(2)), found.group(3)
+        if stamp:
+            if tick.host.now() - int(stamp) <= WORKTREE_ASIDE_DAYS * 86400:
+                continue
+            why = "moved aside more than 3 days ago"
+        elif kind == "issue" and number not in open_issues:
+            why = "closed"
+        elif kind == "pr" and pr_state.get(number, "OPEN") != "OPEN":
+            why = "closed"
+        else:
+            continue
+        if removed >= WORKTREE_TIDY_LIMIT:
+            break
+        removed += 1
+        archive_checked_out(tick, path)
+        code, out = tick.host.run(
+            ["git", "-C", str(REPO_ROOT), "worktree", "remove", "--force", str(path)]
+        )
+        if code == 0:
+            tick.say(f"{path.name}: {why}, worktree removed")
+        else:
+            tick.say(f"{path.name}: worktree not removed ({out.strip()[:200]})")
+
+
+def archive_checked_out(tick: Tick, path: Path) -> None:
+    """Rename the branch checked out in a worktree to archive/; a detached one has none."""
+    code, out = tick.host.run(["git", "-C", str(path), "branch", "--show-current"])
+    branch = out.strip()
+    if code != 0 or not branch or branch.startswith("archive/"):
+        return
+    new = f"archive/{branch}-{int(tick.host.now())}"
+    tick.host.run(["git", "-C", str(REPO_ROOT), "branch", "-m", branch, new])
+    tick.say(f"{path.name}: branch {branch} renamed to {new}")
+
+
 def start_failed(tick: Tick, target: Target, step: str) -> None:
     """#74 AC8: one ntfy per key and step until that key starts once."""
     folder = tick.home / "start-failed"
@@ -1817,6 +1867,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
         settle_children(tick, prs)
         delete_kept_branches(tick, prs)
         tidy_ended(tick, prs)
+        tidy_worktrees(tick, prs, running)
         tick.main_red = main_is_red(tick)
         if paused(tick):
             tick.say("paused after the plan limit; no build started")
