@@ -4,6 +4,8 @@
 Runs as a Stop hook. Exit code 2 sends stderr back to Claude and keeps it working.
 Loop mode is on when FLOW_LOOP=1 or REVIEWRADAR_LOOP=1; in an interactive session this hook
 does nothing. The checks are `checks.commands` of ops/flow.toml, run in order.
+A pull request round (the tick wrote out/pr-round.json) that added commits must also have
+republished its verify report to a link (an `allowed ... url=` line in out/artifact-publish.log).
 A second stop in a row is always allowed (stop_hook_active), so a stuck issue ends in the
 report as failed instead of looping for ever.
 """
@@ -88,6 +90,30 @@ def failures(project: Path, run: Runner, commands: list[list[str]]) -> list[str]
     return found
 
 
+def report_problems(project: Path, run: Runner) -> list[str]:
+    """A pull request round with new commits republished its report to the pull request's link."""
+    try:
+        data = json.loads((project / "out" / "pr-round.json").read_text())
+    except (OSError, ValueError):
+        return []
+    if not isinstance(data, dict) or not data.get("head"):
+        return []
+    code, out = run(["git", "rev-parse", "HEAD"], project)
+    if code != 0 or out.strip() == str(data["head"]):
+        return []
+    try:
+        lines = (project / "out" / "artifact-publish.log").read_text().splitlines()
+    except OSError:
+        lines = []
+    if any(" allowed " in line and " url=https://" in f" {line}" for line in lines):
+        return []
+    return [
+        f"PR #{data.get('pr')}: this round added commits but did not republish the verify report. "
+        "Rebuild it (build-verify-report, same mode as the issue), then republish "
+        "report-share.html with share-report to the link in the pull request body, the same URL."
+    ]
+
+
 def evaluate(payload: object, project: Path, env: Mapping[str, str], run: Runner) -> list[str]:
     if not is_loop(env):
         return []
@@ -97,7 +123,7 @@ def evaluate(payload: object, project: Path, env: Mapping[str, str], run: Runner
         commands = check_commands(env, project)
     except Exception as error:  # fail closed: no config means no proof the checks pass
         return [f"the checks of ops/flow.toml could not be read ({error})"]
-    return failures(project, run, commands)
+    return failures(project, run, commands) + report_problems(project, run)
 
 
 def main() -> int:
