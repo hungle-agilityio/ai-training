@@ -1,0 +1,81 @@
+{% extends "reviews/base.html" %}
+{% load humanize review_dates %}
+
+{% block title %}Reply drafts · ReviewRadar{% endblock %}
+{% block heading %}Reply drafts{% endblock %}
+{% block subtitle %}Reviews that still need a reply, worst first.{% endblock %}
+{% block actions %}{% endblock %}
+
+{% block content %}
+<section class="panel" id="reply-queue">
+  {% if page.total == 0 %}
+    <div class="empty">
+      <h2>All caught up</h2>
+      <p>Every review has a reply.</p>
+    </div>
+  {% else %}
+    <p class="review-count">{{ page.total|intcomma }} review{{ page.total|pluralize }} need{{ page.total|pluralize:"s," }} a reply</p>
+    <div class="table-wrap">
+      <table class="table replies-table">
+        <thead>
+          <tr>
+            <th scope="col">Location</th>
+            <th scope="col">Rating</th>
+            <th scope="col">Review text</th>
+            <th scope="col">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in page.rows %}
+            <tr class="review-row">
+              <th scope="row"><a class="row-link" href="/locations/{{ row.branch_id }}/">{{ row.branch_name }}</a></th>
+              <td>
+                <span class="stars" role="img" aria-label="{{ row.rating }} out of 5" title="{{ row.rating }} out of 5"><span style="--pct: {{ row.rating_percent }}%"></span></span>
+              </td>
+              <td class="review-text" data-sensitive="review-text">
+                {% if row.is_truncated %}
+                  <span class="expandable" tabindex="0"><span class="text-short" aria-hidden="true">{{ row.text_short }}</span> <span class="text-full">{{ row.text }}</span></span>
+                {% else %}
+                  {{ row.text }}
+                {% endif %}
+              </td>
+              <td class="nowrap"><time datetime="{{ row.created_at|date:'c' }}" title="{{ row.created_at|full_review_date }}">{{ row.created_at|relative_review_date }}</time></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <nav class="pager" aria-label="Pagination">
+      <p class="pager-summary">Showing {{ page.start_index|intcomma }}-{{ page.end_index|intcomma }} of {{ page.total|intcomma }} reviews</p>
+      <ul class="pager-list">
+        <li>
+          {% if page.has_previous %}
+            <a class="pager-link" href="{{ page.previous_href }}" rel="prev">Previous</a>
+          {% else %}
+            <span class="pager-link is-disabled" aria-disabled="true">Previous</span>
+          {% endif %}
+        </li>
+        {% for link in page.links %}
+          <li>
+            {% if link.number is None %}
+              <span class="pager-gap" aria-hidden="true">…</span>
+            {% elif link.is_current %}
+              <span class="pager-link is-current" aria-current="page">{{ link.number }}</span>
+            {% else %}
+              <a class="pager-link" href="{{ link.href }}">{{ link.number }}</a>
+            {% endif %}
+          </li>
+        {% endfor %}
+        <li>
+          {% if page.has_next %}
+            <a class="pager-link" href="{{ page.next_href }}" rel="next">Next</a>
+          {% else %}
+            <span class="pager-link is-disabled" aria-disabled="true">Next</span>
+          {% endif %}
+        </li>
+      </ul>
+    </nav>
+  {% endif %}
+</section>
+{% endblock %}

@@ -13,7 +13,7 @@ from django.shortcuts import redirect, render
 from django.templatetags.static import static
 from django.utils import timezone
 
-from reviews import report_service, services, trend_service
+from reviews import reply_service, report_service, services, trend_service
 from reviews.forms import PageForm, ReportMonthForm, ReviewFilterForm
 
 SITE_ICON = "reviews/icon.svg"
@@ -48,6 +48,11 @@ def reviews(request: HttpRequest) -> HttpResponse:
         filters=ReviewFilterForm(request.GET).filters(),
     )
     return render(request, "reviews/reviews.html", {"page": page})
+
+
+def replies(request: HttpRequest) -> HttpResponse:
+    page = reply_service.replies_page(PageForm(request.GET).page_number())
+    return render(request, "reviews/replies.html", {"page": page})
 
 
 def reports(request: HttpRequest) -> HttpResponse:
