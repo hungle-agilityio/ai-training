@@ -232,6 +232,7 @@ class Target:
     stack_branch: str = ""
     stack_head: str = ""
     stack_prs: tuple[int, ...] = ()
+    ui: bool = False
 
 
 @dataclass
@@ -1109,7 +1110,14 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
             what = f"{count} change requests open" if count else "CI"
             message = f"{NAME} working on PR #{pr['number']} ({what})"
             chosen.append(
-                Target(key, pr["number"], prompt, branch=pr["headRefName"], message=message)
+                Target(
+                    key,
+                    pr["number"],
+                    prompt,
+                    branch=pr["headRefName"],
+                    message=message,
+                    ui=issue_needs_ui(tick, closes(pr)),
+                )
             )
     if any(running.values()) or tick.main_red:
         return chosen
@@ -1254,7 +1262,7 @@ def start(tick: Tick, target: Target) -> bool:
             return False
     (tick.home / "start-failed" / target.key).unlink(missing_ok=True)
     if target.key.startswith("pr-"):
-        write_round(tick, worktree, lab, target.number)
+        write_round(tick, worktree, lab, target.number, target.ui)
     if target.key.startswith("issue-"):
         stacked = tick.home / "stacked" / str(target.number)
         if target.stack_branch:
@@ -1316,7 +1324,18 @@ def start(tick: Tick, target: Target) -> bool:
     return True
 
 
-def write_round(tick: Tick, worktree: Path, lab: Path, number: int) -> None:
+def issue_needs_ui(tick: Tick, number: int | None) -> bool:
+    """A pull request whose issue has needs-ui must refresh the report's screenshots each round."""
+    if number is None:
+        return False
+    try:
+        issues = open_issue_list(tick)
+    except RuntimeError:
+        return False
+    return any(item["number"] == number and "needs-ui" in names(item) for item in issues)
+
+
+def write_round(tick: Tick, worktree: Path, lab: Path, number: int, ui: bool = False) -> None:
     """The head a pull request round starts from: its stop hook asks for a republished report."""
     code, out = tick.host.run(["git", "-C", str(worktree), "rev-parse", "HEAD"])
     head = out.strip() if code == 0 else ""
@@ -1325,7 +1344,10 @@ def write_round(tick: Tick, worktree: Path, lab: Path, number: int) -> None:
         return
     folder = lab / "out"
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / "pr-round.json").write_text(json.dumps({"head": head, "pr": number}))
+    data: dict[str, Any] = {"head": head, "pr": number}
+    if ui:
+        data["ui"] = True
+    (folder / "pr-round.json").write_text(json.dumps(data))
 
 
 def archive_branches(tick: Tick, target: Target, aside: Path | None) -> None:
