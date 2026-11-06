@@ -4,8 +4,9 @@ from dataclasses import dataclass
 from datetime import date, datetime, time
 from decimal import ROUND_HALF_UP, Decimal
 
-from reviews import report_repository
+from reviews import report_repository, topic_service
 from reviews.services import CSV_BOM, RATING_RANGES, VIETNAM_TZ, average_from_totals, csv_safe
+from reviews.topic_service import MonthTopic
 
 REPORT_MONTHS = 12
 MONTH_NAMES = (
@@ -48,6 +49,7 @@ class MonthlyReport:
     previous_label: str
     options: list[MonthOption]
     rows: list[ReportRow]
+    topics: tuple[MonthTopic, ...] = ()
 
     @property
     def month_value(self) -> str:
@@ -119,6 +121,9 @@ def monthly_report(month: date | None, now: datetime) -> MonthlyReport:
         previous_label=MONTH_NAMES[previous.month - 1],
         options=[MonthOption(value=f"{m.year}-{m.month:02d}", label=_label(m)) for m in months],
         rows=rows,
+        topics=topic_service.month_topics(
+            _start_of(chosen), _start_of(following), _start_of(previous)
+        ),
     )
 
 

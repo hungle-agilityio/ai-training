@@ -70,4 +70,43 @@
     </div>
   {% endif %}
 </section>
+
+<section class="panel" id="report-topics">
+  <header class="panel-head">
+    <h2>Topics</h2>
+    <p>Reviews per topic in {{ report.label }}</p>
+  </header>
+  {% if report.topics %}
+    <div class="table-wrap">
+      <table class="table report-table">
+        <thead>
+          <tr>
+            <th scope="col">Topic</th>
+            <th scope="col">Reviews</th>
+            <th scope="col">Bad</th>
+            <th scope="col">Change vs {{ report.previous_label }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for topic in report.topics %}
+            <tr>
+              <th scope="row">{{ topic.label }}</th>
+              <td>{{ topic.review_count }}</td>
+              <td>{{ topic.bad_count }}</td>
+              {% if topic.change > 0 %}
+                <td><span class="change-up" aria-label="Up {{ topic.change }} from {{ report.previous_label }}">▲ {{ topic.change }}</span></td>
+              {% elif topic.change < 0 %}
+                <td><span class="change-down" aria-label="Down {{ topic.change|cut:"-" }} from {{ report.previous_label }}">▼ {{ topic.change|cut:"-" }}</span></td>
+              {% else %}
+                <td><span class="change-same" aria-label="Same as {{ report.previous_label }}">0</span></td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted report-note">No topics this month.</p>
+  {% endif %}
+</section>
 {% endblock %}
