@@ -27,6 +27,11 @@ class ReplyForm(forms.Form):
     """The reply box of one review; the text is kept as typed so it can be shown again."""
 
     text = forms.CharField(required=False, strip=False)
+    action = forms.CharField(required=False)
+
+    def wants_suggestion(self) -> bool:
+        self.is_valid()
+        return str(self.cleaned_data.get("action", "")) == "suggest"
 
     def typed(self) -> str:
         self.is_valid()

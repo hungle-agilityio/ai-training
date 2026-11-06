@@ -78,3 +78,7 @@ DATABASES = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 TIME_ZONE = "Asia/Ho_Chi_Minh"
 USE_TZ = True
+
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "").strip() or "claude-haiku-5-5"
+REVIEWRADAR_AI_FAKE = os.environ.get("REVIEWRADAR_AI_FAKE") == "1"

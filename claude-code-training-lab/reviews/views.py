@@ -18,7 +18,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from reviews import reply_service, report_service, services, trend_service
+from reviews import reply_service, reply_suggestion, report_service, services, trend_service
 from reviews.forms import (
     AccountPasswordForm,
     PageForm,
@@ -84,22 +84,38 @@ def settings_page(request: HttpRequest) -> HttpResponse:
 @require_http_methods(["GET", "POST"])
 def review_reply(request: HttpRequest, pk: int) -> HttpResponse:
     typed: str | None = None
+    invalid = False
+    suggestion: reply_suggestion.ReplySuggestion | None = None
     if request.method == "POST":
         form = ReplyForm(request.POST)
-        text = form.reply_text()
-        if text is not None:
-            user_id = request.user.pk if request.user.is_authenticated else None
-            if not reply_service.save_reply(pk, text, user_id, timezone.now()):
-                raise Http404("No such review")
-            return redirect(f"{reverse('replies')}?saved=1")
         typed = form.typed()
+        if form.wants_suggestion():
+            suggestion = reply_suggestion.suggest_reply(pk)
+            if suggestion is None:
+                raise Http404("No such review")
+            if suggestion.status == "ok":
+                typed = suggestion.draft
+        else:
+            text = form.reply_text()
+            if text is not None:
+                user_id = request.user.pk if request.user.is_authenticated else None
+                if not reply_service.save_reply(pk, text, user_id, timezone.now()):
+                    raise Http404("No such review")
+                return redirect(f"{reverse('replies')}?saved=1")
+            invalid = True
     target = reply_service.reply_target(pk)
     if target is None:
         raise Http404("No such review")
     return render(
         request,
         "reviews/reply.html",
-        {"target": target, "typed": typed, "invalid": typed is not None},
+        {
+            "target": target,
+            "typed": typed,
+            "invalid": invalid,
+            "suggest_on": reply_suggestion.suggestion_mode() != "off",
+            "suggest_status": suggestion.status if suggestion is not None else "",
+        },
     )
 
 
