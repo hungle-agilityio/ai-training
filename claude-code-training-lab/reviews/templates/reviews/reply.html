@@ -20,13 +20,17 @@
   <form id="reply-form" class="reply-form" method="post">
     {% csrf_token %}
     <label for="reply-text">Your reply</label>
+    {% if suggest_status == "ok" %}<p class="suggest-note" role="status">Suggested by Claude. Read and edit it before you save.</p>{% endif %}
+    {% if suggest_status == "failed" %}<p class="alert">Could not get a suggestion right now. Try again or write your own.</p>{% endif %}
     {% if invalid %}<p class="alert">Write a reply of 1 to 1,000 characters.</p>{% endif %}
     <textarea id="reply-text" name="text" maxlength="1000" required data-sensitive="reply-text">{% if typed is not None %}{{ typed }}{% elif target.reply %}{{ target.reply.text }}{% endif %}</textarea>
     <p class="field-hint">Up to 1,000 characters.</p>
     <div class="reply-actions">
       <button type="submit" class="button">Save reply</button>
+      {% if suggest_on %}<button type="submit" name="action" value="suggest" id="suggest-reply" formnovalidate class="button secondary">Suggest a reply</button>{% endif %}
       <a href="{% url 'replies' %}">Back to reply drafts</a>
     </div>
+    {% if suggest_on %}<p id="suggest-hint" class="field-hint">Claude writes a draft in the box. Nothing is saved until you press Save reply.</p>{% endif %}
     {% if target.reply %}
       <p class="last-saved">Last saved {{ target.reply.updated_at|full_review_date }}{% if target.reply.replied_by %} by <span data-sensitive>{{ target.reply.replied_by }}</span>{% endif %}</p>
     {% endif %}
