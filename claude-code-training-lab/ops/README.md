@@ -56,6 +56,7 @@ All under `~/.reviewradar/`:
 |---|---|
 | `agent.env` | the settings, read only when `ops/agent.env` in the checkout is missing |
 | `runs/<key>/log.txt` | the output of a running build (`<key>` is `issue-<n>` or `pr-<n>`) |
+| `runs/<key>/started` | the start time (whole seconds, tick clock) next to `pid`; a build older than the 45-minute limit plus 15 minutes counts as ended even when its pid is alive (a restart can reuse the number). Nothing is signalled. Without a valid `started` the pid alone decides |
 | `runs/<key>/session-<n>.jsonl` | the whole session of start `<n>`, one JSON event per line |
 | `runs/done/<key>-<time>/` | the folder of an ended build, log and sessions included |
 | `worktrees/<key>` | the checkout of a build; kept after a failed build; removed when its issue or pull request is closed (see "Kept worktrees") |
