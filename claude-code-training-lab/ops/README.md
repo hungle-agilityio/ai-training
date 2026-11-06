@@ -58,7 +58,7 @@ All under `~/.reviewradar/`:
 | `runs/<key>/log.txt` | the output of a running build (`<key>` is `issue-<n>` or `pr-<n>`) |
 | `runs/<key>/session-<n>.jsonl` | the whole session of start `<n>`, one JSON event per line |
 | `runs/done/<key>-<time>/` | the folder of an ended build, log and sessions included |
-| `worktrees/<key>` | the checkout of a build; kept after a failed build |
+| `worktrees/<key>` | the checkout of a build; kept after a failed build; removed when its issue or pull request is closed (see "Kept worktrees") |
 | `paused-until` | set for 60 minutes when the Claude plan limit is reached |
 | `tick.lock` | present while a tick runs; one older than 15 minutes is left over |
 
@@ -182,6 +182,10 @@ The loop's open pull requests with their status labels: <https://github.com/hung
 `--dry-run` prints the same plan (commit, branch, tag, pull requests) and pushes nothing.
 
 It refuses with exit 1 and one line, pushing nothing, when the newest `Checks` run of the commit is missing, still running or not successful; when `origin/deploy` already points at the commit (`nothing new to release`); or when `origin/deploy` is not an ancestor of the commit.
+
+## Kept worktrees
+
+Each tick removes a kept `worktrees/issue-<n>` when issue #n is closed and a kept `worktrees/pr-<n>` when pull request #n is closed or merged, never the folder of a running build or of open work. A moved-aside folder `<key>-<unix time>` is removed 3 days after that time. The checked-out branch is first renamed `archive/<branch>-<unix time>` (a detached worktree has none); no branch is deleted, so the commits stay. At most 10 folders per tick; a failed `git worktree remove` is logged and the tick goes on. The log line is `<key>: closed, worktree removed`.
 
 ## Tests
 
