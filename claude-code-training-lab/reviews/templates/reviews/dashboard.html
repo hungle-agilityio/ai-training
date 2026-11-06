@@ -40,10 +40,21 @@
       <p class="kpi-hint">{% if overview.needs_reply_count %}Reviews with no reply yet{% else %}Every review has a reply{% endif %}</p>
       <p class="kpi-hint"><a class="row-link" href="/replies/">Open reply drafts</a></p>
     </article>
+    <article class="kpi" id="kpi-reply-speed">
+      <p class="kpi-label">Replied in 24h</p>
+      {% if overview.reply_speed.percent is None %}
+        <p class="kpi-value">&ndash;</p>
+        <p class="kpi-hint">No bad reviews yet</p>
+      {% else %}
+        <p class="kpi-value">{{ overview.reply_speed.percent }}%</p>
+        <p class="kpi-hint">{{ overview.reply_speed.replied_in_time }} of {{ overview.reply_speed.counted }} bad reviews</p>
+        <p class="kpi-hint">{% if overview.reply_speed.average_label %}Average reply time {{ overview.reply_speed.average_label }}{% else %}No replies yet{% endif %}</p>
+      {% endif %}
+    </article>
   </section>
 
   <div class="grid">
-    <section class="panel">
+    <section class="panel" id="location-scores">
       <header class="panel-head">
         <h2>Location scores</h2>
         <p>Average rating and review volume per location</p>
@@ -56,6 +67,7 @@
               <th scope="col" class="num">Reviews</th>
               <th scope="col">Rating</th>
               <th scope="col">Status</th>
+              <th scope="col" class="num">Replied in 24h</th>
               <th scope="col">Details</th>
             </tr>
           </thead>
@@ -76,6 +88,7 @@
                   </td>
                   <td><span class="badge badge-{{ row.status }}">{{ row.status_label }}</span></td>
                 {% endif %}
+                <td class="num">{% if row.reply_percent is None %}<span class="muted">&ndash;</span>{% else %}{{ row.reply_percent }}%{% endif %}</td>
                 <td><a class="row-link" href="/locations/{{ row.branch_id }}/" aria-label="Details for {{ row.name }}">Details</a></td>
               </tr>
             {% endfor %}
