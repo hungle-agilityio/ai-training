@@ -11,10 +11,12 @@ from django.http import (
 )
 from django.shortcuts import redirect, render
 from django.templatetags.static import static
+from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods
 
 from reviews import reply_service, report_service, services, trend_service
-from reviews.forms import PageForm, ReportMonthForm, ReviewFilterForm
+from reviews.forms import PageForm, ReplyForm, ReportMonthForm, ReviewFilterForm, SavedForm
 
 SITE_ICON = "reviews/icon.svg"
 
@@ -52,7 +54,30 @@ def reviews(request: HttpRequest) -> HttpResponse:
 
 def replies(request: HttpRequest) -> HttpResponse:
     page = reply_service.replies_page(PageForm(request.GET).page_number())
-    return render(request, "reviews/replies.html", {"page": page})
+    saved = SavedForm(request.GET).is_saved()
+    return render(request, "reviews/replies.html", {"page": page, "saved": saved})
+
+
+@require_http_methods(["GET", "POST"])
+def review_reply(request: HttpRequest, pk: int) -> HttpResponse:
+    typed: str | None = None
+    if request.method == "POST":
+        form = ReplyForm(request.POST)
+        text = form.reply_text()
+        if text is not None:
+            user_id = request.user.pk if request.user.is_authenticated else None
+            if not reply_service.save_reply(pk, text, user_id, timezone.now()):
+                raise Http404("No such review")
+            return redirect(f"{reverse('replies')}?saved=1")
+        typed = form.typed()
+    target = reply_service.reply_target(pk)
+    if target is None:
+        raise Http404("No such review")
+    return render(
+        request,
+        "reviews/reply.html",
+        {"target": target, "typed": typed, "invalid": typed is not None},
+    )
 
 
 def reports(request: HttpRequest) -> HttpResponse:

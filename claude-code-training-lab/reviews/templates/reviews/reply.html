@@ -1,0 +1,35 @@
+{% extends "reviews/base.html" %}
+{% load review_dates %}
+
+{% block title %}Reply to a review · ReviewRadar{% endblock %}
+{% block heading %}Reply to a review{% endblock %}
+{% block subtitle %}Write the reply your team will post.{% endblock %}
+{% block actions %}{% endblock %}
+
+{% block content %}
+<section class="panel reply-review">
+  <div class="review-meta">
+    <a class="row-link" href="/locations/{{ target.branch_id }}/">{{ target.branch_name }}</a>
+    <span class="stars" role="img" aria-label="{{ target.rating }} out of 5" title="{{ target.rating }} out of 5"><span style="--pct: {{ target.rating_percent }}%"></span></span>
+    <time datetime="{{ target.created_at|date:'c' }}">{{ target.created_at|full_review_date }}</time>
+  </div>
+  <p class="review-body" data-sensitive="review-text">{{ target.text }}</p>
+</section>
+
+<section class="panel">
+  <form id="reply-form" class="reply-form" method="post">
+    {% csrf_token %}
+    <label for="reply-text">Your reply</label>
+    {% if invalid %}<p class="alert">Write a reply of 1 to 1,000 characters.</p>{% endif %}
+    <textarea id="reply-text" name="text" maxlength="1000" required data-sensitive="reply-text">{% if typed is not None %}{{ typed }}{% elif target.reply %}{{ target.reply.text }}{% endif %}</textarea>
+    <p class="field-hint">Up to 1,000 characters.</p>
+    <div class="reply-actions">
+      <button type="submit" class="button">Save reply</button>
+      <a href="{% url 'replies' %}">Back to reply drafts</a>
+    </div>
+    {% if target.reply %}
+      <p class="last-saved">Last saved {{ target.reply.updated_at|full_review_date }}{% if target.reply.replied_by %} by <span data-sensitive>{{ target.reply.replied_by }}</span>{% endif %}</p>
+    {% endif %}
+  </form>
+</section>
+{% endblock %}
