@@ -112,6 +112,7 @@ class DashboardOverview:
     overall_average: float | None
     overall_percent: int
     attention_count: int
+    needs_reply_count: int
     branches: list[BranchRow]
     rating_bars: list[RatingBar]
     recent_reviews: list[ReviewRow]
@@ -236,7 +237,8 @@ def dashboard_overview(recent_limit: int = 6) -> DashboardOverview:
             )
         )
 
-    counts = repositories.rating_counts()
+    rating_totals = repositories.rating_counts()
+    counts = rating_totals.by_rating
     total = sum(counts.values())
     overall = sum(stars * count for stars, count in counts.items()) / total if total else None
     bars = [
@@ -256,6 +258,7 @@ def dashboard_overview(recent_limit: int = 6) -> DashboardOverview:
         overall_average=overall,
         overall_percent=round(overall / 5 * 100) if overall is not None else 0,
         attention_count=sum(1 for row in rows if row.status == "attention"),
+        needs_reply_count=rating_totals.unreplied,
         branches=rows,
         rating_bars=bars,
         recent_reviews=recent,
