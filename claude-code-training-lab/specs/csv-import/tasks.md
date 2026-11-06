@@ -18,5 +18,5 @@ Two tasks. T2 depends on T1 because the page calls the service. Both are built b
 - **Depends on:** T1
 - **Risk:** medium (file upload from users)
 - **needs-ui:** yes
-- **Screens to capture:** `/reviews/` → `#import-csv`; `/reviews/import/`; `/reviews/import/` after uploading the sample file twice → `#import-result`
+- **Screens to capture:** `/reviews/` → `#import-csv`; `/reviews/import/`. The browser check cannot upload a file, so the result and error panels (AC15, AC16) are proven by the page tests, with the texts of the design card.
 - **Label:** `agent:ready`, `area:app`
