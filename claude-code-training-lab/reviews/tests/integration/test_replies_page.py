@@ -44,7 +44,7 @@ def test_sidebar_item_is_an_active_link_without_soon(branch: Branch) -> None:
     assert 'class="nav-item is-active" href="/replies/" aria-current="page"' in page
     assert page.index("Reports") < page.index('href="/replies/"')
     assert "Reply drafts <em>Soon</em>" not in page
-    assert page.count("is-disabled") == 1  # Settings only
+    assert page.count("is-disabled") == 0
 
 
 def test_sidebar_item_is_not_active_on_other_pages(branch: Branch) -> None:

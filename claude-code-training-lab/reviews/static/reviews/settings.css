@@ -1,0 +1,19 @@
+/* Settings page. */
+.settings-panel { max-width: 560px; }
+.settings-panel h3 { margin: 24px 0 12px; font-size: 15px; }
+.settings-row { display: flex; gap: 12px; margin: 12px 0 4px; }
+.settings-form { display: flex; flex-direction: column; gap: 14px; }
+.settings-field { display: flex; flex-direction: column; gap: 4px; }
+.settings-field label { font-weight: 600; font-size: 13.5px; }
+.settings-field input {
+  width: 100%; box-sizing: border-box; height: 40px; padding: 7px 10px; font: inherit;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text);
+}
+.settings-error { margin: 0; color: var(--bad); font-size: 13px; }
+.settings-hint { margin: 0; font-size: 12.5px; }
+.settings-form .button { align-self: flex-start; }
+
+@media (max-width: 760px) {
+  .settings-panel { max-width: none; }
+  .settings-form .button { align-self: stretch; }
+}
