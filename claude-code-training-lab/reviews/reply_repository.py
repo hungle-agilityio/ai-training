@@ -30,7 +30,7 @@ def reviews_without_reply() -> QuerySet[Review]:
     )
     return (
         Review.objects.filter(reply__isnull=True)
-        .select_related("branch")
+        .select_related("branch", "reply")
         .annotate(reply_group=group)
         .order_by("reply_group", "created_at", "id")
     )

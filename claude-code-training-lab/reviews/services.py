@@ -26,6 +26,8 @@ RATING_RANGES: dict[str, tuple[int, int]] = {
     "bad": (1, 2),
     **{str(stars): (stars, stars) for stars in (5, 4, 3, 2, 1)},
 }
+# Choices of the Reply filter: `yes` keeps reviews with a reply, `no` those without.
+REPLY_CHOICES: dict[str, bool] = {"yes": True, "no": False}
 SEARCH_MIN_LENGTH = 3
 CSV_CHUNK_ROWS = 500
 CSV_CHUNK_BYTES = 64 * 1024
@@ -93,6 +95,8 @@ class RatingBar:
 
 @dataclass(frozen=True)
 class ReviewRow:
+    review_id: int
+    has_reply: bool
     branch_id: int
     branch_name: str
     rating: int
@@ -144,6 +148,8 @@ def to_review_row(review: Review) -> ReviewRow:
     sentiment, sentiment_label = review_sentiment(review.rating)
     text_short, is_truncated = shorten_text(review.text)
     return ReviewRow(
+        review_id=review.id,
+        has_reply=hasattr(review, "reply"),
         branch_id=review.branch_id,
         branch_name=review.branch.name,
         rating=review.rating,
@@ -278,6 +284,7 @@ class ReviewFilters:
     rating: str | None = None
     day: date | None = None
     search: str = ""
+    reply: str | None = None
 
 
 @dataclass(frozen=True)
@@ -312,6 +319,7 @@ class ReviewsPage:
     branches: list[BranchOption]
     branch_id: int | None
     rating: str
+    reply: str
     week_value: str
     week_label: str | None
     search_value: str
@@ -357,6 +365,7 @@ class ReviewSelection:
     search: str
     search_words: tuple[str, ...]
     search_too_short: bool
+    reply: str | None
 
 
 def search_words(term: str) -> tuple[str, ...]:
@@ -385,8 +394,19 @@ def resolve_selection(filters: ReviewFilters, branch_ids: set[int]) -> ReviewSel
         params.append(("rating", rating))
     if filters.day is not None:
         params.append(("week", filters.day.isoformat()))
+    reply = filters.reply if filters.reply in REPLY_CHOICES else None
+    if reply is not None:
+        params.append(("reply", reply))
     return ReviewSelection(
-        branch_id, rating, week, filters.day, params, search, search_words(search), search_too_short
+        branch_id,
+        rating,
+        week,
+        filters.day,
+        params,
+        search,
+        search_words(search),
+        search_too_short,
+        reply,
     )
 
 
@@ -396,6 +416,7 @@ def matching_reviews(selection: ReviewSelection) -> QuerySet[Review]:
         ratings=RATING_RANGES[selection.rating] if selection.rating else None,
         created_range=(selection.week.start, selection.week.end) if selection.week else None,
         words=selection.search_words,
+        replied=REPLY_CHOICES[selection.reply] if selection.reply else None,
     )
 
 
@@ -497,6 +518,7 @@ def reviews_page(
         branches=[BranchOption(pk, name, pk == branch_id) for pk, name in choices],
         branch_id=branch_id,
         rating=selection.rating or "",
+        reply=selection.reply or "",
         week_value=selection.day.isoformat() if selection.day else "",
         week_label=week.label if week else None,
         search_value=search_value,
