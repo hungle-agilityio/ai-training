@@ -27,3 +27,7 @@
 .reply-form .alert { margin: 0; }
 .reply-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 8px; }
 .reply-actions button.button { cursor: pointer; background: var(--good); border-color: var(--good); color: var(--bg); }
+
+/* Suggest a reply: a secondary (outline) button and the note above the box. */
+.reply-actions button#suggest-reply { background: transparent; border-color: var(--good); color: var(--good); }
+.reply-form .suggest-note { margin: 0; color: var(--good); font-size: 13px; font-weight: 600; }
