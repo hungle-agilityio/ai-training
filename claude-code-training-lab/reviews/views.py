@@ -18,7 +18,14 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from reviews import reply_service, reply_suggestion, report_service, services, trend_service
+from reviews import (
+    reply_service,
+    reply_suggestion,
+    report_service,
+    services,
+    settings_service,
+    trend_service,
+)
 from reviews.forms import (
     AccountPasswordForm,
     PageForm,
@@ -78,7 +85,12 @@ def settings_page(request: HttpRequest) -> HttpResponse:
         update_session_auth_hash(request, form.user)
         return redirect(reverse("settings") + "?saved=1")
     saved = SavedForm(request.GET).is_saved()
-    return render(request, "reviews/settings.html", {"form": form, "saved": saved})
+    context = {
+        "form": form,
+        "saved": saved,
+        "suggestions": settings_service.suggestion_status(),
+    }
+    return render(request, "reviews/settings.html", context)
 
 
 @require_http_methods(["GET", "POST"])
