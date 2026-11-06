@@ -1125,6 +1125,10 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         return chosen
     for pr in prs:
         key = f"pr-{pr['number']}"
+        opener = f"issue-{closes(pr)}"
+        if key not in running and opener in running and pr_needs_run(tick, pr):
+            tick.say(f"{key}: waits for {opener} to end")  # its branch is still checked out
+            continue
         if len(chosen) < free and key not in running and pr_needs_run(tick, pr):
             prompt = f"Use the work-queue skill for pull request #{pr['number']} only."
             count = redo_count(tick, pr)
