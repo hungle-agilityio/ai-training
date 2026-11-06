@@ -6,12 +6,15 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandParser
 from django.utils import timezone
 
+from reviews import reply_service
 from reviews.models import Branch, Business, Review
 from reviews.repositories import create_review
 
 DEMO_USERNAME = "demo"
 DEMO_PASSWORD_VARIABLE = "REVIEWRADAR_DEMO_PASSWORD"
 DAYS_BETWEEN_REVIEWS = 20
+MIN_REPLIED_RATING = 4
+DEMO_REPLY_TEXT = "Thank you for your kind words. We hope to see you again soon."
 
 DEMO_REVIEWS: dict[str, list[tuple[int, str]]] = {
     "Airport": [
@@ -87,9 +90,11 @@ class Command(BaseCommand):
     ) -> None:
         branch = Branch.objects.create(business=business, name=name)
         for offset, (rating, text) in enumerate(items):
-            create_review(
+            review = create_review(
                 branch=branch,
                 rating=rating,
                 text=text,
                 created_at=now - timedelta(days=offset * DAYS_BETWEEN_REVIEWS),
             )
+            if rating >= MIN_REPLIED_RATING:
+                reply_service.save_reply(review.id, DEMO_REPLY_TEXT, None, now)
