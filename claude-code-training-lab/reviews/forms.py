@@ -1,6 +1,9 @@
 from datetime import date
+from typing import Any
 
 from django import forms
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.models import User
 
 from reviews import reply_service
 from reviews.search_text import tidy_search_input
@@ -45,6 +48,17 @@ class SavedForm(forms.Form):
 
     def is_saved(self) -> bool:
         return self.is_valid() and self.cleaned_data["saved"] == "1"
+
+
+class AccountPasswordForm(PasswordChangeForm):
+    """Django's PasswordChangeForm with the labels of the Settings page."""
+
+    def __init__(self, user: User, *args: Any, **kwargs: Any) -> None:
+        super().__init__(user, *args, **kwargs)
+        self.fields["old_password"].widget.attrs.pop("autofocus", None)
+        self.fields["old_password"].label = "Current password"
+        self.fields["new_password2"].label = "Confirm new password"
+        self.fields["new_password2"].help_text = ""
 
 
 class ReportMonthForm(forms.Form):
