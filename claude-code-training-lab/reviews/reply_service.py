@@ -36,8 +36,14 @@ class ReplyTarget:
 
 
 @dataclass(frozen=True)
+class ReplyRow:
+    review_id: int
+    row: ReviewRow
+
+
+@dataclass(frozen=True)
 class RepliesPage:
-    rows: list[ReviewRow]
+    rows: list[ReplyRow]
     number: int
     num_pages: int
     total: int
@@ -63,7 +69,7 @@ def replies_page(page: int | None) -> RepliesPage:
         for item in paginator.get_elided_page_range(current.number, on_each_side=1, on_ends=1)
     ]
     return RepliesPage(
-        rows=[to_review_row(review) for review in current.object_list],
+        rows=[ReplyRow(review.id, to_review_row(review)) for review in current.object_list],
         number=current.number,
         num_pages=paginator.num_pages,
         total=paginator.count,
