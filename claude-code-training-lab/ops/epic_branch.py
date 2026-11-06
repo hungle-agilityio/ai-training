@@ -93,7 +93,9 @@ class EpicBranches:
             ready = [
                 pr
                 for pr in sorted(prs, key=lambda p: p["number"])
-                if is_ready(pr) and tasks.get(closes(pr) or 0) == epic["number"]
+                if is_ready(pr)
+                and str(pr.get("baseRefName") or "main") == "main"  # AC1: stacked PRs stay out
+                and tasks.get(closes(pr) or 0) == epic["number"]
             ]
             try:
                 self.keep_one(epic, ready)
