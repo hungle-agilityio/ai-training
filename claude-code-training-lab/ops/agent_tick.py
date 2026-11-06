@@ -231,6 +231,7 @@ class Target:
     stack_pr: int = 0
     stack_branch: str = ""
     stack_head: str = ""
+    stack_prs: tuple[int, ...] = ()
 
 
 @dataclass
@@ -631,6 +632,15 @@ def record_failure(tick: Tick, number: int, kind: str, outcome: str) -> None:
     write_record(tick, number, record)
 
 
+def stacked_record_of(home: Path, number: int) -> dict[str, Any] | None:
+    """The start record of a stacked build, read from the state folder."""
+    try:
+        data = json.loads((home / "stacked" / str(number)).read_text())
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
 def stacked_record(tick: Tick, number: int) -> dict[str, Any] | None:
     """#165 AC2: the parent pull request, branch and head commit a stacked build started on."""
     try:
@@ -1009,6 +1019,82 @@ def stack_issues(prs: list[dict[str, Any]], parent_pr: dict[str, Any]) -> set[in
     return ignored - {0}
 
 
+@dataclass(frozen=True)
+class EpicStart:
+    """#264: where a task of an epic starts, or why it waits (one reason per dependency)."""
+
+    branch: str
+    head: str
+    prs: tuple[int, ...]
+    waits: tuple[tuple[int, str], ...]
+
+
+def epic_of(tick: Tick, issue: dict[str, Any]) -> dict[str, Any] | None:
+    """#264: the open `epic` issue named by the task's `Part of the epic #N` line."""
+    number = epic_branch.epic_number(issue.get("body") or "")
+    if number is None:
+        return None
+    found = next((i for i in open_issue_list(tick) if i["number"] == number), None)
+    return found if found is not None and "epic" in names(found) else None
+
+
+def epic_start(
+    tick: Tick, prs: list[dict[str, Any]], epic: dict[str, Any], waiting: set[int]
+) -> EpicStart:
+    """#264 AC1, AC6: every unmet dependency has its pull request inside the epic branch."""
+    branch = epic_branch.branch_name(epic["number"], epic.get("title") or "")
+    git = ["git", "-C", str(REPO_ROOT)]
+    ref = f"refs/remotes/origin/{branch}"
+    code, out = tick.host.run([*git, "rev-parse", "--verify", "--quiet", ref])
+    if code != 0:
+        none_yet = tuple((m, f"no {branch} yet") for m in sorted(waiting))
+        return EpicStart(branch, "", (), none_yet)
+    head = out.strip()
+    by_number = {i["number"]: i for i in open_issue_list(tick)}
+    found: list[int] = []
+    waits: list[tuple[int, str]] = []
+    for m in sorted(waiting):
+        dep = by_number.get(m)
+        if dep is None or epic_branch.epic_number(dep.get("body") or "") != epic["number"]:
+            waits.append((m, "it belongs to another epic: merge it first"))
+            continue
+        pr = newest_open_pr(prs, m)
+        if pr is None:
+            building = "agent:running" in names(dep)
+            waits.append((m, "building" if building else "no pull request yet"))
+            continue
+        why = epic_absence(tick, pr, branch)
+        if why:
+            waits.append((m, f"PR #{pr['number']} is not in {branch} ({why})"))
+        else:
+            found.append(pr["number"])
+    return EpicStart(branch, head, tuple(sorted(found)), tuple(waits))
+
+
+def epic_absence(tick: Tick, pr: dict[str, Any], branch: str) -> str:
+    """#264 AC6: why a dependency's pull request is not in the epic branch, or empty."""
+    if pr.get("isDraft"):
+        return "it is a draft"
+    if not epic_branch.is_green(pr):
+        return "checks are red" if pr.get("statusCheckRollup") else "no checks yet"
+    if "pr:ready-for-review" not in names(pr):
+        return "it is not ready for review"
+    oid = str(pr.get("headRefOid") or "")
+    git = ["git", "-C", str(REPO_ROOT), "merge-base", "--is-ancestor", oid, f"origin/{branch}"]
+    if not oid or tick.host.run(git)[0] != 0:
+        return "not merged into it yet"
+    return ""
+
+
+def epic_prompt(number: int, start: EpicStart) -> str:
+    listed = ", ".join(f"#{n}" for n in start.prs)
+    return (
+        f" Stacked on epic branch {start.branch}: branch from origin/{start.branch} and open the"
+        f" pull request into {start.branch}. Put the line `Stacked on {listed} through"
+        f" {start.branch} (merge those first).` just above `Closes #{number}`."
+    )
+
+
 def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> list[Target]:
     """AC3 to AC6: pull requests first, then the oldest ready issues, within the free slots."""
     free = tick.settings.concurrency - len(running)
@@ -1051,12 +1137,17 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         depends = depends_on(issue.get("body") or "")
         retry = ""
         waiting = unmet(tick, depends, open_numbers)
+        epic = epic_of(tick, issue) if waiting else None
+        on_epic = epic_start(tick, prs, epic, waiting) if epic is not None else None
         parent_pr = (
             stack_parent(tick, prs, next(iter(waiting)), open_numbers)
-            if len(waiting) == 1
+            if len(waiting) == 1 and epic is None
             else None
         )
-        held = bool(waiting) and parent_pr is None
+        if on_epic is not None:
+            held = bool(on_epic.waits)
+        else:
+            held = bool(waiting) and parent_pr is None
         if "agent:failed" in names(issue) and "agent:ready" not in names(issue):
             if key in running or held:
                 continue
@@ -1067,6 +1158,8 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
             continue
         files = files_of(issue.get("body") or "")
         ignored = stack_issues(prs, parent_pr) if parent_pr is not None else set()
+        if on_epic is not None:
+            ignored = set(waiting)  # their files are in the epic branch this task builds on
         shared = [p for p in sorted(files) if shared_holder(busy, owners, p, ignored)]
         if shared:
             holder = shared_holder(busy, owners, shared[0], ignored)
@@ -1094,6 +1187,15 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
                 "stack_pr": parent_pr["number"],
                 "stack_branch": branch,
                 "stack_head": str(parent_pr.get("headRefOid") or ""),
+            }
+        if on_epic is not None and not on_epic.waits:
+            prompt += epic_prompt(issue["number"], on_epic)
+            message = f"{NAME} started #{issue['number']} on {on_epic.branch}: {title}"
+            stack = {
+                "stack_pr": on_epic.prs[0],
+                "stack_branch": on_epic.branch,
+                "stack_head": on_epic.head,
+                "stack_prs": on_epic.prs,
             }
         if retry:
             record = failed_record(tick, issue["number"]) or {}
@@ -1155,7 +1257,13 @@ def start(tick: Tick, target: Target) -> bool:
         stacked = tick.home / "stacked" / str(target.number)
         if target.stack_branch:
             stacked.parent.mkdir(parents=True, exist_ok=True)
-            info = {"pr": target.stack_pr, "branch": target.stack_branch, "head": target.stack_head}
+            info: dict[str, Any] = {
+                "pr": target.stack_pr,
+                "branch": target.stack_branch,
+                "head": target.stack_head,
+            }
+            if target.stack_prs:
+                info["prs"] = list(target.stack_prs)
             stacked.write_text(json.dumps(info, sort_keys=True))
         else:
             stacked.unlink(missing_ok=True)
@@ -1677,6 +1785,61 @@ def settle_children(tick: Tick, prs: list[dict[str, Any]]) -> None:
         tick.notify(f"{NAME} PR #{number} blocked: its parent PR #{up} was closed")
 
 
+EPIC_STACKED = re.compile(r"Stacked on ((?:#\d+(?:, )?)+) through (epic/\S+)")
+
+
+def epic_parents(pr: dict[str, Any]) -> list[int]:
+    """#264: the pull requests named on the `Stacked on ... through epic/...` line."""
+    match = EPIC_STACKED.search(pr.get("body") or "")
+    return [int(n) for n in re.findall(r"#(\d+)", match.group(1))] if match else []
+
+
+def settle_epic_children(tick: Tick, prs: list[dict[str, Any]]) -> None:
+    """#264 AC3, AC4: base to main once every listed pull request merged; pr:blocked if closed."""
+    by_number = {p["number"]: p for p in prs}
+    record = tick.home / "parent-closed"
+    for child in prs:
+        base = str(child.get("baseRefName") or "main")
+        if child["state"] != "OPEN" or not base.startswith(epic_branch.EPIC_PREFIX):
+            continue
+        number, ups = child["number"], epic_parents(child)
+        if not ups or number in tick.retargeted:
+            continue
+        states = {up: str((by_number.get(up) or {}).get("state") or "") for up in ups}
+        closed = [up for up, state in states.items() if state == "CLOSED"]
+        if closed:
+            seen = set(record.read_text().split()) if record.exists() else set()
+            key = f"{number}:{closed[0]}"
+            if key in seen:
+                continue
+            ensure_label(tick, "pr:blocked")
+            body = (
+                f"{MARKER}\nThe pull request #{closed[0]} this one is stacked on was closed "
+                "without merge. This pull request is not merged."
+            )
+            done = [
+                tick.gh("pr", "edit", str(number), "--add-label", "pr:blocked")[0],
+                tick.gh("pr", "comment", str(number), "--body", body)[0],
+            ]
+            if any(done):
+                tick.say(f"pr-{number}: PR #{closed[0]} closed; pr:blocked not complete")
+                continue
+            record.write_text("\n".join(sorted(seen | {key})))
+            tick.say(f"pr-{number}: PR #{closed[0]} closed without merge; pr:blocked")
+            tick.notify(f"{NAME} PR #{number} blocked: PR #{closed[0]} was closed")
+            continue
+        if any(state != "MERGED" for state in states.values()):
+            continue
+        code, out = tick.gh("pr", "edit", str(number), "--base", "main")
+        if code != 0:
+            tick.say(f"pr-{number}: base not changed to main ({out.strip()}); next tick")
+            continue
+        tick.retargeted.add(number)
+        child["baseRefName"] = "main"
+        listed = ", ".join(f"#{up}" for up in ups)
+        tick.say(f"pr-{number}: {listed} merged; base is now main")
+
+
 def move_children(tick: Tick, kids: list[dict[str, Any]], up: int) -> None:
     """#180 AC2, AC6: each pull request stacked on the merged one gets base main, still open."""
     for kid in kids:
@@ -1831,18 +1994,25 @@ def blocked_lines(
         if key in running:
             continue
         waiting = unmet(tick, depends_on(body), set(by_number))
+        epic = epic_of(tick, item) if waiting else None
         parent_pr = (
             stack_parent(tick, prs, next(iter(waiting)), set(by_number))
-            if len(waiting) == 1
+            if len(waiting) == 1 and epic is None
             else None
         )
-        found: list[tuple[int, str]] = [
-            (m, f"#{number} waits for #{m}: {dependency_reason(tick, prs, by_number, m)}")
-            for m in sorted(waiting)
-            if parent_pr is None
-        ]
+        if epic is not None:
+            on_epic = epic_start(tick, prs, epic, waiting)
+            found = [(m, f"#{number} waits for #{m}: {why}") for m, why in on_epic.waits]
+        else:
+            found = [
+                (m, f"#{number} waits for #{m}: {dependency_reason(tick, prs, by_number, m)}")
+                for m in sorted(waiting)
+                if parent_pr is None
+            ]
         if not found:
             ignored = stack_issues(prs, parent_pr) if parent_pr is not None else set()
+            if epic is not None:
+                ignored = set(waiting)
             shared: dict[int, str] = {}
             for path in sorted(files_of(body)):
                 holder = shared_holder(busy, owners, path, ignored)
@@ -1927,8 +2097,10 @@ def tick_once(host: Host, home: Path) -> list[str]:
         needs_you(tick, prs)
         running = running_keys(tick)
         settle_children(tick, prs)
+        settle_epic_children(tick, prs)
         merge_approved(tick, prs, running)
         settle_children(tick, prs)
+        settle_epic_children(tick, prs)
         keep_epic_branches(tick, prs)
         delete_kept_branches(tick, prs)
         tidy_ended(tick, prs)
