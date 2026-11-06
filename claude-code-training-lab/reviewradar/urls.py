@@ -14,6 +14,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("locations/<int:pk>/", views.location, name="location"),
     path("reviews/", views.reviews, name="reviews"),
     path("reviews/export/", views.reviews_export, name="reviews-export"),
+    path("replies/", views.replies, name="replies"),
     path("reports/", views.reports, name="reports"),
     path("reports/export/", views.reports_export, name="reports-export"),
     path("api/dashboard/", views.dashboard_api, name="dashboard-api"),
