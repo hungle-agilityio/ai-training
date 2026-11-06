@@ -11,7 +11,7 @@ The owner hands over several `agent:ready` issues at once, but the loop was one 
 
 The owner decided (spec PR #48, questions Q1 to Q7):
 
-- **A tick, not a session.** `ops/agent_tick.py` (Python, tested with pytest and mypy) runs every 10 minutes in a tmux session `rr-loop` under `caffeinate -i`, started by `ops/start-loop.sh`. It uses no plan usage when there is nothing to do.
+- **A tick, not a session.** `ops/agent_tick.py` (Python, tested with pytest and mypy) runs every 5 minutes (10 at first; 5 since #201) in a tmux session `rr-loop` under `caffeinate -i`, started by `ops/start-loop.sh`. It uses no plan usage when there is nothing to do.
 - **`AGENT_CONCURRENCY`** in `~/.reviewradar/agent.env` (not committed; `ops/agent.env.example`) sets the builds at once: 1 to 3, default 1, the Mac mini uses 2.
 - **The lock.** One tick at a time, with `mkdir ~/.reviewradar/tick.lock`; a lock older than 15 minutes is left over and taken. Because only the tick picks and claims (`agent:running`), two builds never take the same issue.
 - **One build is one `claude -p`** with `REVIEWRADAR_LOOP=1`, `--max-turns 80`, stopped after 45 minutes, never in a mode that skips permission prompts. Its prompt names one target, "Use the work-queue skill for issue #N only." (or "pull request #N"), and `work-queue` works on that target only; the tick did the picking, the claim, the labeller check and the cap (the cap is superseded by ADR-018).
