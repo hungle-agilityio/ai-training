@@ -38,6 +38,7 @@ CI_WORKFLOW = ""
 STATE_DIR = Path()
 REPO_ENV = Path(__file__).resolve().parent / "agent.env"
 MARKER = "<!-- work-queue -->"
+DECISION_MARKER = "<!-- needs-decision -->"
 WORKTREE_NAME = re.compile(r"^(issue|pr)-(\d+)(?:-(\d{9,}))?$")
 WORKTREE_ASIDE_DAYS = 3
 WORKTREE_TIDY_LIMIT = 10
@@ -484,6 +485,37 @@ def finish_runs(tick: Tick, prs: list[dict[str, Any]]) -> None:
         run.rename(archive)
 
 
+def run_began(run: Path) -> float:
+    """The run's `started` time, or the `pid` file time when there is none."""
+    try:
+        return float(int((run / "started").read_text().strip()))
+    except (OSError, ValueError):
+        return (run / "pid").stat().st_mtime
+
+
+def needs_decision(tick: Tick, run: Path, number: str) -> bool:
+    """#260 AC1, AC4: this run's own stop comment asks the owner to decide."""
+    began = run_began(run)
+    comments = tick.gh_json("issue", "view", number, "--json", "comments").get("comments") or []
+    for comment in comments:
+        body = str(comment.get("body") or "")
+        if MARKER not in body or DECISION_MARKER not in body:
+            continue
+        try:
+            made = datetime.fromisoformat(str(comment.get("createdAt") or "")).timestamp()
+        except ValueError:
+            continue
+        if made > began:
+            return True
+    return False
+
+
+def decision_stop(tick: Tick, number: int) -> None:
+    """#260 AC1, AC3: record the stop as a decision; one message per stop."""
+    record_failure(tick, number, "decision", "needs the owner's decision")
+    tick.notify(f"{NAME} #{number} needs your decision: https://github.com/{REPO}/issues/{number}")
+
+
 def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -> None:
     key = run.name
     kind, number = key.split("-", 1)
@@ -523,11 +555,15 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
         if opened is not None:
             tick.notify(pr_message(opened, "opened"))
         elif not has_pr and "agent:failed" in labels:
-            record_failure(tick, int(number), "stopped", "set agent:failed itself")
+            if needs_decision(tick, run, number):
+                decision_stop(tick, int(number))
+            else:
+                record_failure(tick, int(number), "stopped", "set agent:failed itself")
         return
     if limit:
         pause_for_limit(tick, key, number, worktree)
         return
+    decision = outcome == "0" and needs_decision(tick, run, number)
     ensure_label(tick, "agent:failed")
     tick.gh(
         "issue",
@@ -543,6 +579,9 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
     body += f"\n```\n{tail}\n```"
     tick.gh("issue", "comment", number, "--body", body)
     tick.say(f"{key}: {reason}; agent:failed, worktree kept")
+    if decision:
+        decision_stop(tick, int(number))
+        return
     tick.notify(f"{NAME} build for issue #{number} failed: {reason}")
     record_failure(tick, int(number), "stopped" if outcome == "0" else "transient", reason)
 
@@ -638,6 +677,8 @@ def retry_reason(tick: Tick, item: dict[str, Any], parent_pr: dict[str, Any] | N
         tick.say(f"issue-{number}: failed with no record; recorded, waits for main to move")
         return ""
     if int(record.get("retries") or 0) >= RETRIES:
+        return ""
+    if record.get("kind") == "decision":
         return ""
     if record.get("kind") == "transient":
         return f"the last build {record.get('outcome') or 'failed'}"
