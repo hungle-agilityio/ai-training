@@ -31,7 +31,7 @@ Everything that leaves this machine goes through GitHub: issues and pull request
 4. Build the pull request:
    - **Title:** `[type] title`, the same as the issue.
    - **Description:** run `draft-pull-request` and use its `pr-body.md` (What, Why, How tested with the real output, Evidence, One concern, ending with `Closes #<number>`). Do not create the pull request while the draft says it is incomplete or not ready. The user drags the files of its `images/` folder into the description.
-   - **Base:** `main`; only a stacked loop build (`work-queue`, ADR-018) uses its parent's branch. **Head:** the current branch. **Assignee:** `hungle-agilityio`. Copy the labels of the issue.
+   - **Base:** `main`; only a stacked loop build (`work-queue`, ADR-018) uses its parent's branch, and an epic loop build (ADR-021) uses `epic/<N>-<slug>`, only with the line `Stacked on #<P1>, #<P2> through epic/<N>-<slug> (merge those first).` above `Closes #<number>`. **Head:** the current branch. **Assignee:** `hungle-agilityio`. Copy the labels of the issue.
 5. Show the preview and wait for approval.
 6. Create it with `gh pr create --base main --head <branch> --title "<title>" --body-file <file> --assignee hungle-agilityio --label "<label>,<label>"`.
 7. Report the title and the link, and the state of the checks (`gh pr checks <number>`):
