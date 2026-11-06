@@ -15,6 +15,13 @@ DEMO_PASSWORD_VARIABLE = "REVIEWRADAR_DEMO_PASSWORD"
 DAYS_BETWEEN_REVIEWS = 20
 MIN_REPLIED_RATING = 4
 DEMO_REPLY_TEXT = "Thank you for your kind words. We hope to see you again soon."
+DEMO_BAD_REPLY_TEXT = "We are sorry about your visit. Our manager will call you to make it right."
+# Reply delay in hours after the review, keyed by (branch, review text).
+DEMO_BAD_REPLY_DELAY_HOURS: dict[tuple[str, str], int] = {
+    ("Airport", "Front desk understaffed, queue out the door."): 30,
+    ("Riverside", "Phone line always busy, could not book."): 3,
+    ("Riverside", "Nhân viên lễ tân chưa nhiệt tình"): 20,
+}
 
 DEMO_REVIEWS: dict[str, list[tuple[int, str]]] = {
     "Airport": [
@@ -98,3 +105,8 @@ class Command(BaseCommand):
             )
             if rating >= MIN_REPLIED_RATING:
                 reply_service.save_reply(review.id, DEMO_REPLY_TEXT, None, now)
+                continue
+            delay = DEMO_BAD_REPLY_DELAY_HOURS.get((name, text))
+            if delay is not None:
+                reply_at = review.created_at + timedelta(hours=delay)
+                reply_service.save_reply(review.id, DEMO_BAD_REPLY_TEXT, None, reply_at)
