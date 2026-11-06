@@ -7,6 +7,7 @@
 {% block actions %}{% endblock %}
 
 {% block content %}
+{% if saved %}<p class="notice" role="status">Reply saved.</p>{% endif %}
 <section class="panel" id="reply-queue">
   {% if page.total == 0 %}
     <div class="empty">
@@ -23,10 +24,11 @@
             <th scope="col">Rating</th>
             <th scope="col">Review text</th>
             <th scope="col">Date</th>
+            <th scope="col">Reply</th>
           </tr>
         </thead>
         <tbody>
-          {% for row in page.rows %}
+          {% for item in page.rows %}{% with row=item.row %}
             <tr class="review-row">
               <th scope="row"><a class="row-link" href="/locations/{{ row.branch_id }}/">{{ row.branch_name }}</a></th>
               <td>
@@ -40,8 +42,9 @@
                 {% endif %}
               </td>
               <td class="nowrap"><time datetime="{{ row.created_at|date:'c' }}" title="{{ row.created_at|full_review_date }}">{{ row.created_at|relative_review_date }}</time></td>
+              <td><a class="button" href="{% url 'review-reply' item.review_id %}">Reply</a></td>
             </tr>
-          {% endfor %}
+          {% endwith %}{% endfor %}
         </tbody>
       </table>
     </div>

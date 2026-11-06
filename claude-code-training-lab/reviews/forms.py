@@ -2,6 +2,7 @@ from datetime import date
 
 from django import forms
 
+from reviews import reply_service
 from reviews.search_text import tidy_search_input
 from reviews.services import RATING_RANGES, ReviewFilters
 
@@ -17,6 +18,28 @@ class PageForm(forms.Form):
             return None
         value: int | None = self.cleaned_data["page"]
         return value
+
+
+class ReplyForm(forms.Form):
+    """The reply box of one review; the text is kept as typed so it can be shown again."""
+
+    text = forms.CharField(required=False, strip=False)
+
+    def typed(self) -> str:
+        self.is_valid()
+        return str(self.cleaned_data.get("text", "")).replace("\r\n", "\n")
+
+    def reply_text(self) -> str | None:
+        return reply_service.clean_reply_text(self.typed())
+
+
+class SavedForm(forms.Form):
+    """The `saved` flag of the Reply drafts page; only the value 1 counts."""
+
+    saved = forms.ChoiceField(choices=[("1", "1")], required=False)
+
+    def is_saved(self) -> bool:
+        return self.is_valid() and self.cleaned_data["saved"] == "1"
 
 
 class ReportMonthForm(forms.Form):
