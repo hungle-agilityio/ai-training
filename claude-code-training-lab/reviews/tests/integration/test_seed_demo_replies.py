@@ -6,7 +6,12 @@ from django.core.management import call_command
 from reviews.models import Review, ReviewReply
 
 REPLY_TEXT = "Thank you for your kind words. We hope to see you again soon."
-DEFAULT_REPLY_COUNT = 6
+DEFAULT_REPLY_COUNT = 9
+BAD_REPLIED_TEXTS = {
+    "Front desk understaffed, queue out the door.",
+    "Phone line always busy, could not book.",
+    "Nhân viên lễ tân chưa nhiệt tình",
+}
 EXTRA_BRANCH_REPLY_COUNT = 2  # ratings 4 and 5 of each extra branch
 
 
@@ -20,8 +25,10 @@ def test_default_seed_replies_to_every_good_review_only() -> None:
 
     assert ReviewReply.objects.count() == DEFAULT_REPLY_COUNT
     replied = set(ReviewReply.objects.values_list("review_id", flat=True))
-    good = set(Review.objects.filter(rating__gte=4).values_list("id", flat=True))
-    assert replied == good
+    expected = set(Review.objects.filter(rating__gte=4).values_list("id", flat=True)) | set(
+        Review.objects.filter(text__in=BAD_REPLIED_TEXTS).values_list("id", flat=True)
+    )
+    assert replied == expected
 
 
 @pytest.mark.django_db
@@ -29,8 +36,9 @@ def test_seeded_reply_has_the_fixed_text_no_author_and_the_seed_time() -> None:
     seed()
 
     for reply in ReviewReply.objects.all():
-        assert reply.text == REPLY_TEXT
         assert reply.replied_by is None
+    for reply in ReviewReply.objects.filter(review__rating__gte=4):
+        assert reply.text == REPLY_TEXT
         assert reply.updated_at >= reply.review.created_at
 
 
@@ -39,11 +47,13 @@ def test_extra_branches_follow_the_same_reply_rule() -> None:
     seed("--branches", "2")
 
     assert ReviewReply.objects.count() == DEFAULT_REPLY_COUNT + 2 * EXTRA_BRANCH_REPLY_COUNT
-    assert not ReviewReply.objects.filter(review__rating__lte=3).exists()
+    assert not ReviewReply.objects.filter(review__rating=3).exists()
+    bad = ReviewReply.objects.filter(review__rating__lte=2).select_related("review")
+    assert {r.review.text for r in bad} == BAD_REPLIED_TEXTS
 
 
 @pytest.mark.django_db
-def test_seeding_twice_still_gives_six_replies() -> None:
+def test_seeding_twice_still_gives_nine_replies() -> None:
     seed()
     seed()
 
