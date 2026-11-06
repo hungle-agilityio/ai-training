@@ -4,9 +4,10 @@
 Usage: route_issue.py <issue body file> [--settings <settings.json>]. Prints two labels:
 area:flow or area:app, then agent:manual, agent:needs-permission or agent:ready. The protected
 paths come from the before-edit-check hook and the allow rules from .claude/settings.json, both
-read at run time, so the labels follow the rules the loop really runs with. The folder prefix
-stripped from each path is `project.app_dir` of ops/flow.toml (or of the file named by
-FLOW_CONFIG); `.` means no prefix.
+read at run time, so the labels follow the rules the loop really runs with. An existing test
+listed under `## Existing tests that change` is not protected: the tick lets the build edit it.
+The folder prefix stripped from each path is `project.app_dir` of ops/flow.toml (or of the file
+named by FLOW_CONFIG); `.` means no prefix.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ PLUGIN_HOOKS = Path(__file__).resolve().parents[2] / "hooks"
 FLOW_FOLDERS = ("ops/", ".claude/", ".github/", "specs/", "docs/learning/")
 SECTION = re.compile(r"^##\s+Files likely touched\s*$(.*?)(?=^##\s|\Z)", re.M | re.S)
 BULLET_PATH = re.compile(r"^\s*[-*]\s+`([^`]+)`(.*)$", re.M)
+TEST_EDITS = re.compile(r"^##\s+Existing tests that change\s*$(.*?)(?=^##\s|\Z)", re.M | re.S)
 EDIT_RULE = re.compile(r"^Edit\((.+)\)$")
 
 
@@ -69,6 +71,22 @@ def paths_of(text: str, prefix: str | None = None) -> list[str]:
         paths.append(path)
     if not paths:
         raise ValueError("the '## Files likely touched' section names no `path`")
+    return paths
+
+
+def test_edits_of(text: str, prefix: str | None = None) -> set[str]:
+    """The test files named under '## Existing tests that change' (`path::test` or `path`)."""
+    strip = LAB_PREFIX if prefix is None else prefix
+    match = TEST_EDITS.search(text)
+    if match is None:
+        return set()
+    paths = set()
+    for raw, _ in BULLET_PATH.findall(match.group(1)):
+        path = raw.split("::", 1)[0].strip().removeprefix("./")
+        if strip:
+            path = path.removeprefix(strip)
+        if path:
+            paths.add(path)
     return paths
 
 
@@ -132,7 +150,8 @@ def route(text: str, allow: list[str]) -> list[str]:
     section = SECTION.search(text)
     files = section.group(1) if section else ""
     area = "area:flow" if any(p.startswith(FLOW_FOLDERS) for p in paths) else "area:app"
-    if any(refused_by_hook(p, is_new(files, p)) for p in paths):
+    listed = test_edits_of(text)
+    if any(refused_by_hook(p, is_new(files, p) or p in listed) for p in paths):
         return [area, "agent:manual"]
     if not all(allowed(p, allow) for p in paths):
         return [area, "agent:needs-permission"]
