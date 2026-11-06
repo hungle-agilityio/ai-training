@@ -35,3 +35,4 @@ One file per decision: `ADR-001-short-title.md`, numbered in order. Write one fo
 - [ADR-018: Stacked pull requests, retries, no pull request limit](ADR-018-stacked-pull-requests-and-retries.md)
 - [ADR-019: The flow reads ops/flow.toml; a new project is bootstrapped by copy and rename](ADR-019-flow-config-and-bootstrap.md)
 - [ADR-020: The flow is a Claude Code plugin, agent-flow](ADR-020-flow-as-a-plugin.md)
+- [ADR-021: One shared branch per epic](ADR-021-epic-branch.md)
