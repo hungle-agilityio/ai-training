@@ -6,6 +6,7 @@
 {% block subtitle %}Every customer review across all locations, newest first.{% endblock %}
 {% block actions %}
 <div class="export-action">
+  <a class="button" id="import-csv" href="{% url 'reviews-import' %}">Import CSV</a>
   <a class="button" href="{% url 'reviews-export' %}{% if page.export_query %}?{{ page.export_query }}{% endif %}">Export CSV</a>
   <p class="export-note">The file can contain customers' personal details.</p>
 </div>
