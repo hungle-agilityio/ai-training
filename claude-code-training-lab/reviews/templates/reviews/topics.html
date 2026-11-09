@@ -1,0 +1,70 @@
+{% extends "reviews/base.html" %}
+
+{% block title %}Topics · ReviewRadar{% endblock %}
+{% block heading %}Topics{% endblock %}
+{% block subtitle %}What customers talk about, by topic.{% endblock %}
+{% block actions %}{% endblock %}
+
+{% block content %}
+<section class="panel">
+  {% if is_empty %}
+  <div class="empty">
+    <h2>No reviews yet</h2>
+    <p>Topics will appear here as soon as there are reviews.</p>
+  </div>
+  {% else %}
+  <header class="panel-head">
+    <h2>Topics</h2>
+    <p id="topics-summary">{{ summary }}</p>
+  </header>
+  <form class="filters" method="get" action="{% url 'topics' %}" aria-label="Filter topics">
+    <div class="field">
+      <label for="topics-location">Location</label>
+      <select id="topics-location" name="location">
+        <option value=""{% if location_id is None %} selected{% endif %}>All locations</option>
+        {% for pk, name in locations %}
+          <option value="{{ pk }}"{% if pk == location_id %} selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="topics-period">Period</label>
+      <select id="topics-period" name="period">
+        {% for value, label in periods %}
+          <option value="{{ value }}"{% if value == period %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button class="button button-apply" type="submit">Apply</button>
+    </div>
+  </form>
+  <div class="table-wrap">
+    <table class="table" id="topics-table">
+      <thead>
+        <tr>
+          <th scope="col">Topic</th>
+          <th scope="col">Reviews</th>
+          <th scope="col">Share</th>
+          <th scope="col">Bad</th>
+          <th scope="col">Average rating</th>
+          <th scope="col">Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in overview.rows %}
+          <tr>
+            <th scope="row">{{ row.label }}</th>
+            <td>{{ row.review_count }}</td>
+            <td>{{ row.share_percent }}%</td>
+            <td>{% if row.bad_count %}{{ row.bad_count }} ({{ row.bad_percent }}%){% else %}0{% endif %}</td>
+            <td>{% if row.average_rating is None %}–{% else %}{{ row.average_rating|floatformat:1 }}{% endif %}</td>
+            <td>{% if row.review_count %}<a href="{% url 'reviews' %}?topic={{ row.slug }}{% if location_id is not None %}&amp;location={{ location_id }}{% endif %}">See reviews</a>{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
