@@ -3,8 +3,11 @@ from datetime import datetime
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator
+from django.utils import timezone
 
 from reviews import reply_repository
+from reviews.models import Review
+from reviews.repositories import BAD_RATINGS, REPLY_WINDOW
 from reviews.services import (
     REVIEWS_PER_PAGE,
     PageLink,
@@ -39,6 +42,7 @@ class ReplyTarget:
 class ReplyRow:
     review_id: int
     row: ReviewRow
+    is_overdue: bool
 
 
 @dataclass(frozen=True)
@@ -54,22 +58,42 @@ class RepliesPage:
     links: list[PageLink]
     previous_href: str
     next_href: str
+    overdue_only: bool = False
 
 
-def replies_page(page: int | None) -> RepliesPage:
+def is_overdue(*, rating: int, has_reply: bool, created_at: datetime, now: datetime) -> bool:
+    """A bad review with no reply, more than 24 hours old; exactly 24:00:00 is not overdue."""
+    low, high = BAD_RATINGS
+    return low <= rating <= high and not has_reply and created_at < now - REPLY_WINDOW
+
+
+def reply_row(review: Review, now: datetime) -> ReplyRow:
+    row = to_review_row(review)
+    overdue = is_overdue(
+        rating=row.rating, has_reply=row.has_reply, created_at=row.created_at, now=now
+    )
+    return ReplyRow(review.id, row, overdue)
+
+
+def replies_page(
+    page: int | None, *, overdue_only: bool = False, now: datetime | None = None
+) -> RepliesPage:
     """One page of the reviews that still need a reply; a wrong page gives the nearest one."""
-    paginator = Paginator(reply_repository.reviews_without_reply(), REVIEWS_PER_PAGE)
+    now = now or timezone.now()
+    params = [("overdue", "1")] if overdue_only else []
+    reviews = reply_repository.reviews_without_reply(overdue_only=overdue_only, now=now)
+    paginator = Paginator(reviews, REVIEWS_PER_PAGE)
     current = paginator.get_page(page or 1)
     links = [
         PageLink(
             number=item if isinstance(item, int) else None,
             is_current=item == current.number,
-            href=page_href([], item) if isinstance(item, int) else "",
+            href=page_href(params, item) if isinstance(item, int) else "",
         )
         for item in paginator.get_elided_page_range(current.number, on_each_side=1, on_ends=1)
     ]
     return RepliesPage(
-        rows=[ReplyRow(review.id, to_review_row(review)) for review in current.object_list],
+        rows=[reply_row(review, now) for review in current.object_list],
         number=current.number,
         num_pages=paginator.num_pages,
         total=paginator.count,
@@ -78,8 +102,9 @@ def replies_page(page: int | None) -> RepliesPage:
         has_previous=current.has_previous(),
         has_next=current.has_next(),
         links=links,
-        previous_href=page_href([], max(current.number - 1, 1)),
-        next_href=page_href([], min(current.number + 1, paginator.num_pages)),
+        previous_href=page_href(params, max(current.number - 1, 1)),
+        next_href=page_href(params, min(current.number + 1, paginator.num_pages)),
+        overdue_only=overdue_only,
     )
 
 
