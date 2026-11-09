@@ -1,0 +1,47 @@
+{% extends "reviews/base.html" %}
+{% load static %}
+
+{% block title %}Import reviews · ReviewRadar{% endblock %}
+{% block heading %}Import reviews{% endblock %}
+{% block subtitle %}Add reviews from a CSV file with the columns Location, Rating, Review text and Date.{% endblock %}
+{% block actions %}<a class="button" href="{% url 'reviews' %}">Back to reviews</a>{% endblock %}
+
+{% block content %}
+{% if result %}
+<section class="panel" id="import-result" role="status">
+  <div class="panel-head"><h2>Import finished</h2></div>
+  <p>{{ result.imported }} review{{ result.imported|pluralize }} imported</p>
+  <p>{{ result.duplicates }} duplicate{{ result.duplicates|pluralize }} skipped</p>
+  <p>{{ result.errors|length }} row{{ result.errors|length|pluralize }} with errors</p>
+  <p><a href="{% url 'reviews' %}">See the reviews</a></p>
+  {% if result.errors %}
+  <div class="table-wrap">
+    <table class="table" id="import-errors">
+      <thead><tr><th>Row</th><th>Problem</th></tr></thead>
+      <tbody>
+        {% for number, problem in shown_errors %}<tr><td>{{ number }}</td><td>{{ problem }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if more_errors %}<p class="muted">and {{ more_errors }} more row{{ more_errors|pluralize }} with errors</p>{% endif %}
+  {% endif %}
+</section>
+{% endif %}
+{% if refusal %}
+<section class="panel" id="import-error" role="alert">
+  <p>{{ refusal }}</p>
+</section>
+{% endif %}
+<section class="panel">
+  <div class="panel-head"><h2>Choose a file</h2></div>
+  <form method="post" action="{% url 'reviews-import' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <p>
+      <label for="{{ form.file.id_for_label }}">{{ form.file.label }}</label><br>
+      <input type="file" name="file" id="{{ form.file.id_for_label }}" accept=".csv,text/csv"{% if refusal %} aria-invalid="true" aria-describedby="import-error"{% endif %} required>
+    </p>
+    <button type="submit" class="button">Import</button>
+  </form>
+  <p><a href="{% static 'reviews/import-sample.csv' %}" download>Download a sample file</a></p>
+</section>
+{% endblock %}
