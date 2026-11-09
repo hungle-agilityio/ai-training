@@ -40,6 +40,7 @@ CI_WORKFLOW = ""
 STATE_DIR = Path()
 REPO_ENV = Path(__file__).resolve().parent / "agent.env"
 MARKER = "<!-- work-queue -->"
+STACKED_LINE = re.compile(r"^Stacked on\b", re.MULTILINE)
 DECISION_MARKER = "<!-- needs-decision -->"
 WORKTREE_NAME = re.compile(r"^(issue|pr)-(\d+)(?:-(\d{9,}))?$")
 WORKTREE_ASIDE_DAYS = 3
@@ -1882,6 +1883,20 @@ def keep_stacked_as_drafts(tick: Tick, prs: list[dict[str, Any]]) -> None:
         tick.say(f"pr-{number}: draft while its base is {base}")
 
 
+def adopt_build_drafts(tick: Tick, prs: list[dict[str, Any]]) -> None:
+    """#347: a stacked draft the build opened is treated like one the tick made."""
+    for pr in prs:
+        number = pr["number"]
+        stacked = STACKED_LINE.search(pr.get("body") or "")
+        if pr["state"] != "OPEN" or not pr.get("isDraft") or not is_loop_pr(pr) or not stacked:
+            continue
+        if number in tick.retargeted:
+            continue  # its base moved this tick; the next tick marks it ready
+        save_stack_drafts(tick, stack_drafts(tick) | {number})
+        if str(pr.get("baseRefName") or "main") == "main":
+            mark_ready_after_move(tick, number)
+
+
 def settle_children(tick: Tick, prs: list[dict[str, Any]]) -> None:
     """#165 AC6, AC7: children of a merged parent go to main; of a closed one, pr:blocked."""
     record = tick.home / "parent-closed"
@@ -2258,6 +2273,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
         settle_children(tick, prs)
         settle_epic_children(tick, prs)
         keep_stacked_as_drafts(tick, prs)
+        adopt_build_drafts(tick, prs)
         keep_epic_branches(tick, prs)
         delete_kept_branches(tick, prs)
         rescue_epic_merges(tick, prs)
