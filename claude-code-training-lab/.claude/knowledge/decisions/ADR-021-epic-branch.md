@@ -1,6 +1,7 @@
 # ADR-021: One shared branch per epic
 
 - Status: Accepted (amends ADR-018 point 1 for tasks of an epic)
+- Status: Superseded in part by ADR-022 (points 2 and 4, for epics)
 - Date: 2026-11-06
 
 ## Context
