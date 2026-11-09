@@ -1,8 +1,10 @@
 from datetime import datetime
 
-from django.db.models import Case, IntegerField, QuerySet, Value, When
+from django.db.models import Case, IntegerField, Q, QuerySet, Value, When
+from django.utils import timezone
 
 from reviews.models import Review, ReviewReply
+from reviews.repositories import BAD_RATINGS, REPLY_WINDOW
 
 
 def save_reply(*, review_id: int, text: str, user_id: int | None, now: datetime) -> None:
@@ -20,17 +22,29 @@ def save_reply(*, review_id: int, text: str, user_id: int | None, now: datetime)
         )
 
 
-def reviews_without_reply() -> QuerySet[Review]:
-    """Reviews with no reply: ratings 1-2, then 3, then 4-5; oldest first, then lowest id."""
+def overdue_filter(now: datetime) -> Q:
+    """A bad review with no reply, strictly more than 24 hours old (the rule of is_overdue)."""
+    return Q(rating__range=BAD_RATINGS, reply__isnull=True, created_at__lt=now - REPLY_WINDOW)
+
+
+def reviews_without_reply(
+    *, overdue_only: bool = False, now: datetime | None = None
+) -> QuerySet[Review]:
+    """Reviews with no reply: ratings 1-2, then 3, then 4-5; oldest first, then lowest id.
+
+    With overdue_only, only the overdue ones, in the same order.
+    """
     group = Case(
         When(rating__lte=2, then=Value(0)),
         When(rating=3, then=Value(1)),
         default=Value(2),
         output_field=IntegerField(),
     )
+    reviews = Review.objects.filter(reply__isnull=True)
+    if overdue_only:
+        reviews = reviews.filter(overdue_filter(now or timezone.now()))
     return (
-        Review.objects.filter(reply__isnull=True)
-        .select_related("branch", "reply")
+        reviews.select_related("branch", "reply")
         .annotate(reply_group=group)
         .order_by("reply_group", "created_at", "id")
     )
