@@ -51,6 +51,15 @@ class SavedForm(forms.Form):
         return self.is_valid() and self.cleaned_data["saved"] == "1"
 
 
+class OverdueForm(forms.Form):
+    """The `overdue` flag of the Reply drafts page; only the value 1 turns the filter on."""
+
+    overdue = forms.ChoiceField(choices=[("1", "1")], required=False)
+
+    def is_overdue(self) -> bool:
+        return self.is_valid() and self.cleaned_data["overdue"] == "1"
+
+
 class AccountPasswordForm(PasswordChangeForm):
     """Django's PasswordChangeForm with the labels of the Settings page."""
 

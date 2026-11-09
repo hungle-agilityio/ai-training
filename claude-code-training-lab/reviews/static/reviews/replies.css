@@ -8,6 +8,11 @@
   margin-bottom: 12px;
 }
 
+.reply-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.reply-tabs a { padding: 6px 14px; border-radius: 999px; color: var(--muted); font-weight: 600; text-decoration: none; }
+.reply-tabs a[aria-current="page"] { background: var(--brand-soft); color: var(--brand); }
+.badge-overdue { margin-left: 8px; background: var(--bad-soft); color: var(--bad); }
+
 .notice {
   margin: 0 0 16px;
   padding: 10px 14px;
