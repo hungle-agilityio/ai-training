@@ -9,13 +9,23 @@
 {% block content %}
 {% if saved %}<p class="notice" role="status">Reply saved.</p>{% endif %}
 <section class="panel" id="reply-queue">
-  {% if page.total == 0 %}
+  <nav class="reply-tabs" aria-label="Reply drafts view">
+    <a href="/replies/"{% if not page.overdue_only %} aria-current="page"{% endif %}>All</a>
+    <a href="/replies/?overdue=1"{% if page.overdue_only %} aria-current="page"{% endif %}>Overdue only</a>
+  </nav>
+  {% if page.total == 0 and page.overdue_only %}
+    <div class="empty">
+      <h2>No overdue reviews</h2>
+      <p>Every bad review older than 24 hours has a reply.</p>
+      <p><a href="/replies/">Show all reviews</a></p>
+    </div>
+  {% elif page.total == 0 %}
     <div class="empty">
       <h2>All caught up</h2>
       <p>Every review has a reply.</p>
     </div>
   {% else %}
-    <p class="review-count">{{ page.total|intcomma }} review{{ page.total|pluralize }} need{{ page.total|pluralize:"s," }} a reply</p>
+    <p class="review-count">{{ page.total|intcomma }}{% if page.overdue_only %} overdue{% endif %} review{{ page.total|pluralize }} need{{ page.total|pluralize:"s," }} a reply</p>
     <div class="table-wrap">
       <table class="table replies-table">
         <thead>
@@ -33,6 +43,7 @@
               <th scope="row"><a class="row-link" href="/locations/{{ row.branch_id }}/">{{ row.branch_name }}</a></th>
               <td>
                 <span class="stars" role="img" aria-label="{{ row.rating }} out of 5" title="{{ row.rating }} out of 5"><span style="--pct: {{ row.rating_percent }}%"></span></span>
+                {% if item.is_overdue %}<span class="badge badge-overdue" title="No reply for more than 24 hours">Overdue</span>{% endif %}
               </td>
               <td class="review-text" data-sensitive="review-text">
                 {% if row.is_truncated %}

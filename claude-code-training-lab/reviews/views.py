@@ -29,6 +29,7 @@ from reviews import (
 )
 from reviews.forms import (
     AccountPasswordForm,
+    OverdueForm,
     PageForm,
     ReplyForm,
     ReportMonthForm,
@@ -73,7 +74,10 @@ def reviews(request: HttpRequest) -> HttpResponse:
 
 
 def replies(request: HttpRequest) -> HttpResponse:
-    page = reply_service.replies_page(PageForm(request.GET).page_number())
+    page = reply_service.replies_page(
+        PageForm(request.GET).page_number(),
+        overdue_only=OverdueForm(request.GET).is_overdue(),
+    )
     saved = SavedForm(request.GET).is_saved()
     return render(request, "reviews/replies.html", {"page": page, "saved": saved})
 
