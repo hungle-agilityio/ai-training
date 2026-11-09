@@ -24,6 +24,7 @@ from reviews import (
     report_service,
     services,
     settings_service,
+    topic_service,
     trend_service,
 )
 from reviews.forms import (
@@ -58,7 +59,9 @@ def location(request: HttpRequest, pk: int) -> HttpResponse:
     if page is None:
         raise Http404("No such location")
     trend = trend_service.weekly_trend(pk, timezone.now())
-    return render(request, "reviews/location.html", {"page": page, "trend": trend})
+    topics = topic_service.location_topics(pk)
+    context = {"page": page, "trend": trend, "topics": topics}
+    return render(request, "reviews/location.html", context)
 
 
 def reviews(request: HttpRequest) -> HttpResponse:

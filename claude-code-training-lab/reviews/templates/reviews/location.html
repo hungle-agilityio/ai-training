@@ -81,6 +81,25 @@
   </div>
 </section>
 
+<section class="panel" id="location-topics">
+  <header class="panel-head">
+    <h2>What customers talk about</h2>
+    <p>Top topics of all reviews</p>
+  </header>
+  {% if topics %}
+    <ul class="reviews">
+      {% for topic in topics %}
+        <li>
+          <a href="{% url 'reviews' %}?location={{ page.branch_id }}&amp;topic={{ topic.slug }}">{{ topic.label }}</a>
+          <span class="muted">{{ topic.review_count }} review{{ topic.review_count|pluralize }}{% if topic.bad_count %} · {{ topic.bad_count }} bad{% endif %}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No topics yet</p>
+  {% endif %}
+</section>
+
 <section class="panel">
   <header class="panel-head">
     <h2>Latest reviews</h2>
