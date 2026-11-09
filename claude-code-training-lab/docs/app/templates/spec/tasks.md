@@ -6,6 +6,7 @@
        - `reviews/services.py`
        - `reviews/tests/unit/test_<name>.py` (NEW)
      The tick reads it: an issue waits while a running or in-review issue lists the same file, and an issue with no paths runs alone (ADR-015).
+     In an epic, a task that changes a number or behaviour set by an earlier task names it in its ACs; it may change that task's tests, and the epic pull request lists them (ADR-022).
      A task with needs-ui: yes also gets a `## Screens to capture` section in its issue body: one fenced `json` block, a check-in-browser spec in which every step has `goto` and `capture`, for example:
        ## Screens to capture
        ```json
