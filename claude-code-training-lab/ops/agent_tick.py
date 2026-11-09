@@ -25,9 +25,10 @@ from pathlib import Path
 from typing import Any, Protocol
 
 try:
-    from ops import epic_branch, flow_config
+    from ops import epic_branch, epic_rescue, flow_config
 except ImportError:  # started as `python ops/agent_tick.py`: ops/ is the first path entry
     import epic_branch  # type: ignore[import-not-found,no-redef,unused-ignore]
+    import epic_rescue  # type: ignore[import-not-found,no-redef,unused-ignore]
     import flow_config  # type: ignore[import-not-found,no-redef,unused-ignore]
 
 REPO = ""
@@ -265,6 +266,7 @@ class Tick:
     not_planned: dict[int, bool] = field(default_factory=dict)
     main_head: str | None = None
     retargeted: set[int] = field(default_factory=set)
+    rescued: set[int] = field(default_factory=set)
 
     @property
     def runs(self) -> Path:
@@ -1639,7 +1641,7 @@ def sync_review(tick: Tick, prs: list[dict[str, Any]], fixed: set[int]) -> None:
 def tidy_ended(tick: Tick, prs: list[dict[str, Any]]) -> None:
     """#143 AC1, AC7: labels of ended pull requests, and agent:ready of closed issues."""
     review: set[int] | None = None
-    still_open = {closes(pr) for pr in prs if pr["state"] == "OPEN"}
+    still_open = {closes(pr) for pr in prs if pr["state"] == "OPEN"} | tick.rescued
     for pr in prs:
         if pr["state"] == "OPEN":
             continue
@@ -2003,6 +2005,17 @@ def keep_branch(tick: Tick, branch: str) -> None:
     record.write_text("\n".join(sorted(have | {branch})))
 
 
+def rescue_epic_merges(tick: Tick, prs: list[dict[str, Any]]) -> None:
+    """#329: a pull request merged into an epic branch gets a new one into main."""
+    try:
+        if not any(pr["state"] == "MERGED" for pr in prs):
+            return
+        open_numbers = {item["number"] for item in open_issue_list(tick)}
+        epic_rescue.EpicRescue(tick, REPO_ROOT).run(prs, open_numbers)
+    except Exception as error:  # noqa: BLE001 - one failure never stops the tick
+        tick.say(f"epic rescue failed ({type(error).__name__}); next tick")
+
+
 def keep_epic_branches(tick: Tick, prs: list[dict[str, Any]]) -> None:
     """#263: one branch per epic with the green, ready pull requests of its tasks."""
     try:
@@ -2247,6 +2260,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
         keep_stacked_as_drafts(tick, prs)
         keep_epic_branches(tick, prs)
         delete_kept_branches(tick, prs)
+        rescue_epic_merges(tick, prs)
         tidy_ended(tick, prs)
         tidy_worktrees(tick, prs, running)
         tick.main_red = main_is_red(tick)
