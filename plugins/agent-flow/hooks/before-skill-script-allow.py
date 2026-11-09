@@ -5,7 +5,9 @@ The call arrives as JSON on stdin. A command is allowed only when it is one plai
 `python3 [-I] <script> [args]` or `uv run python[3] <script> [args]`, with no shell operator,
 redirection, substitution or variable, and the script, once its real path is resolved (links and
 `..` included), is a `.py` file directly inside `skills/<skill>/` of this plugin. Then the hook
-answers `allow`. Anything else gets no answer, so the permission rules decide as usual. The other
+answers `allow`. In loop mode (FLOW_LOOP=1 or REVIEWRADAR_LOOP=1) a command that names such a
+script but is not that plain call is denied, with the plain form as the reason: nobody is there to
+answer a prompt. Anything else gets no answer, so the permission rules decide as usual. The other
 hooks still run and can still block. A plugin's path holds its version, so no permission rule can
 name these scripts safely: a `*` for the version also matches `..` (plugin README, "Probe").
 """
@@ -13,6 +15,8 @@ name these scripts safely: a `*` for the version also matches `..` (plugin READM
 from __future__ import annotations
 
 import json
+import os
+import re
 import shlex
 import sys
 from pathlib import Path
@@ -21,6 +25,13 @@ PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 ANYWHERE = set("$`\\\n\r")  # expanded even inside double quotes
 UNQUOTED = set(";&|<>(){}*?[]~!#")  # shell operators, globs and comments outside quotes
 LAUNCHERS = (["python3", "-I"], ["python3"], ["uv", "run", "python"], ["uv", "run", "python3"])
+LOOP_VARS = ("FLOW_LOOP", "REVIEWRADAR_LOOP")
+PYTHON_FILE = re.compile(r"[^\s;&|<>()'\"`=]+\.py(?![\w.])")
+PLAIN_FORM = (
+    "Run the agent-flow skill script as one plain command: no shell variable, no `;`, `&&`, pipe, "
+    "redirection or `2>&1`; use the absolute script path and give input files as relative paths "
+    "such as out/verify-input/criteria.json."
+)
 
 
 def plain(command: str) -> bool:
@@ -81,18 +92,41 @@ def decide(payload: object, root: Path = PLUGIN_ROOT) -> str | None:
     return f"a script of an agent-flow skill ({Path(script).name})"
 
 
+def names_script_in_another_form(payload: object, root: Path = PLUGIN_ROOT) -> bool:
+    """True when a Bash command names a plugin skill script but is not one plain launcher call."""
+    if not isinstance(payload, dict) or payload.get("tool_name") != "Bash":
+        return False
+    tool_input = payload.get("tool_input")
+    command = str(tool_input.get("command", "")) if isinstance(tool_input, dict) else ""
+    if script_of(command) is not None:
+        return False
+    cwd = Path(str(payload.get("cwd") or Path.cwd()))
+    return any(
+        is_plugin_skill_script(os.path.expanduser(name), cwd, root)
+        for name in PYTHON_FILE.findall(command)
+    )
+
+
+def is_loop() -> bool:
+    """Loop mode is on when FLOW_LOOP=1 or REVIEWRADAR_LOOP=1."""
+    return any(os.environ.get(name) == "1" for name in LOOP_VARS)
+
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
     except ValueError:
         return 0
     reason = decide(payload)
+    decision = "allow"
+    if reason is None and is_loop() and names_script_in_another_form(payload):
+        reason, decision = PLAIN_FORM, "deny"
     if reason is None:
         return 0
     answer = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
-            "permissionDecision": "allow",
+            "permissionDecision": decision,
             "permissionDecisionReason": reason,
         }
     }
