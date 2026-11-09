@@ -16,6 +16,7 @@ from django.utils import timezone
 from reviews import repositories
 from reviews.models import Review
 from reviews.search_text import normalize_for_search, tidy_search_input
+from reviews.topics import TOPICS, topic_by_slug
 
 REVIEWS_PER_PAGE = 20
 TEXT_PREVIEW_LENGTH = 120
@@ -372,6 +373,7 @@ class ReviewFilters:
     day: date | None = None
     search: str = ""
     reply: str | None = None
+    topic: str | None = None
 
 
 @dataclass(frozen=True)
@@ -407,6 +409,7 @@ class ReviewsPage:
     branch_id: int | None
     rating: str
     reply: str
+    topic: str
     week_value: str
     week_label: str | None
     search_value: str
@@ -415,6 +418,7 @@ class ReviewsPage:
     is_filtered: bool
     query_params: list[tuple[str, str]]
     export_query: str
+    topic_options: tuple[tuple[str, str], ...] = ()
 
 
 def week_label(monday: date) -> str:
@@ -453,6 +457,7 @@ class ReviewSelection:
     search_words: tuple[str, ...]
     search_too_short: bool
     reply: str | None
+    topic: str | None = None
 
 
 def search_words(term: str) -> tuple[str, ...]:
@@ -484,6 +489,9 @@ def resolve_selection(filters: ReviewFilters, branch_ids: set[int]) -> ReviewSel
     reply = filters.reply if filters.reply in REPLY_CHOICES else None
     if reply is not None:
         params.append(("reply", reply))
+    topic = filters.topic if topic_by_slug(filters.topic or "") else None
+    if topic is not None:
+        params.append(("topic", topic))
     return ReviewSelection(
         branch_id,
         rating,
@@ -494,6 +502,7 @@ def resolve_selection(filters: ReviewFilters, branch_ids: set[int]) -> ReviewSel
         search_words(search),
         search_too_short,
         reply,
+        topic,
     )
 
 
@@ -504,6 +513,7 @@ def matching_reviews(selection: ReviewSelection) -> QuerySet[Review]:
         created_range=(selection.week.start, selection.week.end) if selection.week else None,
         words=selection.search_words,
         replied=REPLY_CHOICES[selection.reply] if selection.reply else None,
+        topic=topic_by_slug(selection.topic or ""),
     )
 
 
@@ -606,6 +616,7 @@ def reviews_page(
         branch_id=branch_id,
         rating=selection.rating or "",
         reply=selection.reply or "",
+        topic=selection.topic or "",
         week_value=selection.day.isoformat() if selection.day else "",
         week_label=week.label if week else None,
         search_value=search_value,
@@ -614,4 +625,5 @@ def reviews_page(
         is_filtered=bool(params),
         query_params=params,
         export_query=urlencode(params),
+        topic_options=tuple((topic.slug, topic.label) for topic in TOPICS),
     )

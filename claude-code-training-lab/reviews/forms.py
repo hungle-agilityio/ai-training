@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from reviews import reply_service
 from reviews.search_text import tidy_search_input
 from reviews.services import RATING_RANGES, REPLY_CHOICES, ReviewFilters
+from reviews.topics import TOPICS
 
 WEEK_MIN_DAY = date(2000, 1, 1)
 WEEK_MAX_DAY = date(2100, 12, 31)
@@ -87,6 +88,10 @@ class ReviewFilterForm(forms.Form):
     reply = forms.ChoiceField(
         choices=[("", "All"), *[(key, key) for key in REPLY_CHOICES]], required=False
     )
+    topic = forms.ChoiceField(
+        choices=[("", "All topics"), *[(topic.slug, topic.label) for topic in TOPICS]],
+        required=False,
+    )
 
     def clean_search(self) -> str:
         return tidy_search_input(self.cleaned_data["search"])
@@ -106,4 +111,5 @@ class ReviewFilterForm(forms.Form):
             day=data.get("week") or None,
             search=data.get("search") or "",
             reply=data.get("reply") or None,
+            topic=data.get("topic") or None,
         )

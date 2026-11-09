@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from reviews.models import Branch, Review
 from reviews.search_text import normalize_for_search
+from reviews.topics import Topic
 
 
 @dataclass(frozen=True)
@@ -127,6 +128,7 @@ def reviews_newest_first(
     created_range: tuple[datetime, datetime] | None = None,
     words: Sequence[str] = (),
     replied: bool | None = None,
+    topic: Topic | None = None,
 ) -> QuerySet[Review]:
     """Newest first. `ratings` is (lowest, highest) stars; `created_range` is [start, end).
 
@@ -144,6 +146,10 @@ def reviews_newest_first(
         reviews = reviews.filter(created_at__gte=created_range[0], created_at__lt=created_range[1])
     for word in words:
         reviews = reviews.filter(search_text__contains=word)
+    if topic is not None:
+        from reviews.topic_repository import topic_condition  # late: it imports services
+
+        reviews = reviews.filter(topic_condition(topic))
     return reviews
 
 
