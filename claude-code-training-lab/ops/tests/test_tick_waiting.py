@@ -106,8 +106,7 @@ def test_two_merged_pull_requests_do_not_take_the_slots(home: Path) -> None:
 
 
 def test_dependency_closed_as_completed_counts_as_done(home: Path) -> None:
-    host = WaitingHost(issues=[issue(5, "agent:ready", body=depends(4))],
-                       reasons={4: "COMPLETED"})
+    host = WaitingHost(issues=[issue(5, "agent:ready", body=depends(4))], reasons={4: "COMPLETED"})
     agent_tick.tick_once(host, home)
     assert started(host) == ["Use the work-queue skill for issue #5 only."]
 
@@ -119,8 +118,9 @@ def test_dependency_with_unreadable_reason_counts_as_done(home: Path) -> None:
 
 
 def test_dependency_closed_as_not_planned_does_not_start_the_issue(home: Path) -> None:
-    host = WaitingHost(issues=[issue(5, "agent:ready", body=depends(4))],
-                       reasons={4: "NOT_PLANNED"})
+    host = WaitingHost(
+        issues=[issue(5, "agent:ready", body=depends(4))], reasons={4: "NOT_PLANNED"}
+    )
     agent_tick.tick_once(host, home)
     assert host.spawned == []
 
@@ -227,8 +227,10 @@ def test_message_is_sent_while_a_build_runs(home: Path) -> None:
     (run / "pid").write_text("77")
     (home / "worktrees" / "issue-9").mkdir(parents=True)
     host = WaitingHost(
-        issues=[issue(9, "agent:running", body=files("z.py")),
-                issue(5, "agent:ready", body="Depends on #9\n" + files("a.py"))],
+        issues=[
+            issue(9, "agent:running", body=files("z.py")),
+            issue(5, "agent:ready", body="Depends on #9\n" + files("a.py")),
+        ],
         alive_pids={77},
     )
     agent_tick.tick_once(host, home)

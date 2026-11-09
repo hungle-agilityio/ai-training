@@ -18,7 +18,10 @@ CLOSING_NOW = datetime(2026, 10, 30, 18, 30, tzinfo=UTC)  # 01:30 on the 31st in
 def git(cwd: Path, *args: str) -> str:
     done = subprocess.run(
         ["git", "-c", "user.name=T", "-c", "user.email=t@example.com", *args],
-        cwd=cwd, check=True, capture_output=True, text=True,
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        text=True,
     )
     return done.stdout.strip()
 
@@ -29,8 +32,16 @@ def merge_pr(clone: Path, number: int, title: str) -> str:
     git(clone, "add", ".")
     git(clone, "commit", "-m", f"work {number}")
     git(clone, "switch", "main")
-    git(clone, "merge", "--no-ff", f"feat/{number}", "-m",
-        f"Merge pull request #{number} from owner/feat/{number}", "-m", title)
+    git(
+        clone,
+        "merge",
+        "--no-ff",
+        f"feat/{number}",
+        "-m",
+        f"Merge pull request #{number} from owner/feat/{number}",
+        "-m",
+        title,
+    )
     git(clone, "push", "origin", "main")
     return git(clone, "rev-parse", "HEAD")
 
@@ -51,8 +62,9 @@ def repo(tmp_path: Path) -> tuple[Path, Path]:
     return origin, clone
 
 
-def run(clone: Path, monkeypatch: pytest.MonkeyPatch, *args: str,
-        checks: str | None = GREEN) -> int:
+def run(
+    clone: Path, monkeypatch: pytest.MonkeyPatch, *args: str, checks: str | None = GREEN
+) -> int:
     monkeypatch.setattr(release, "latest_checks", lambda sha, cwd: checks)
     return release.main(list(args), cwd=clone, now=CLOSING_NOW)
 
@@ -62,8 +74,8 @@ def remote_refs(origin: Path) -> set[str]:
 
 
 def test_dry_run_prints_plan_and_pushes_nothing(
-        repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str]) -> None:
+    repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     origin, clone = repo
     head = merge_pr(clone, 7, "Add the filter")
     before = remote_refs(origin)
@@ -77,8 +89,8 @@ def test_dry_run_prints_plan_and_pushes_nothing(
 
 
 def test_first_release_creates_branch_tag_and_deploy(
-        repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str]) -> None:
+    repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     origin, clone = repo
     head = merge_pr(clone, 7, "Add the filter")
     assert run(clone, monkeypatch) == 0
@@ -93,8 +105,8 @@ def test_first_release_creates_branch_tag_and_deploy(
 
 
 def test_second_release_counts_up_and_lists_only_new_pull_requests(
-        repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str]) -> None:
+    repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     origin, clone = repo
     first = merge_pr(clone, 7, "Add the filter")
     assert run(clone, monkeypatch) == 0
@@ -109,7 +121,8 @@ def test_second_release_counts_up_and_lists_only_new_pull_requests(
 
 
 def test_second_tag_on_the_same_day_gets_a_suffix(
-        repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch) -> None:
+    repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
     origin, clone = repo
     for number in (7, 8, 9):
         merge_pr(clone, number, f"Change {number}")
@@ -119,7 +132,8 @@ def test_second_tag_on_the_same_day_gets_a_suffix(
 
 
 def test_sprint_number_is_one_more_than_the_highest(
-        repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch) -> None:
+    repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
     origin, clone = repo
     git(clone, "push", "origin", "main:refs/heads/release/sprint-4")
     git(clone, "push", "origin", "main:refs/heads/release/sprint-12")
@@ -130,8 +144,11 @@ def test_sprint_number_is_one_more_than_the_highest(
 
 @pytest.mark.parametrize("checks", [None, "running", "failure"])
 def test_refuses_when_checks_are_not_green(
-        repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str], checks: str | None) -> None:
+    repo: tuple[Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    checks: str | None,
+) -> None:
     origin, clone = repo
     merge_pr(clone, 7, "One")
     before = remote_refs(origin)
@@ -142,8 +159,8 @@ def test_refuses_when_checks_are_not_green(
 
 
 def test_refuses_when_nothing_is_new(
-        repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str]) -> None:
+    repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     origin, clone = repo
     merge_pr(clone, 7, "One")
     run(clone, monkeypatch)
@@ -154,8 +171,8 @@ def test_refuses_when_nothing_is_new(
 
 
 def test_refuses_when_deploy_is_not_an_ancestor(
-        repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str]) -> None:
+    repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     origin, clone = repo
     git(clone, "switch", "-c", "stray")
     (clone / "s.txt").write_text("s")
@@ -171,7 +188,8 @@ def test_refuses_when_deploy_is_not_an_ancestor(
 
 
 def test_push_is_one_atomic_call_without_force(
-        repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch) -> None:
+    repo: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
     _, clone = repo
     merge_pr(clone, 7, "One")
     pushes: list[list[str]] = []

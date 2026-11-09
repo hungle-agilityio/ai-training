@@ -56,10 +56,12 @@ def test_depends_on_reads_every_number_on_the_line() -> None:
 
 
 def test_issue_waits_while_any_dependency_is_open(home: Path) -> None:
-    host = ChecksHost(issues=[
-        issue(1, "agent:ready", body="Depends on #63, #61\n" + files("ops/a.py")),
-        issue(61, "agent:manual"),
-    ])
+    host = ChecksHost(
+        issues=[
+            issue(1, "agent:ready", body="Depends on #63, #61\n" + files("ops/a.py")),
+            issue(61, "agent:manual"),
+        ]
+    )
     agent_tick.tick_once(host, home)
     assert host.spawned == []
 
@@ -80,7 +82,9 @@ def test_files_strip_notes_and_prefixes() -> None:
         "not a bullet `skip.py`\n\n## Depends on\n- `later.py`\n"
     )
     assert agent_tick.files_of(body) == {
-        "reviews/services.py", "ops/README.md", "ops/tests/test_x.py",
+        "reviews/services.py",
+        "ops/README.md",
+        "ops/tests/test_x.py",
     }
 
 
@@ -88,31 +92,37 @@ def test_files_strip_notes_and_prefixes() -> None:
 
 
 def test_two_ready_issues_sharing_a_file_do_not_start_together(home: Path) -> None:
-    host = ChecksHost(issues=[
-        issue(1, "agent:ready", body=files("reviews/services.py", "reviews/a.py")),
-        issue(2, "agent:ready", body=files("claude-code-training-lab/reviews/services.py")),
-        issue(3, "agent:ready", body=files("reviews/views.py")),
-    ])
+    host = ChecksHost(
+        issues=[
+            issue(1, "agent:ready", body=files("reviews/services.py", "reviews/a.py")),
+            issue(2, "agent:ready", body=files("claude-code-training-lab/reviews/services.py")),
+            issue(3, "agent:ready", body=files("reviews/views.py")),
+        ]
+    )
     log = agent_tick.tick_once(host, home)
     assert started(host) == [prompt(1), prompt(3)]
     assert "issue-2: waits for #1, which also touches reviews/services.py" in log
 
 
 def test_ready_issue_overlapping_an_issue_in_review_waits(home: Path) -> None:
-    host = ChecksHost(issues=[
-        issue(5, "agent:review", body=files("reviews/services.py")),
-        issue(6, "agent:ready", body=files("reviews/services.py")),
-    ])
+    host = ChecksHost(
+        issues=[
+            issue(5, "agent:review", body=files("reviews/services.py")),
+            issue(6, "agent:ready", body=files("reviews/services.py")),
+        ]
+    )
     log = agent_tick.tick_once(host, home)
     assert host.spawned == []
     assert "issue-6: waits for #5, which also touches reviews/services.py" in log
 
 
 def test_a_file_shared_with_a_closed_issue_is_no_clash(home: Path) -> None:
-    host = ChecksHost(issues=[
-        issue(5, "agent:review", body=files("reviews/services.py")) | {"closed": True},
-        issue(6, "agent:ready", body=files("reviews/services.py")),
-    ])
+    host = ChecksHost(
+        issues=[
+            issue(5, "agent:review", body=files("reviews/services.py")) | {"closed": True},
+            issue(6, "agent:ready", body=files("reviews/services.py")),
+        ]
+    )
     agent_tick.tick_once(host, home)
     assert started(host) == [prompt(6)]
 
@@ -121,10 +131,12 @@ def test_a_file_shared_with_a_closed_issue_is_no_clash(home: Path) -> None:
 
 
 def test_issue_without_the_section_runs_alone(home: Path) -> None:
-    host = ChecksHost(issues=[
-        issue(1, "agent:ready", body="## Summary\nNo files here."),
-        issue(2, "agent:ready", body=files("ops/b.py")),
-    ])
+    host = ChecksHost(
+        issues=[
+            issue(1, "agent:ready", body="## Summary\nNo files here."),
+            issue(2, "agent:ready", body=files("ops/b.py")),
+        ]
+    )
     agent_tick.tick_once(host, home)
     assert started(host) == [prompt(1)]
 
@@ -157,8 +169,11 @@ def test_a_new_red_commit_sends_again(home: Path) -> None:
 def test_red_main_still_runs_pull_requests(home: Path) -> None:
     from ops.tests.test_agent_tick import pull
 
-    host = ChecksHost(main_runs=RED, prs=[pull(20, closes=5)],
-                      issues=[issue(1, "agent:ready", body=files("a.py"))])
+    host = ChecksHost(
+        main_runs=RED,
+        prs=[pull(20, closes=5)],
+        issues=[issue(1, "agent:ready", body=files("a.py"))],
+    )
     agent_tick.tick_once(host, home)
     assert started(host) == ["Use the work-queue skill for pull request #20 only."]
 

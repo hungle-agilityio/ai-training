@@ -112,8 +112,13 @@ def test_the_build_is_told_the_full_skill_name() -> None:
 
 @pytest.mark.parametrize("key", ["id", "marketplace"])
 def test_a_missing_plugin_key_stops_the_tick_with_its_name(tmp_path: Path, key: str) -> None:
-    text = (Path(flow_config.DEFAULT_PATH)).read_text().replace(
-        f'{key} = "agent-flow@ai-training"' if key == "id" else 'marketplace = "ai-training"', ""
+    text = (
+        (Path(flow_config.DEFAULT_PATH))
+        .read_text()
+        .replace(
+            f'{key} = "agent-flow@ai-training"' if key == "id" else 'marketplace = "ai-training"',
+            "",
+        )
     )
     path = tmp_path / "flow.toml"
     path.write_text(text)

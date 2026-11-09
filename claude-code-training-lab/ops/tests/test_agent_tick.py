@@ -29,9 +29,15 @@ def issue(number: int, *labels: str, body: str = "", created: str = "") -> dict[
     }
 
 
-def pull(number: int, *labels: str, state: str = "OPEN", closes: int = 0,
-         comments: list[dict[str, Any]] | None = None, checks: str = "SUCCESS",
-         marker: bool = True) -> dict[str, Any]:
+def pull(
+    number: int,
+    *labels: str,
+    state: str = "OPEN",
+    closes: int = 0,
+    comments: list[dict[str, Any]] | None = None,
+    checks: str = "SUCCESS",
+    marker: bool = True,
+) -> dict[str, Any]:
     body = (MARKER + "\n" if marker else "") + (f"Closes #{closes}" if closes else "")
     return {
         "number": number,
@@ -123,8 +129,9 @@ def started(host: FakeHost) -> list[str]:
     return [args[-1] for args in host.spawned]
 
 
-def add_run(home: Path, key: str, pid: int, exit_text: str | None = None, log: str = "",
-            alone: bool = False) -> Path:
+def add_run(
+    home: Path, key: str, pid: int, exit_text: str | None = None, log: str = "", alone: bool = False
+) -> Path:
     run = home / "runs" / key
     run.mkdir(parents=True)
     (run / "pid").write_text(str(pid))
@@ -197,8 +204,9 @@ def test_no_topic_sends_nothing(home: Path) -> None:
 
 
 def test_two_slots_start_two_issues(home: Path) -> None:
-    host = FakeHost(issues=[issue(1, "agent:ready"), issue(2, "agent:ready"),
-                            issue(3, "agent:ready")])
+    host = FakeHost(
+        issues=[issue(1, "agent:ready"), issue(2, "agent:ready"), issue(3, "agent:ready")]
+    )
     agent_tick.tick_once(host, home)
     assert started(host) == [
         "Use the work-queue skill for issue #1 only.",
@@ -226,8 +234,10 @@ def test_no_free_slot_starts_nothing(home: Path) -> None:
 
 def test_pull_request_with_owner_redo_goes_before_issues(home: Path) -> None:
     redo = comment("/redo rename the button")
-    host = FakeHost(prs=[pull(20, "pr:ready-for-review", closes=5, comments=[redo])],
-                    issues=[issue(1, "agent:ready"), issue(2, "agent:ready")])
+    host = FakeHost(
+        prs=[pull(20, "pr:ready-for-review", closes=5, comments=[redo])],
+        issues=[issue(1, "agent:ready"), issue(2, "agent:ready")],
+    )
     agent_tick.tick_once(host, home)
     assert started(host) == [
         "Use the work-queue skill for pull request #20 only.",
@@ -236,8 +246,10 @@ def test_pull_request_with_owner_redo_goes_before_issues(home: Path) -> None:
 
 
 def test_redo_on_the_issue_counts(home: Path) -> None:
-    host = FakeHost(prs=[pull(20, "pr:ready-for-review", closes=5)],
-                    issue_comments={5: [comment("/redo add a test")]})
+    host = FakeHost(
+        prs=[pull(20, "pr:ready-for-review", closes=5)],
+        issue_comments={5: [comment("/redo add a test")]},
+    )
     agent_tick.tick_once(host, home)
     assert started(host) == ["Use the work-queue skill for pull request #20 only."]
 
@@ -319,8 +331,12 @@ def test_pull_request_run_checks_out_its_branch(home: Path) -> None:
 
 def test_oldest_issue_is_picked_first(home: Path) -> None:
     (home / "agent.env").write_text("AGENT_CONCURRENCY=1\n")
-    host = FakeHost(issues=[issue(2, "agent:ready", created="2026-10-01T00:00:00Z"),
-                            issue(1, "agent:ready", created="2026-10-05T00:00:00Z")])
+    host = FakeHost(
+        issues=[
+            issue(2, "agent:ready", created="2026-10-01T00:00:00Z"),
+            issue(1, "agent:ready", created="2026-10-05T00:00:00Z"),
+        ]
+    )
     agent_tick.tick_once(host, home)
     assert started(host) == ["Use the work-queue skill for issue #2 only."]
 
@@ -345,8 +361,9 @@ def test_issue_with_a_closed_dependency_is_taken(home: Path) -> None:
 
 
 def test_ready_label_added_by_someone_else_is_skipped(home: Path) -> None:
-    host = FakeHost(issues=[issue(1, "agent:ready"), issue(2, "agent:ready")],
-                    labeller={1: "stranger"})
+    host = FakeHost(
+        issues=[issue(1, "agent:ready"), issue(2, "agent:ready")], labeller={1: "stranger"}
+    )
     log = agent_tick.tick_once(host, home)
     assert started(host) == ["Use the work-queue skill for issue #2 only."]
     assert f"issue-1: agent:ready was not added by {OWNER}; skipped" in log
@@ -357,9 +374,11 @@ def test_ready_label_added_by_someone_else_is_skipped(home: Path) -> None:
 
 @pytest.mark.parametrize(
     "item",
-    [issue(1, "agent:ready", "risk:high"),
-     issue(1, "agent:ready", body="Touches reviews/migrations/0004.py"),
-     issue(1, "agent:ready", body="Change reviews/models.py")],
+    [
+        issue(1, "agent:ready", "risk:high"),
+        issue(1, "agent:ready", body="Touches reviews/migrations/0004.py"),
+        issue(1, "agent:ready", body="Change reviews/models.py"),
+    ],
     ids=["risk-high", "migrations", "models"],
 )
 def test_risky_issue_runs_alone(home: Path, item: dict[str, Any]) -> None:
@@ -371,8 +390,9 @@ def test_risky_issue_runs_alone(home: Path, item: dict[str, Any]) -> None:
 
 def test_risky_issue_waits_while_another_build_runs(home: Path) -> None:
     add_run(home, "issue-9", 77)
-    host = FakeHost(issues=[issue(1, "agent:ready", "risk:high"), issue(2, "agent:ready")],
-                    alive_pids={77})
+    host = FakeHost(
+        issues=[issue(1, "agent:ready", "risk:high"), issue(2, "agent:ready")], alive_pids={77}
+    )
     agent_tick.tick_once(host, home)
     assert host.spawned == []
 
@@ -393,8 +413,18 @@ def test_issue_is_labelled_running_before_the_build_starts(home: Path) -> None:
     names = [c[1:4] for c in host.calls if c[0] == "gh"]
     assert ["label", "create", "agent:running"] in names
     assert host.gh_calls("issue", "edit") == [
-        ["gh", "issue", "edit", "1", "--add-label", "agent:running", "--remove-label",
-         "agent:ready", "--repo", agent_tick.REPO]
+        [
+            "gh",
+            "issue",
+            "edit",
+            "1",
+            "--add-label",
+            "agent:running",
+            "--remove-label",
+            "agent:ready",
+            "--repo",
+            agent_tick.REPO,
+        ]
     ]
 
 
@@ -405,13 +435,24 @@ def test_issue_build_gets_a_detached_worktree_synced_and_a_claude_run(home: Path
     host = FakeHost(issues=[issue(1, "agent:ready")])
     agent_tick.tick_once(host, home)
     worktree = home / "worktrees" / "issue-1"
-    assert ["git", "-C", str(agent_tick.REPO_ROOT), "worktree", "add", "--detach",
-            str(worktree), "origin/main"] in host.calls
+    assert [
+        "git",
+        "-C",
+        str(agent_tick.REPO_ROOT),
+        "worktree",
+        "add",
+        "--detach",
+        str(worktree),
+        "origin/main",
+    ] in host.calls
     assert ["uv", "sync", "--frozen"] in host.calls
     wrapper = host.spawned[0]
-    assert wrapper[2:] == ["run", str(home / "runs" / "issue-1"),
-                           str(worktree / "claude-code-training-lab"),
-                           "Use the work-queue skill for issue #1 only."]
+    assert wrapper[2:] == [
+        "run",
+        str(home / "runs" / "issue-1"),
+        str(worktree / "claude-code-training-lab"),
+        "Use the work-queue skill for issue #1 only.",
+    ]
     assert (home / "runs" / "issue-1" / "pid").read_text() == "1001"
 
 
@@ -451,8 +492,17 @@ def test_build_runs_claude_in_loop_mode_with_a_time_limit(
     monkeypatch.setattr(time, "monotonic", lambda: 1000.0)
     assert agent_tick.run_build(tmp_path, tmp_path / "lab", "Use it for issue #1 only.") == "0"
     assert seen["args"] == [
-        "claude", "-p", "Use it for issue #1 only.", "--max-turns", "80", "--output-format",
-        "stream-json", "--verbose", "--allowedTools", "Artifact", "--append-system-prompt",
+        "claude",
+        "-p",
+        "Use it for issue #1 only.",
+        "--max-turns",
+        "80",
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--allowedTools",
+        "Artifact",
+        "--append-system-prompt",
         agent_tick.HINT,
     ]
     assert seen["kwargs"]["env"]["REVIEWRADAR_LOOP"] == "1"
@@ -488,24 +538,44 @@ def test_normal_end_removes_the_worktree_and_archives_the_run(home: Path) -> Non
     add_run(home, "issue-1", 77, exit_text="0")
     host = FakeHost()
     agent_tick.tick_once(host, home)
-    assert ["git", "-C", str(agent_tick.REPO_ROOT), "worktree", "remove",
-            str(home / "worktrees" / "issue-1")] in host.calls
+    assert [
+        "git",
+        "-C",
+        str(agent_tick.REPO_ROOT),
+        "worktree",
+        "remove",
+        str(home / "worktrees" / "issue-1"),
+    ] in host.calls
     assert not (home / "runs" / "issue-1").exists()
     assert (home / "runs" / "done" / f"issue-1-{int(NOW)}" / "log.txt").exists()
 
 
-@pytest.mark.parametrize("outcome,reason", [("0", "ended without a pull request"),
-                                            ("timeout", "stopped after 45 minutes"),
-                                            ("1", "ended with error 1"),
-                                            (None, "stopped with no exit code")])
-def test_failed_build_marks_the_issue_failed(home: Path, outcome: str | None,
-                                             reason: str) -> None:
+@pytest.mark.parametrize(
+    "outcome,reason",
+    [
+        ("0", "ended without a pull request"),
+        ("timeout", "stopped after 45 minutes"),
+        ("1", "ended with error 1"),
+        (None, "stopped with no exit code"),
+    ],
+)
+def test_failed_build_marks_the_issue_failed(home: Path, outcome: str | None, reason: str) -> None:
     log = "\n".join(f"line {n}" for n in range(30))
     add_run(home, "issue-1", 77, exit_text=outcome, log=log)
     host = FakeHost(issues=[issue(1, "agent:ready", "agent:running")])
     agent_tick.tick_once(host, home)
-    assert ["gh", "issue", "edit", "1", "--add-label", "agent:failed", "--remove-label",
-            "agent:running,agent:ready", "--repo", agent_tick.REPO] in host.calls
+    assert [
+        "gh",
+        "issue",
+        "edit",
+        "1",
+        "--add-label",
+        "agent:failed",
+        "--remove-label",
+        "agent:running,agent:ready",
+        "--repo",
+        agent_tick.REPO,
+    ] in host.calls
     body = host.gh_calls("issue", "comment")[0][5]
     assert body.startswith(MARKER) and reason in body
     assert "line 10\n" in body and "line 9\n" not in body
@@ -515,8 +585,9 @@ def test_failed_build_marks_the_issue_failed(home: Path, outcome: str | None,
 
 def test_normal_end_after_handing_over_is_not_marked(home: Path) -> None:
     add_run(home, "issue-1", 77, exit_text="0")
-    host = FakeHost(prs=[pull(20, "pr:ready-for-review", closes=1)],
-                    issues=[issue(1, "agent:review")])
+    host = FakeHost(
+        prs=[pull(20, "pr:ready-for-review", closes=1)], issues=[issue(1, "agent:review")]
+    )
     log = agent_tick.tick_once(host, home)
     assert "issue-1: ended normally" in log
     assert host.gh_calls("issue", "comment") == []
@@ -524,8 +595,9 @@ def test_normal_end_after_handing_over_is_not_marked(home: Path) -> None:
 
 def test_failed_build_that_already_opened_a_pull_request_is_not_marked(home: Path) -> None:
     add_run(home, "issue-1", 77, exit_text="timeout")
-    host = FakeHost(prs=[pull(20, "pr:ready-for-review", closes=1)],
-                    issues=[issue(1, "agent:running")])
+    host = FakeHost(
+        prs=[pull(20, "pr:ready-for-review", closes=1)], issues=[issue(1, "agent:running")]
+    )
     agent_tick.tick_once(host, home)
     assert host.gh_calls("issue", "comment") == []
     assert any(c[3:5] == ["worktree", "remove"] for c in host.calls)
@@ -543,14 +615,25 @@ def test_plan_limit_puts_the_issue_back_and_pauses(home: Path) -> None:
     add_run(home, "issue-1", 77, exit_text="1", log="Claude usage limit reached|1800003600")
     host = FakeHost(issues=[issue(1, "agent:ready", "agent:running"), issue(2, "agent:ready")])
     log = agent_tick.tick_once(host, home)
-    assert ["gh", "issue", "edit", "1", "--add-label", "agent:ready", "--remove-label",
-            "agent:running", "--repo", agent_tick.REPO] in host.calls
+    assert [
+        "gh",
+        "issue",
+        "edit",
+        "1",
+        "--add-label",
+        "agent:ready",
+        "--remove-label",
+        "agent:running",
+        "--repo",
+        agent_tick.REPO,
+    ] in host.calls
     assert not any("agent:failed" in c for c in host.calls)
     assert any(c[3:5] == ["worktree", "remove"] for c in host.calls)
     assert float((home / "paused-until").read_text()) == NOW + 3600
     assert host.spawned == [] and "paused after the plan limit; no build started" in log
-    assert host.sent == ["rr-test: ReviewRadar loop paused 60 minutes: plan limit reached "
-                         "(issue-1)"]
+    assert host.sent == [
+        "rr-test: ReviewRadar loop paused 60 minutes: plan limit reached (issue-1)"
+    ]
 
 
 def test_live_build_is_not_touched(home: Path) -> None:
@@ -613,6 +696,7 @@ def test_no_queue_empty_while_a_build_runs(home: Path) -> None:
 
 def test_main_runs_the_wrapper(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     calls: list[tuple[Path, Path, str]] = []
+
     def run_build(run: Path, folder: Path, prompt: str) -> str:
         calls.append((run, folder, prompt))
         return "0"

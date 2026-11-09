@@ -68,8 +68,10 @@ def test_issue_start_names_the_issue(home: Path) -> None:
 
 def test_pull_request_start_counts_change_requests(home: Path) -> None:
     redo = comment("/redo rename it")
-    host = NotifyHost(prs=[pull(20, "pr:ready-for-review", closes=5, comments=[redo])],
-                      issue_comments={5: [comment("/redo add a test")]})
+    host = NotifyHost(
+        prs=[pull(20, "pr:ready-for-review", closes=5, comments=[redo])],
+        issue_comments={5: [comment("/redo add a test")]},
+    )
     agent_tick.tick_once(host, home)
     assert messages(host, "working on") == [
         "ReviewRadar working on PR #20 (2 change requests open)"
@@ -131,8 +133,9 @@ def test_merged_pull_request_is_announced_once_with_the_new_sha(home: Path) -> N
 
 def test_merged_while_main_cannot_be_pulled_says_why(home: Path) -> None:
     (home / "announced-merged").write_text("")
-    host = NotifyHost(prs=[pull(20, state="MERGED", closes=5)],
-                      git={"branch --show-current": (0, "task/9-x\n")})
+    host = NotifyHost(
+        prs=[pull(20, state="MERGED", closes=5)], git={"branch --show-current": (0, "task/9-x\n")}
+    )
     agent_tick.tick_once(host, home)
     assert messages(host, "PR #20 merged") == [
         "ReviewRadar PR #20 merged (#5); main checkout not updated: the checkout is on task/9-x"
@@ -189,8 +192,9 @@ def test_failed_slack_post_logs_without_the_url_and_keeps_ntfy(tmp_path: Path) -
     assert host.sent == ["rr-test: ReviewRadar started #4: Fix the thing"]
 
 
-def test_real_slack_failure_prints_no_url(capsys: pytest.CaptureFixture[str],
-                                          monkeypatch: pytest.MonkeyPatch) -> None:
+def test_real_slack_failure_prints_no_url(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     def refuse(*args: Any, **kwargs: Any) -> Any:
         raise OSError(f"cannot reach {HOOK}")
 

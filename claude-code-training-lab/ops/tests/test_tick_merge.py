@@ -18,34 +18,62 @@ LOOP_COMMIT = "2026-10-20T10:00:00Z"
 URL = "https://github.com/hungle-agilityio/ai-training/pull/20"
 
 
-def remark(cid: int, body: str, when: str = "2026-10-21T00:00:00Z", login: str = OWNER,
-           marks: tuple[str, ...] = ()) -> dict[str, Any]:
+def remark(
+    cid: int,
+    body: str,
+    when: str = "2026-10-21T00:00:00Z",
+    login: str = OWNER,
+    marks: tuple[str, ...] = (),
+) -> dict[str, Any]:
     return {
-        "id": f"IC_{cid}", "author": {"login": login}, "body": body, "createdAt": when,
+        "id": f"IC_{cid}",
+        "author": {"login": login},
+        "body": body,
+        "createdAt": when,
         "url": f"{URL}#issuecomment-{cid}",
         "reactionGroups": [{"content": m.upper(), "users": {"totalCount": 1}} for m in marks],
     }
 
 
-def inline(cid: int, body: str, when: str = "2026-10-21T00:00:00Z", login: str = OWNER,
-           marks: tuple[str, ...] = ()) -> dict[str, Any]:
-    return {"id": cid, "user": {"login": login}, "body": body, "created_at": when,
-            "reactions": {m: 1 for m in marks}}
-
-
-def loop_pr(*comments: dict[str, Any], labels: tuple[str, ...] = ("pr:ready-for-review",),
-            checks: list[dict[str, Any]] | None = None, state: str = "CLEAN",
-            commits: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+def inline(
+    cid: int,
+    body: str,
+    when: str = "2026-10-21T00:00:00Z",
+    login: str = OWNER,
+    marks: tuple[str, ...] = (),
+) -> dict[str, Any]:
     return {
-        "number": 20, "state": "OPEN", "body": f"{MARKER}\nCloses #5",
-        "labels": [{"name": name} for name in labels], "headRefName": "task/5-x",
-        "createdAt": OPENED, "isDraft": False, "mergeStateStatus": state,
+        "id": cid,
+        "user": {"login": login},
+        "body": body,
+        "created_at": when,
+        "reactions": {m: 1 for m in marks},
+    }
+
+
+def loop_pr(
+    *comments: dict[str, Any],
+    labels: tuple[str, ...] = ("pr:ready-for-review",),
+    checks: list[dict[str, Any]] | None = None,
+    state: str = "CLEAN",
+    commits: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    return {
+        "number": 20,
+        "state": "OPEN",
+        "body": f"{MARKER}\nCloses #5",
+        "labels": [{"name": name} for name in labels],
+        "headRefName": "task/5-x",
+        "createdAt": OPENED,
+        "isDraft": False,
+        "mergeStateStatus": state,
         "headRefOid": "abc1234def",
-        "commits": commits or [{"committedDate": LOOP_COMMIT, "messageHeadline": "Do the task",
-                                "oid": "abc1234def"}],
+        "commits": commits
+        or [{"committedDate": LOOP_COMMIT, "messageHeadline": "Do the task", "oid": "abc1234def"}],
         "comments": list(comments),
         "statusCheckRollup": [{"status": "COMPLETED", "conclusion": "SUCCESS"}]
-        if checks is None else checks,
+        if checks is None
+        else checks,
     }
 
 
@@ -74,12 +102,14 @@ class ReviewHost(FakeHost):
                 content = args[-1].split("=", 1)[1]
                 self.posted.append((cid, content))
                 self.reactions.setdefault(cid, []).append(
-                    {"user": {"login": OWNER}, "content": content})
+                    {"user": {"login": OWNER}, "content": content}
+                )
                 for pr in self.prs:
                     for c in pr["comments"]:
                         if c["url"].endswith(f"-{cid}"):
                             c["reactionGroups"].append(
-                                {"content": content.upper(), "users": {"totalCount": 1}})
+                                {"content": content.upper(), "users": {"totalCount": 1}}
+                            )
                 return 0, "{}"
             if path.endswith("/reactions"):
                 return 0, json.dumps(self.reactions.get(cid, []))
@@ -113,8 +143,18 @@ PR_RUN = "Use the work-queue skill for pull request #20 only."
 def test_approval_word_merges_and_marks_it(home: Path, word: str) -> None:
     host = ReviewHost(prs=[loop_pr(remark(101, word))])
     agent_tick.tick_once(host, home)
-    assert ["gh", "pr", "merge", "20", "--merge", "--delete-branch", "--match-head-commit",
-            "abc1234def", "--repo", agent_tick.REPO] in host.calls
+    assert [
+        "gh",
+        "pr",
+        "merge",
+        "20",
+        "--merge",
+        "--delete-branch",
+        "--match-head-commit",
+        "abc1234def",
+        "--repo",
+        agent_tick.REPO,
+    ] in host.calls
     assert (101, "rocket") in host.posted
     assert "rr-test: ReviewRadar PR #20 merged (#5); main is now fff0001" in host.sent
 
@@ -135,8 +175,10 @@ def test_approval_older_than_a_loop_commit_does_not_merge(home: Path) -> None:
 def test_approval_older_only_than_an_update_from_main_merges(home: Path) -> None:
     commits = [
         {"committedDate": LOOP_COMMIT, "messageHeadline": "Do the task"},
-        {"committedDate": "2026-10-22T00:00:00Z",
-         "messageHeadline": "Merge branch 'main' into task/5-x"},
+        {
+            "committedDate": "2026-10-22T00:00:00Z",
+            "messageHeadline": "Merge branch 'main' into task/5-x",
+        },
     ]
     host = ReviewHost(prs=[loop_pr(remark(101, "lgtm"), commits=commits)])
     agent_tick.tick_once(host, home)
@@ -144,8 +186,10 @@ def test_approval_older_only_than_an_update_from_main_merges(home: Path) -> None
 
 
 def test_an_approval_with_a_mark_is_not_read_again(home: Path) -> None:
-    host = ReviewHost(prs=[loop_pr(remark(101, "lgtm", marks=("confused",)))],
-                      reactions={101: [{"user": {"login": OWNER}, "content": "confused"}]})
+    host = ReviewHost(
+        prs=[loop_pr(remark(101, "lgtm", marks=("confused",)))],
+        reactions={101: [{"user": {"login": OWNER}, "content": "confused"}]},
+    )
     agent_tick.tick_once(host, home)
     assert not host.merged()
 
@@ -161,8 +205,10 @@ def test_behind_main_updates_the_branch_and_does_not_merge(home: Path) -> None:
 
 
 def test_conflict_on_update_posts_the_redo_and_marks_the_approval(home: Path) -> None:
-    host = ReviewHost(prs=[loop_pr(remark(101, "lgtm"), state="BEHIND")],
-                      update=(1, "merge conflict between base and head"))
+    host = ReviewHost(
+        prs=[loop_pr(remark(101, "lgtm"), state="BEHIND")],
+        update=(1, "merge conflict between base and head"),
+    )
     agent_tick.tick_once(host, home)
     comment = host.gh_calls("pr", "comment")[0]
     assert comment[comment.index("--body") + 1] == agent_tick.REDO_CONFLICT
@@ -176,7 +222,8 @@ def test_dirty_is_not_merged_and_said_once(home: Path) -> None:
     host.prs[0]["comments"].append(remark(102, "lgtm", when="2026-10-23T00:00:00Z"))
     agent_tick.tick_once(host, home)
     assert [m for m in host.sent if "not merged" in m] == [
-        "rr-test: ReviewRadar PR #20 not merged: merge state is DIRTY"]
+        "rr-test: ReviewRadar PR #20 not merged: merge state is DIRTY"
+    ]
     assert (101, "confused") in host.posted and (102, "confused") in host.posted
 
 
@@ -225,15 +272,19 @@ def test_approval_by_another_login_does_nothing(home: Path) -> None:
 
 
 def test_rocket_by_another_login_is_not_a_done_mark(home: Path) -> None:
-    host = ReviewHost(prs=[loop_pr(remark(101, "rename the button", marks=("rocket",)))],
-                      reactions={101: [{"user": {"login": "stranger"}, "content": "rocket"}]})
+    host = ReviewHost(
+        prs=[loop_pr(remark(101, "rename the button", marks=("rocket",)))],
+        reactions={101: [{"user": {"login": "stranger"}, "content": "rocket"}]},
+    )
     agent_tick.tick_once(host, home)
     assert started(host) == [PR_RUN]
 
 
 def test_rocket_by_the_owner_closes_the_request(home: Path) -> None:
-    host = ReviewHost(prs=[loop_pr(remark(101, "rename the button", marks=("rocket",)))],
-                      reactions={101: [{"user": {"login": OWNER}, "content": "rocket"}]})
+    host = ReviewHost(
+        prs=[loop_pr(remark(101, "rename the button", marks=("rocket",)))],
+        reactions={101: [{"user": {"login": OWNER}, "content": "rocket"}]},
+    )
     agent_tick.tick_once(host, home)
     assert host.spawned == []
 
@@ -258,9 +309,11 @@ def test_line_comment_is_a_change_request(home: Path) -> None:
 
 
 def test_line_comment_with_the_owners_rocket_is_done(home: Path) -> None:
-    host = ReviewHost(prs=[loop_pr()],
-                      inline_comments=[inline(301, "use a constant", marks=("rocket",))],
-                      reactions={301: [{"user": {"login": OWNER}, "content": "rocket"}]})
+    host = ReviewHost(
+        prs=[loop_pr()],
+        inline_comments=[inline(301, "use a constant", marks=("rocket",))],
+        reactions={301: [{"user": {"login": OWNER}, "content": "rocket"}]},
+    )
     agent_tick.tick_once(host, home)
     assert host.spawned == []
     assert any("pulls/comments/301/reactions" in " ".join(c) for c in host.calls)
@@ -276,8 +329,9 @@ def test_redo_on_the_issue_counts_but_a_plain_issue_comment_does_not(home: Path)
 
 
 def test_approval_and_open_change_request_together_run_instead_of_merge(home: Path) -> None:
-    host = ReviewHost(prs=[loop_pr(remark(101, "rename X"),
-                                   remark(102, "lgtm", when="2026-10-22T00:00:00Z"))])
+    host = ReviewHost(
+        prs=[loop_pr(remark(101, "rename X"), remark(102, "lgtm", when="2026-10-22T00:00:00Z"))]
+    )
     agent_tick.tick_once(host, home)
     assert not host.merged()
     assert started(host) == [PR_RUN]

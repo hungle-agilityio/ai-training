@@ -16,7 +16,10 @@ MANIFEST = "plugins/agent-flow/.claude-plugin/plugin.json"
 def git(cwd: Path, *args: str) -> str:
     done = subprocess.run(
         ["git", "-c", "user.name=T", "-c", "user.email=t@example.com", *args],
-        cwd=cwd, check=True, capture_output=True, text=True,
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        text=True,
     )
     return done.stdout.strip()
 
@@ -75,9 +78,7 @@ def test_plugin_change_with_new_version_passes(
     assert run(repo, base, head, capsys)[0] == 0
 
 
-def test_change_outside_the_plugin_passes(
-    repo: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_change_outside_the_plugin_passes(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     base = git(repo, "rev-parse", "HEAD")
     write(repo, "app/views.py", "b = 2\n")
     head = commit(repo, "change the app")

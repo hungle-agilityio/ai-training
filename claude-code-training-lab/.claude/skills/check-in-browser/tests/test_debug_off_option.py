@@ -79,9 +79,7 @@ def test_without_the_flag_debug_stays_on(monkeypatch: pytest.MonkeyPatch, tmp_pa
     assert seen["debug"] is True
 
 
-def test_a_spec_can_set_debug_and_viewport(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_a_spec_can_set_debug_and_viewport(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     spec = tmp_path / "spec.json"
     steps = [{"name": "not-found", "goto": "/missing/"}]
     spec.write_text(json.dumps({"debug": False, "viewport": "390x844", "steps": steps}))
