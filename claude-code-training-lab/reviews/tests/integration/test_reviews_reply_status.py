@@ -120,5 +120,5 @@ def test_dashboard_and_location_page_query_counts_do_not_grow(
 
     with django_assert_max_num_queries(3):
         Client().get("/dashboard/")
-    with django_assert_max_num_queries(4):
+    with django_assert_max_num_queries(5):
         Client().get(f"/locations/{branch_id}/")

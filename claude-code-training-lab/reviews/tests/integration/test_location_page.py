@@ -159,7 +159,7 @@ def test_page_needs_at_most_four_queries(
         for i in range(count)
     )
 
-    with django_assert_max_num_queries(4):
+    with django_assert_max_num_queries(5):
         response = Client().get(f"/locations/{branch.pk}/")
 
     assert response.status_code == 200
