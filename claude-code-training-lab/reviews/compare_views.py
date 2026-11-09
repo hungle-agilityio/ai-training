@@ -1,5 +1,6 @@
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from reviews import compare_service, topic_service
@@ -46,3 +47,23 @@ def compare(request: HttpRequest) -> HttpResponse:
         "same_location": a_id is not None and a_id == b_id,
     }
     return render(request, "reviews/compare.html", context)
+
+
+def compare_export(request: HttpRequest) -> HttpResponse:
+    form = CompareForm(request.GET)
+    a_id, b_id = form.raw_ids()
+    comparison = None
+    if a_id is not None and b_id is not None:
+        comparison = compare_service.compare_locations(
+            a_id, b_id, form.period_days(), timezone.now(), with_topics=False
+        )
+    if comparison is None:
+        query = request.META.get("QUERY_STRING", "")
+        target = reverse("compare")
+        return redirect(f"{target}?{query}" if query else target)
+    response = HttpResponse(
+        compare_service.comparison_csv(comparison), content_type="text/csv; charset=utf-8"
+    )
+    filename = compare_service.export_filename(comparison)
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
