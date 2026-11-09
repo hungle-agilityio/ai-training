@@ -39,6 +39,10 @@
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M3 5h8v8H3zm10 0h8v4h-8zm0 6h8v8h-8zM3 15h8v4H3z" fill="currentColor"/></svg>
           Topics
         </a>
+        <a class="nav-item{% if request.resolver_match.url_name == 'compare' %} is-active{% endif %}" href="{% url 'compare' %}"{% if request.resolver_match.url_name == 'compare' %} aria-current="page"{% endif %}>
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h7v14H4zm9 0h7v14h-7z" fill="currentColor"/></svg>
+          Compare
+        </a>
         <a class="nav-item{% if request.resolver_match.url_name == 'replies' or request.resolver_match.url_name == 'review-reply' %} is-active{% endif %}" href="{% url 'replies' %}"{% if request.resolver_match.url_name == 'replies' or request.resolver_match.url_name == 'review-reply' %} aria-current="page"{% endif %}>
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M3 20l18-8L3 4v6l12 2-12 2z" fill="currentColor"/></svg>
           Reply drafts

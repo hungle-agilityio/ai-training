@@ -1,0 +1,127 @@
+{% extends "reviews/base.html" %}
+
+{% block title %}Compare locations · ReviewRadar{% endblock %}
+{% block heading %}Compare locations{% endblock %}
+{% block subtitle %}Two locations side by side for a period.{% endblock %}
+{% block actions %}
+{% if comparison %}
+<div class="export-action">
+  <a class="button" href="{% url 'compare-export' %}?a={{ a_id }}&amp;b={{ b_id }}&amp;period={{ period }}">Download CSV</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <form class="filters" id="compare-form" method="get" action="{% url 'compare' %}" aria-label="Compare locations">
+    <div class="field">
+      <label for="compare-a">Location A</label>
+      <select id="compare-a" name="a">
+        <option value=""{% if a_id is None %} selected{% endif %}>Choose a location</option>
+        {% for pk, name in locations %}
+          <option value="{{ pk }}"{% if pk == a_id %} selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="compare-b">Location B</label>
+      <select id="compare-b" name="b">
+        <option value=""{% if b_id is None %} selected{% endif %}>Choose a location</option>
+        {% for pk, name in locations %}
+          <option value="{{ pk }}"{% if pk == b_id %} selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="compare-period">Period</label>
+      <select id="compare-period" name="period">
+        {% for value, label in periods %}
+          <option value="{{ value }}"{% if value == period %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button class="button button-apply" type="submit">Compare</button>
+    </div>
+  </form>
+  {% if comparison %}
+  {% if verdict %}<p class="compare-verdict" id="compare-verdict">{{ verdict }}</p>{% endif %}
+  <div class="table-wrap">
+    <table class="compare-table" id="compare-table">
+      <thead>
+        <tr>
+          <td></td>
+          <th scope="col">{{ comparison.a.name }}</th>
+          <th scope="col">{{ comparison.b.name }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Score</th>
+          <td>{% if comparison.a.average_rating is None %}No score yet{% else %}{{ comparison.a.average_rating|floatformat:1 }}{% endif %}</td>
+          <td>{% if comparison.b.average_rating is None %}No score yet{% else %}{{ comparison.b.average_rating|floatformat:1 }}{% endif %}</td>
+        </tr>
+        <tr>
+          <th scope="row">Reviews</th>
+          <td>{{ comparison.a.review_count }}</td>
+          <td>{{ comparison.b.review_count }}</td>
+        </tr>
+        <tr>
+          <th scope="row">Good reviews</th>
+          <td>{% if comparison.a.good_percent is None %}—{% else %}{{ comparison.a.good_percent }}%{% endif %}</td>
+          <td>{% if comparison.b.good_percent is None %}—{% else %}{{ comparison.b.good_percent }}%{% endif %}</td>
+        </tr>
+        <tr>
+          <th scope="row">Bad reviews</th>
+          <td>{% if comparison.a.bad_percent is None %}—{% else %}{{ comparison.a.bad_percent }}%{% endif %}</td>
+          <td>{% if comparison.b.bad_percent is None %}—{% else %}{{ comparison.b.bad_percent }}%{% endif %}</td>
+        </tr>
+        <tr>
+          <th scope="row">Replied in 24h</th>
+          <td>{% if comparison.a.replied_in_time_percent is None %}—{% else %}{{ comparison.a.replied_in_time_percent }}%{% endif %}</td>
+          <td>{% if comparison.b.replied_in_time_percent is None %}—{% else %}{{ comparison.b.replied_in_time_percent }}%{% endif %}</td>
+        </tr>
+        {% for a_row, b_row in star_pairs %}
+        <tr>
+          <th scope="row">{{ a_row.stars }} ★</th>
+          <td>{{ a_row.count }} ({{ a_row.percent }}%)<span class="compare-bar"><span style="width: {{ a_row.percent }}%"></span></span></td>
+          <td>{{ b_row.count }} ({{ b_row.percent }}%)<span class="compare-bar"><span style="width: {{ b_row.percent }}%"></span></span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <section class="compare-topics" id="compare-topics" aria-label="What customers talk about">
+    <h2>What customers talk about</h2>
+    {% if comparison.topic_rows %}
+    <div class="table-wrap">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <td></td>
+            <th scope="col">{{ comparison.a.name }}</th>
+            <th scope="col">{{ comparison.b.name }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in comparison.topic_rows %}
+          <tr>
+            <th scope="row">{{ row.label }}</th>
+            <td>{{ row.a.review_count }}{% if row.a.bad_count %} · {{ row.a.bad_count }} bad{% endif %}</td>
+            <td>{{ row.b.review_count }}{% if row.b.bad_count %} · {{ row.b.bad_count }} bad{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="compare-message">No topics found for these locations in this period.</p>
+    {% endif %}
+  </section>
+  {% elif same_location %}
+  <p class="compare-message is-bad">Choose two different locations.</p>
+  {% else %}
+  <p class="compare-message">Pick two locations to compare.</p>
+  {% endif %}
+</section>
+{% endblock %}

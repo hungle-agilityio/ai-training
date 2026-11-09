@@ -2,7 +2,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import URLPattern, URLResolver, path
 from django.views.generic import RedirectView
 
-from reviews import import_views, topic_views, views
+from reviews import compare_views, import_views, topic_views, views
 
 urlpatterns: list[URLPattern | URLResolver] = [
     path("login/", auth_views.LoginView.as_view(redirect_authenticated_user=True), name="login"),
@@ -21,5 +21,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("reports/", views.reports, name="reports"),
     path("reports/export/", views.reports_export, name="reports-export"),
     path("topics/", topic_views.topics, name="topics"),
+    path("compare/", compare_views.compare, name="compare"),
+    path("compare/export/", compare_views.compare_export, name="compare-export"),
     path("api/dashboard/", views.dashboard_api, name="dashboard-api"),
 ]
