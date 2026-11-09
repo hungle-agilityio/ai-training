@@ -10,8 +10,8 @@ PLUGIN = Path(__file__).resolve().parents[1]
 WORK_QUEUE = (PLUGIN / "skills" / "work-queue" / "SKILL.md").read_text()
 CREATE_PR = (PLUGIN / "skills" / "create-pull-request" / "SKILL.md").read_text()
 EPIC_PROMPT = (
-    "Stacked on epic branch epic/<N>-<slug>: branch from origin/epic/<N>-<slug> and open the "
-    "pull request into epic/<N>-<slug>."
+    "Task of epic branch epic/<N>-<slug>: branch from origin/epic/<N>-<slug> and open a normal "
+    "pull request into epic/<N>-<slug> (not a draft, no `Stacked on` line)."
 )
 EPIC_LINE = "Stacked on #<P1>, #<P2> through epic/<N>-<slug> (merge those first)."
 EPIC_REDO = "/redo merge origin/epic/<N>-<slug> into this branch and fix the conflict"
@@ -29,8 +29,8 @@ def test_work_queue_handles_the_epic_conflict_request_without_a_rebase() -> None
     assert "never a rebase" in section
 
 
-def test_pull_requests_carry_the_epic_stacked_line() -> None:
-    assert EPIC_LINE in WORK_QUEUE
+def test_only_the_create_pull_request_skill_still_names_the_epic_stacked_line() -> None:
+    assert EPIC_LINE not in WORK_QUEUE
     assert EPIC_LINE in CREATE_PR
     assert "ADR-021" in CREATE_PR
 
