@@ -26,6 +26,7 @@ SETTINGS = PROJECT / ".claude" / "settings.json"
 FLOW_MODULE = PROJECT / "ops" / "flow_config.py"
 PLUGIN_HOOKS = Path(__file__).resolve().parents[2] / "hooks"
 FLOW_FOLDERS = ("ops/", ".claude/", ".github/", "specs/", "docs/learning/")
+PLUGIN_FOLDERS = ("../plugins/", "plugins/")
 SECTION = re.compile(r"^##\s+Files likely touched\s*$(.*?)(?=^##\s|\Z)", re.M | re.S)
 BULLET_PATH = re.compile(r"^\s*[-*]\s+`([^`]+)`(.*)$", re.M)
 TEST_EDITS = re.compile(r"^##\s+Existing tests that change\s*$(.*?)(?=^##\s|\Z)", re.M | re.S)
@@ -147,6 +148,8 @@ def allowed(path: str, allow: list[str]) -> bool:
 def route(text: str, allow: list[str]) -> list[str]:
     """area:flow when any path is in a flow folder; the loop label from the hook, then the rules."""
     paths = paths_of(text)
+    if any(p.startswith(PLUGIN_FOLDERS) for p in paths):
+        return ["area:flow", "agent:manual"]
     section = SECTION.search(text)
     files = section.group(1) if section else ""
     area = "area:flow" if any(p.startswith(FLOW_FOLDERS) for p in paths) else "area:app"

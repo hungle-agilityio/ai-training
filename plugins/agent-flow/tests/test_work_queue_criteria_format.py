@@ -71,4 +71,4 @@ def test_criteria_format_matches_the_build_verify_report_skill() -> None:
 def test_plugin_version_is_raised_for_the_criteria_format() -> None:
     manifest = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text())
 
-    assert manifest["version"] == "1.0.9"
+    assert manifest["version"] == "1.0.10"
