@@ -43,6 +43,15 @@
       </select>
     </div>
     <div class="field">
+      <label for="filter-topic">Topic</label>
+      <select id="filter-topic" name="topic">
+        <option value=""{% if not page.topic %} selected{% endif %}>All topics</option>
+        {% for slug, label in page.topic_options %}
+        <option value="{{ slug }}"{% if page.topic == slug %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
       <label for="filter-reply">Reply</label>
       <select id="filter-reply" name="reply">
         <option value=""{% if not page.reply %} selected{% endif %}>All</option>
