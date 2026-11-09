@@ -53,7 +53,11 @@
       "Bash(gh api repos/hungle-agilityio/ai-training/pulls/*/comments)",
       "Bash(gh api repos/hungle-agilityio/ai-training/pulls/*/comments *)",
       "Bash(gh api repos/hungle-agilityio/ai-training/issues/*/comments)",
-      "Bash(gh api repos/hungle-agilityio/ai-training/issues/*/comments *)"
+      "Bash(gh api repos/hungle-agilityio/ai-training/issues/*/comments *)",
+      "Read(~/.claude/plugins/cache/ai-training/agent-flow/**)",
+      "Bash(uv sync:*)",
+      "Bash(git mv:*)",
+      "Bash(git cherry-pick:*)"
     ],
     "ask": [
       "Bash(gh issue close:*)",
