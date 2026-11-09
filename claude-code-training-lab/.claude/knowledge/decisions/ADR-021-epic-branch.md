@@ -30,3 +30,4 @@ ADR-018 starts a dependent task early only when exactly one of its dependencies 
 - The tick pushes and deletes `epic/*` branches; builds never push to them.
 - A review fix on a parent reaches its children only through the epic branch, at the next tick.
 - An epic's tasks can pile up in review while builds go on; the owner reviews parents first.
+- Added 2026-11-09 after PR #320 (#317) was merged into the epic branch with the Merge button: a stacked pull request stays a draft until the tick moves its base to `main` (GitHub disables Merge on drafts), and a pull request merged into an epic branch anyway gets a new pull request into `main` from the tick (spec `specs/epic-close/spec.md`, #327, #329).
