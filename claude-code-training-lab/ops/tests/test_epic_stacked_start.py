@@ -65,7 +65,8 @@ def prs() -> list[dict[str, Any]]:
 def epic_prompt(n: int = 242, listed: str = "#251, #252") -> str:
     return (
         f"Use the work-queue skill for issue #{n} only. Stacked on epic branch {BRANCH}: "
-        f"branch from origin/{BRANCH} and open the pull request into {BRANCH}. Put the line "
+        f"branch from origin/{BRANCH} and open the pull request into {BRANCH} "
+        "as a draft (`gh pr create --draft`). Put the line "
         f"`Stacked on {listed} through {BRANCH} (merge those first).` just above `Closes #{n}`."
     )
 
@@ -104,8 +105,9 @@ def test_the_start_record_names_the_epic_branch_and_the_pull_requests(home: Path
 
 def test_one_open_dependency_of_an_epic_task_uses_the_epic_branch(home: Path) -> None:
     host, _ = tick(
-        home, [dep_pr(252, 240, HEAD_A)], [epic_issue(), task(240, "agent:review"),
-                                          task(242, depends=(240,))]
+        home,
+        [dep_pr(252, 240, HEAD_A)],
+        [epic_issue(), task(240, "agent:review"), task(242, depends=(240,))],
     )
     assert started(host) == [epic_prompt(listed="#252")]
 
@@ -118,7 +120,8 @@ def test_a_task_without_an_epic_keeps_the_one_parent_stacking(home: Path) -> Non
     )
     assert started(host) == [
         "Use the work-queue skill for issue #242 only. Stacked on pull request #252: "
-        "branch from origin/task/240-dep and open the pull request into task/240-dep."
+        "branch from origin/task/240-dep and open the pull request into task/240-dep "
+        "as a draft (`gh pr create --draft`)."
     ]
 
 
@@ -157,8 +160,9 @@ def test_no_epic_branch_yet_keeps_the_task_waiting(home: Path) -> None:
 
 def test_a_dependency_of_another_epic_must_be_merged_first(home: Path) -> None:
     other = task(240, "agent:review", epic=999)
-    host, _ = tick(home, prs(), [epic_issue(), other, task(241, "agent:review"),
-                                 task(242, depends=(240, 241))])
+    host, _ = tick(
+        home, prs(), [epic_issue(), other, task(241, "agent:review"), task(242, depends=(240, 241))]
+    )
     assert started(host) == []
 
 
@@ -189,8 +193,14 @@ def test_the_base_stays_while_one_listed_pull_request_is_open(home: Path) -> Non
 
 def test_a_pull_request_into_the_epic_branch_is_never_merged(home: Path) -> None:
     kid = child_pr(state_b="OPEN")
-    kid[0]["comments"] = [{"author": {"login": agent_tick.OWNER}, "body": "lgtm",
-                           "createdAt": "2026-10-21T10:00:00Z", "id": "c1"}]
+    kid[0]["comments"] = [
+        {
+            "author": {"login": agent_tick.OWNER},
+            "body": "lgtm",
+            "createdAt": "2026-10-21T10:00:00Z",
+            "id": "c1",
+        }
+    ]
     host, _ = tick(home, kid, [epic_issue(), task(242, "agent:review")])
     assert host.gh_calls("pr", "merge") == []
 

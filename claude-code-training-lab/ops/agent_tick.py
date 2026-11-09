@@ -1017,8 +1017,10 @@ def stack_parent(
     if parent not in open_numbers:
         return None
     found = newest_open_pr(prs, parent)
-    if found is None or found.get("isDraft"):
+    if found is None:
         return None
+    if found.get("isDraft") and found["number"] not in stack_drafts(tick):
+        return None  # #327: a draft the tick made for a stacked pull request still counts
     if not found.get("headRefName") or not found.get("headRefOid"):
         return None  # the record of AC2 needs the branch and its head commit
     checks = [check_state(c) for c in found.get("statusCheckRollup") or []]
@@ -1112,7 +1114,8 @@ def epic_prompt(number: int, start: EpicStart) -> str:
     listed = ", ".join(f"#{n}" for n in start.prs)
     return (
         f" Stacked on epic branch {start.branch}: branch from origin/{start.branch} and open the"
-        f" pull request into {start.branch}. Put the line `Stacked on {listed} through"
+        f" pull request into {start.branch} as a draft (`gh pr create --draft`). Put the line"
+        f" `Stacked on {listed} through"
         f" {start.branch} (merge those first).` just above `Closes #{number}`."
     )
 
@@ -1210,7 +1213,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
             branch = str(parent_pr["headRefName"])
             prompt += (
                 f" Stacked on pull request #{parent_pr['number']}: branch from origin/{branch}"
-                f" and open the pull request into {branch}."
+                f" and open the pull request into {branch} as a draft (`gh pr create --draft`)."
             )
             head_title = parent_pr.get("title") or title
             message = (
@@ -1838,6 +1841,45 @@ def stacked_children(prs: list[dict[str, Any]]) -> list[tuple[dict[str, Any], di
     return found
 
 
+def stack_drafts(tick: Tick) -> set[int]:
+    """#327: the stacked pull requests the tick turned into drafts."""
+    record = tick.home / "stack-drafts"
+    return {int(n) for n in record.read_text().split()} if record.exists() else set()
+
+
+def save_stack_drafts(tick: Tick, numbers: set[int]) -> None:
+    (tick.home / "stack-drafts").write_text("\n".join(str(n) for n in sorted(numbers)))
+
+
+def mark_ready_after_move(tick: Tick, number: int) -> None:
+    """#327 AC3, AC4: a recorded draft becomes ready once its base is main; a failure is retried."""
+    drafts = stack_drafts(tick)
+    if number not in drafts:
+        return
+    code, out = tick.gh("pr", "ready", str(number))
+    if code != 0:
+        tick.say(f"pr-{number}: not marked ready ({out.strip()}); next tick")
+        return
+    save_stack_drafts(tick, drafts - {number})
+    tick.say(f"pr-{number}: ready for review, its base is main")
+
+
+def keep_stacked_as_drafts(tick: Tick, prs: list[dict[str, Any]]) -> None:
+    """#327 AC1, AC4: GitHub disables Merge on a draft, so a stacked pull request stays one."""
+    for pr in prs:
+        base = str(pr.get("baseRefName") or "main")
+        if pr["state"] != "OPEN" or base == "main" or pr.get("isDraft"):
+            continue
+        number = pr["number"]
+        code, out = tick.gh("pr", "ready", str(number), "--undo")
+        if code != 0:
+            tick.say(f"pr-{number}: draft not set ({out.strip()}); next tick")
+            continue
+        save_stack_drafts(tick, stack_drafts(tick) | {number})
+        pr["isDraft"] = True
+        tick.say(f"pr-{number}: draft while its base is {base}")
+
+
 def settle_children(tick: Tick, prs: list[dict[str, Any]]) -> None:
     """#165 AC6, AC7: children of a merged parent go to main; of a closed one, pr:blocked."""
     record = tick.home / "parent-closed"
@@ -1855,6 +1897,7 @@ def settle_children(tick: Tick, prs: list[dict[str, Any]]) -> None:
             tick.retargeted.add(number)
             child["baseRefName"] = "main"
             tick.say(f"pr-{number}: parent PR #{up} merged; base is now main")
+            mark_ready_after_move(tick, number)
             continue
         key = f"{number}:{up}"
         if key in seen:
@@ -1936,6 +1979,7 @@ def settle_epic_children(tick: Tick, prs: list[dict[str, Any]]) -> None:
         child["baseRefName"] = "main"
         listed = ", ".join(f"#{up}" for up in ups)
         tick.say(f"pr-{number}: {listed} merged; base is now main")
+        mark_ready_after_move(tick, number)
 
 
 def move_children(tick: Tick, kids: list[dict[str, Any]], up: int) -> None:
@@ -1949,6 +1993,7 @@ def move_children(tick: Tick, kids: list[dict[str, Any]], up: int) -> None:
         tick.retargeted.add(number)
         kid["baseRefName"] = "main"
         tick.say(f"pr-{number}: parent PR #{up} merged; base is now main")
+        mark_ready_after_move(tick, number)
 
 
 def keep_branch(tick: Tick, branch: str) -> None:
@@ -2199,6 +2244,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
         merge_approved(tick, prs, running)
         settle_children(tick, prs)
         settle_epic_children(tick, prs)
+        keep_stacked_as_drafts(tick, prs)
         keep_epic_branches(tick, prs)
         delete_kept_branches(tick, prs)
         tidy_ended(tick, prs)
