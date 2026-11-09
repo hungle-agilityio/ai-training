@@ -1,4 +1,4 @@
-"""#264: tasks of an epic start on the epic branch (spec epic-branch AC7 to AC12)."""
+"""#264, #364: tasks of an epic start on the epic branch (spec epic-branch, epic-review-once)."""
 
 from __future__ import annotations
 
@@ -55,19 +55,18 @@ def dep_pr(number: int, closes: int, head: str, **fields: Any) -> dict[str, Any]
 
 
 def deps() -> list[dict[str, Any]]:
-    return [task(240, "agent:review"), task(241, "agent:review")]
+    return [task(240, "agent:in-epic"), task(241, "agent:in-epic")]
 
 
 def prs() -> list[dict[str, Any]]:
     return [dep_pr(252, 240, HEAD_A), dep_pr(251, 241, HEAD_B)]
 
 
-def epic_prompt(n: int = 242, listed: str = "#251, #252") -> str:
+def epic_prompt(n: int = 242) -> str:
     return (
-        f"Use the work-queue skill for issue #{n} only. Stacked on epic branch {BRANCH}: "
-        f"branch from origin/{BRANCH} and open the pull request into {BRANCH} "
-        "as a draft (`gh pr create --draft`). Put the line "
-        f"`Stacked on {listed} through {BRANCH} (merge those first).` just above `Closes #{n}`."
+        f"Use the work-queue skill for issue #{n} only. Task of epic branch {BRANCH}: "
+        f"branch from origin/{BRANCH} and open a normal pull request into {BRANCH} "
+        "(not a draft, no `Stacked on` line)."
     )
 
 
@@ -82,7 +81,7 @@ def tick(
     return host, log
 
 
-# AC1, AC2: the task starts at once on the epic branch, with the stacked line
+# The task starts on the epic branch once its dependencies are in it
 
 
 def test_a_task_with_two_dependencies_in_the_epic_branch_starts_on_it(home: Path) -> None:
@@ -92,24 +91,23 @@ def test_a_task_with_two_dependencies_in_the_epic_branch_starts_on_it(home: Path
     assert any(f"origin/{BRANCH}" in c and "issue-242" in " ".join(c) for c in adds)
 
 
-def test_the_start_record_names_the_epic_branch_and_the_pull_requests(home: Path) -> None:
+def test_the_start_record_names_the_epic_branch(home: Path) -> None:
     tick(home, prs(), [epic_issue(), *deps(), task(242, depends=(240, 241))])
     record = agent_tick.stacked_record_of(home, 242)
     assert record is not None
     assert record["branch"] == BRANCH
-    assert record["prs"] == [251, 252]
 
 
 # AC5: one dependency uses the epic branch too; no epic keeps ADR-018
 
 
-def test_one_open_dependency_of_an_epic_task_uses_the_epic_branch(home: Path) -> None:
+def test_one_dependency_in_the_epic_branch_lets_the_task_start_on_it(home: Path) -> None:
     host, _ = tick(
         home,
         [dep_pr(252, 240, HEAD_A)],
-        [epic_issue(), task(240, "agent:review"), task(242, depends=(240,))],
+        [epic_issue(), task(240, "agent:in-epic"), task(242, depends=(240,))],
     )
-    assert started(host) == [epic_prompt(listed="#252")]
+    assert started(host) == [epic_prompt()]
 
 
 def test_a_task_without_an_epic_keeps_the_one_parent_stacking(home: Path) -> None:
@@ -128,30 +126,19 @@ def test_a_task_without_an_epic_keeps_the_one_parent_stacking(home: Path) -> Non
 # AC6: a dependency outside the epic branch keeps the task waiting, with the reason
 
 
-@pytest.mark.parametrize(
-    ("change", "git", "reason"),
-    [
-        ({"statusCheckRollup": [{"conclusion": "FAILURE"}]}, {}, "checks are red"),
-        ({"isDraft": True}, {}, "it is a draft"),
-        ({"labels": [{"name": "pr:changes-requested"}]}, {}, "it is not ready for review"),
-        ({}, {f"--is-ancestor {HEAD_A}": (1, "")}, "not merged into it yet"),
-    ],
-    ids=["red", "draft", "not-ready", "not-merged-in"],
-)
-def test_a_dependency_not_in_the_epic_branch_keeps_the_task_waiting(
-    home: Path, change: dict[str, Any], git: dict[str, tuple[int, str]], reason: str
-) -> None:
-    pulls = [dep_pr(252, 240, HEAD_A, **change), dep_pr(251, 241, HEAD_B)]
-    host, log = tick(home, pulls, [epic_issue(), *deps(), task(242, depends=(240, 241))], git)
+def test_a_dependency_not_in_the_epic_branch_keeps_the_task_waiting(home: Path) -> None:
+    pulls = [dep_pr(252, 240, HEAD_A), dep_pr(251, 241, HEAD_B)]
+    waiting = [task(240, "agent:review"), task(241, "agent:in-epic")]
+    host, log = tick(home, pulls, [epic_issue(), *waiting, task(242, depends=(240, 241))])
     assert not any("issue #242" in s for s in started(host))
-    assert f"#242 waits for #240: PR #252 is not in {BRANCH} ({reason})" in log
+    assert f"#242 waits for #240: PR #252 is not in {BRANCH} yet" in log
 
 
 def test_no_epic_branch_yet_keeps_the_task_waiting(home: Path) -> None:
     host, log = tick(
         home,
         prs(),
-        [epic_issue(), *deps(), task(242, depends=(240, 241))],
+        [epic_issue(), task(240, "agent:review"), task(241), task(242, depends=(240, 241))],
         {f"refs/remotes/origin/{BRANCH}": (1, "")},
     )
     assert started(host) == []

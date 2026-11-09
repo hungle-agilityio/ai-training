@@ -13,6 +13,7 @@ from ops.tests.test_agent_tick import FakeHost, started
 from ops.tests.test_tick_merge import loop_pr
 
 EPIC = "epic/312-topics"
+PARENT = "task/9-p"
 
 
 def stacked(
@@ -61,11 +62,11 @@ def ready_calls(host: FakeHost) -> list[list[str]]:
 
 
 def test_open_stacked_pull_request_is_made_a_draft_and_recorded(home: Path) -> None:
-    host = FakeHost(prs=[stacked()])
+    host = FakeHost(prs=[stacked(base=PARENT)])
     log = agent_tick.tick_once(host, home)
     assert any(c[:5] == ["gh", "pr", "ready", "20", "--undo"] for c in ready_calls(host))
     assert record(home) == ["20"]
-    assert "pr-20: draft while its base is " + EPIC in log
+    assert "pr-20: draft while its base is " + PARENT in log
 
 
 def test_pull_request_on_main_is_left_alone(home: Path) -> None:
@@ -90,10 +91,10 @@ def test_a_pull_request_without_the_marker_is_not_a_loop_pull_request(home: Path
 # AC2: the build prompts of a stacked task ask for a draft
 
 
-def test_epic_prompt_asks_for_a_draft() -> None:
-    start = agent_tick.EpicStart(branch=EPIC, head="abc", prs=(251, 252), waits=())
-    text = agent_tick.epic_prompt(242, start)
-    assert f"open the pull request into {EPIC} as a draft (`gh pr create --draft`)." in text
+def test_epic_prompt_asks_for_a_normal_pull_request() -> None:
+    start = agent_tick.EpicStart(312, EPIC, True, "abc", ())
+    text = agent_tick.epic_prompt(start)
+    assert f"open a normal pull request into {EPIC} (not a draft" in text
 
 
 def test_one_parent_prompt_asks_for_a_draft() -> None:
@@ -137,7 +138,7 @@ def test_one_parent_child_moved_to_main_is_marked_ready(home: Path) -> None:
 
 
 def test_failed_undo_is_logged_and_retried(home: Path) -> None:
-    host = FakeHost(prs=[stacked()], fail="pr ready")
+    host = FakeHost(prs=[stacked(base=PARENT)], fail="pr ready")
     log = agent_tick.tick_once(host, home)
     assert record(home) == []
     assert sum("pr-20: draft not set" in line for line in log) == 1
