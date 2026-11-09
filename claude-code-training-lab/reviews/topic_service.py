@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
-from reviews import topic_repository
+from reviews import repositories, topic_repository
 from reviews.services import average_from_totals
 from reviews.topics import TOPICS
 
@@ -73,6 +73,19 @@ def topic_overview(branch_id: int | None, period_days: int | None, now: datetime
         no_topic_count=totals.no_topic_count,
         rows=tuple(rows),
     )
+
+
+def location_options() -> tuple[tuple[int, str], ...]:
+    return tuple(repositories.branch_choices())
+
+
+def summary_line(overview: TopicOverview) -> str:
+    reviews = overview.review_count
+    line = f"{reviews} review" + ("" if reviews == 1 else "s")
+    missing = overview.no_topic_count
+    if missing:
+        line += f" · {missing} " + ("mentions" if missing == 1 else "mention") + " no topic"
+    return line
 
 
 def location_topics(branch_id: int) -> tuple[LocationTopic, ...]:
