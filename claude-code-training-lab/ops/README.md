@@ -63,6 +63,10 @@ All under `~/.reviewradar/`:
 | `paused-until` | set for 60 minutes when the Claude plan limit is reached |
 | `tick.lock` | present while a tick runs; one older than 15 minutes is left over |
 
+## Before an issue gets `agent:ready`
+
+The issue writer runs `uv run python ops/pinned_tests.py <issue body file>` from `claude-code-training-lab/`. It lists the existing tests that name something in the issue, or that count queries while the issue touches a view, a template, a service or a repository. It changes nothing. Copy each listed test that really changes, with its new value, under `## Existing tests that change` in the issue; a build may not edit any other existing test.
+
 ## One status label per issue
 
 An open loop issue carries exactly one of these four labels, and the tick (not the build) keeps it so.
