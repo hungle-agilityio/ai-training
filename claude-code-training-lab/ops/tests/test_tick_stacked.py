@@ -46,7 +46,8 @@ def child(number: int = 5, *labels: str, depends: str = "Depends on #4\n") -> di
 def prompt(n: int = 5, q: int = 30, branch: str = "task/4-parent") -> str:
     return (
         f"Use the work-queue skill for issue #{n} only. Stacked on pull request #{q}: "
-        f"branch from origin/{branch} and open the pull request into {branch}."
+        f"branch from origin/{branch} and open the pull request into {branch} "
+        "as a draft (`gh pr create --draft`)."
     )
 
 
