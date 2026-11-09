@@ -158,7 +158,7 @@ def test_its_base_is_never_moved_to_main(home: Path) -> None:
 def test_a_merged_task_is_not_rescued_into_main(home: Path) -> None:
     merged = task_pr() | {"state": "MERGED"}
     host = RescueHost(branches={BRANCH}, prs=[merged])
-    host.issues = [epic_issue(), task(5, "agent:review")]
+    host.issues = [epic_issue(), task(5, "agent:review"), task(6, "agent:running")]
     agent_tick.tick_once(host, home)
     assert any(c[:4] == ["gh", "pr", "view", "20"] for c in host.calls)
     assert host.gh_calls("pr", "create") == []

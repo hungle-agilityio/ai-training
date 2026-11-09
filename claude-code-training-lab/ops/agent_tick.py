@@ -25,9 +25,10 @@ from pathlib import Path
 from typing import Any, Protocol
 
 try:
-    from ops import epic_branch, epic_rescue, flow_config
+    from ops import epic_branch, epic_pull_request, epic_rescue, flow_config
 except ImportError:  # started as `python ops/agent_tick.py`: ops/ is the first path entry
     import epic_branch  # type: ignore[import-not-found,no-redef,unused-ignore]
+    import epic_pull_request  # type: ignore[import-not-found,no-redef,unused-ignore]
     import epic_rescue  # type: ignore[import-not-found,no-redef,unused-ignore]
     import flow_config  # type: ignore[import-not-found,no-redef,unused-ignore]
 
@@ -452,7 +453,15 @@ def loop_pull_requests(tick: Tick) -> list[dict[str, Any]]:
     return [pr for pr in opened + ended if is_loop_pr(pr)]
 
 
+def is_epic_pr(pr: dict[str, Any]) -> bool:
+    """#366: the pull request from an epic branch; its base is checked where it matters."""
+    return str(pr.get("headRefName") or "").startswith(epic_branch.EPIC_PREFIX)
+
+
 def closes(pr: dict[str, Any]) -> int | None:
+    """The issue of a pull request; for an epic's, the epic, not its first `Closes` line."""
+    if is_epic_pr(pr):
+        return epic_branch.number_of(str(pr["headRefName"]))
     match = re.search(r"Closes #(\d+)", pr.get("body") or "")
     return int(match.group(1)) if match else None
 
@@ -910,7 +919,7 @@ def pr_needs_run(tick: Tick, pr: dict[str, Any]) -> bool:
     if "pr:blocked" in labels:
         return False
     if not labels & PR_LABELS:
-        return True
+        return not is_epic_pr(pr)  # #366 AC2: unfinished work has a run, this one has none
     checks = pr.get("statusCheckRollup") or []
     red = any((c.get("conclusion") or c.get("state") or "") in RED_CI for c in checks)
     return "pr:ready-for-review" in labels and red
@@ -923,7 +932,7 @@ def mark_green_ready(tick: Tick, prs: list[dict[str, Any]], running: dict[str, b
         if (
             pr["state"] != "OPEN"
             or names(pr) & PR_LABELS
-            or "claude.ai/artifact/" not in pr["body"]
+            or ("claude.ai/artifact/" not in pr["body"] and not is_epic_pr(pr))
         ):
             continue
         if f"pr-{number}" in running or f"issue-{closes(pr)}" in running:
@@ -1682,7 +1691,7 @@ def sync_review(tick: Tick, prs: list[dict[str, Any]], fixed: set[int]) -> None:
     for pr in prs:
         number = closes(pr)
         item = by_number.get(number) if number is not None and pr["state"] == "OPEN" else None
-        if number is None or item is None:
+        if number is None or item is None or is_epic_pr(pr):
             continue
         have = names(item) - ({"agent:ready"} if number in fixed else set())
         stale = [x for x in ("agent:running", "agent:ready") if x in have]
@@ -2104,6 +2113,15 @@ def keep_epic_branches(tick: Tick, prs: list[dict[str, Any]]) -> None:
         tick.say(f"epic branches: {error}; next tick")
 
 
+def keep_epic_pull_requests(tick: Tick, prs: list[dict[str, Any]]) -> None:
+    """#366 AC1, AC5: one pull request into main per epic whose tasks are all in its branch."""
+    try:
+        issues = open_issue_list(tick)
+        epic_pull_request.EpicPullRequests(tick, REPO_ROOT, MARKER).keep(prs, issues)
+    except (RuntimeError, ValueError) as error:
+        tick.say(f"epic pull requests: {error}; next tick")
+
+
 def delete_kept_branches(tick: Tick, prs: list[dict[str, Any]]) -> None:
     """#180 AC3: delete each kept branch once nothing open is based on it; a failure is retried."""
     record = tick.home / "branch-delete"
@@ -2433,6 +2451,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
         merge_epic_tasks(tick, prs, running)
         settle_merged_epic_tasks(tick, prs)
         keep_epic_branches(tick, prs)
+        keep_epic_pull_requests(tick, prs)
         delete_kept_branches(tick, prs)
         rescue_epic_merges(tick, prs)
         tidy_ended(tick, prs)
