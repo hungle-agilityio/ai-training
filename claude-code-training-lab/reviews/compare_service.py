@@ -2,10 +2,11 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
-from reviews import compare_repository
+from reviews import compare_repository, topic_repository
 from reviews.compare_repository import STARS, CompareTotals
 from reviews.services import RATING_RANGES, average_from_totals, reply_share_percent
 from reviews.topic_service import percent
+from reviews.topics import TOPICS
 
 PERIOD_LABELS: dict[int | None, str] = {None: "All time", 30: "Last 30 days", 90: "Last 90 days"}
 
@@ -30,12 +31,26 @@ class LocationSide:
 
 
 @dataclass(frozen=True)
+class TopicCount:
+    review_count: int
+    bad_count: int
+
+
+@dataclass(frozen=True)
+class TopicRow:
+    label: str
+    a: TopicCount
+    b: TopicCount
+
+
+@dataclass(frozen=True)
 class Comparison:
     period_days: int | None
     period_label: str
     a: LocationSide
     b: LocationSide
     difference: float | None
+    topic_rows: tuple[TopicRow, ...]
 
 
 def _share(count: int, whole: int) -> int | None:
@@ -72,6 +87,21 @@ def _label(period_days: int | None) -> str:
     return PERIOD_LABELS.get(period_days) or "Last " + str(period_days) + " days"
 
 
+def _topic_rows(a_id: int, b_id: int, created_from: datetime | None) -> tuple[TopicRow, ...]:
+    a_totals = topic_repository.topic_totals(a_id, created_from).topics
+    b_totals = topic_repository.topic_totals(b_id, created_from).topics
+    labels = {topic.slug: topic.label for topic in TOPICS}
+    return tuple(
+        TopicRow(
+            labels[a.slug],
+            TopicCount(a.review_count, a.bad_count),
+            TopicCount(b.review_count, b.bad_count),
+        )
+        for a, b in zip(a_totals, b_totals, strict=True)
+        if a.review_count or b.review_count
+    )
+
+
 def compare_locations(
     a_id: int, b_id: int, period_days: int | None, now: datetime
 ) -> Comparison | None:
@@ -90,4 +120,5 @@ def compare_locations(
         a=a,
         b=b,
         difference=_difference(a.average_rating, b.average_rating),
+        topic_rows=_topic_rows(a_id, b_id, created_from),
     )

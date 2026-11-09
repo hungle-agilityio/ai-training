@@ -100,7 +100,7 @@ def test_lower_sentence_has_no_minus_sign(demo: dict[str, int]) -> None:
 def test_two_queries_for_any_number_of_reviews(
     demo: dict[str, int], django_assert_max_num_queries: DjangoAssertNumQueries
 ) -> None:
-    with django_assert_max_num_queries(2):
+    with django_assert_max_num_queries(4):
         Client().get(f"/compare/?a={demo['Downtown']}&b={demo['Riverside']}")
 
 
