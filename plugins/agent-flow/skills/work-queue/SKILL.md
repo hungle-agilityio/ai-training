@@ -112,3 +112,5 @@ Claude builds never merge; the tick merges on the owner's approval comment (ADR-
 ## Never
 
 Merge, approve a pull request, push to `main`, force-push, close an issue by hand, edit `.github/`, `.claude/`, settings, hooks or the gate files (`pyproject.toml`, `uv.lock`, `conftest.py`, tool config files), or ask a question mid-run. A blocker is a decision plus a line in the report, not a stop. If a hook blocks a command, do not look for a way around it: record it in the report and go on. Never run the loop in a mode that skips permission prompts.
+
+Format only the files you changed (`uv run ruff format <file> ...`), never a whole folder: a file of another task left modified in the worktree can hold up the next run on that branch.

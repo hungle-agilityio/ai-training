@@ -25,11 +25,18 @@ def body(path: str) -> str:
 
 def test_ready_issues_start_with_many_open_pull_requests(home: Path) -> None:
     prs = [pull(n, "pr:ready-for-review", closes=100 + n) for n in range(20, 45)]
-    host = FakeHost(prs=prs, issues=[issue(4, "agent:ready", body=body("a.py")),
-                                     issue(5, "agent:ready", body=body("b.py"))])
+    host = FakeHost(
+        prs=prs,
+        issues=[
+            issue(4, "agent:ready", body=body("a.py")),
+            issue(5, "agent:ready", body=body("b.py")),
+        ],
+    )
     agent_tick.tick_once(host, home)
-    assert started(host) == ["Use the work-queue skill for issue #4 only.",
-                             "Use the work-queue skill for issue #5 only."]
+    assert started(host) == [
+        "Use the work-queue skill for issue #4 only.",
+        "Use the work-queue skill for issue #5 only.",
+    ]
 
 
 def test_the_limit_is_gone_from_the_code() -> None:
@@ -38,8 +45,9 @@ def test_the_limit_is_gone_from_the_code() -> None:
 
 def test_blocked_message_is_sent_with_many_open_pull_requests(home: Path) -> None:
     prs = [pull(100 + n, "pr:ready-for-review", closes=50 + n) for n in range(12)]
-    host = FakeHost(prs=prs, issues=[issue(4, "agent:running"),
-                                     issue(5, "agent:ready", body="Depends on #4\n")])
+    host = FakeHost(
+        prs=prs, issues=[issue(4, "agent:running"), issue(5, "agent:ready", body="Depends on #4\n")]
+    )
     agent_tick.tick_once(host, home)
     assert len(host.sent) == 1
     assert host.sent[0].startswith("rr-test: ReviewRadar waiting: 1 ready issues blocked")

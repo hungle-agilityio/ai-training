@@ -110,9 +110,7 @@ def test_the_auth_check_uses_the_default_folder_and_the_entrypoint(tmp_path: Pat
 # AC3: old agent.env keys are ignored
 
 
-def test_old_keys_in_agent_env_are_ignored(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_old_keys_in_agent_env_are_ignored(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     write_env(tmp_path, "CLAUDE_CONFIG_DIR=~/.claude-study\nCLAUDE_CODE_ENTRYPOINT=other\n")
     settings = agent_tick.read_settings(tmp_path / "agent.env")
     assert settings.concurrency == 2

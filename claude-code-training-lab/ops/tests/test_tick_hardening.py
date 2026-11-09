@@ -64,8 +64,18 @@ def test_another_logins_pull_request_does_not_hide_a_failed_build(home: Path) ->
     add_run(home, "issue-1", 77, exit_text="1", log="boom")
     host = GitHost(prs=[stranger], issues=[issue(1, "agent:running")])
     agent_tick.tick_once(host, home)
-    assert ["gh", "issue", "edit", "1", "--add-label", "agent:failed", "--remove-label",
-            "agent:running,agent:ready", "--repo", agent_tick.REPO] in host.calls
+    assert [
+        "gh",
+        "issue",
+        "edit",
+        "1",
+        "--add-label",
+        "agent:failed",
+        "--remove-label",
+        "agent:running,agent:ready",
+        "--repo",
+        agent_tick.REPO,
+    ] in host.calls
 
 
 def test_foreign_pull_requests_do_not_count_towards_the_cap(home: Path) -> None:
@@ -91,10 +101,11 @@ def test_clean_main_checkout_is_fast_forwarded(home: Path) -> None:
     ("git", "reason"),
     [
         ({"branch --show-current": (0, "task/9-x\n")}, "the checkout is on task/9-x"),
-        (ON_MAIN | {"status --porcelain": (0, " M ops/agent_tick.py\n")},
-         "it has tracked changes"),
-        (ON_MAIN | {"merge --ff-only": (1, "fatal: Not possible to fast-forward")},
-         "the fast-forward failed"),
+        (ON_MAIN | {"status --porcelain": (0, " M ops/agent_tick.py\n")}, "it has tracked changes"),
+        (
+            ON_MAIN | {"merge --ff-only": (1, "fatal: Not possible to fast-forward")},
+            "the fast-forward failed",
+        ),
     ],
     ids=["other-branch", "tracked-changes", "ff-failed"],
 )
@@ -130,8 +141,10 @@ def test_unreadable_branch_writes_a_log_line_only(home: Path) -> None:
 
 @pytest.mark.parametrize(
     ("outcome", "text"),
-    [("0", "API Error: extra_usage_unavailable"),
-     ("1", "You've hit your 5-hour limit · resets 1:50pm")],
+    [
+        ("0", "API Error: extra_usage_unavailable"),
+        ("1", "You've hit your 5-hour limit · resets 1:50pm"),
+    ],
 )
 def test_plan_limit_before_the_hand_over_pauses_whatever_the_exit_code(
     home: Path, outcome: str, text: str
@@ -139,16 +152,27 @@ def test_plan_limit_before_the_hand_over_pauses_whatever_the_exit_code(
     add_run(home, "issue-1", 77, exit_text=outcome, log=text)
     host = GitHost(issues=[issue(1, "agent:running")])
     agent_tick.tick_once(host, home)
-    assert ["gh", "issue", "edit", "1", "--add-label", "agent:ready", "--remove-label",
-            "agent:running", "--repo", agent_tick.REPO] in host.calls
+    assert [
+        "gh",
+        "issue",
+        "edit",
+        "1",
+        "--add-label",
+        "agent:ready",
+        "--remove-label",
+        "agent:running",
+        "--repo",
+        agent_tick.REPO,
+    ] in host.calls
     assert float((home / "paused-until").read_text()) == NOW + 3600
     assert not any("agent:failed" in c for c in host.calls)
 
 
 def test_plan_limit_after_the_hand_over_never_puts_the_issue_back(home: Path) -> None:
     add_run(home, "issue-1", 77, exit_text="1", log="You've hit your 5-hour limit")
-    host = GitHost(prs=[pull(40, "pr:ready-for-review", closes=1)],
-                   issues=[issue(1, "agent:review")])
+    host = GitHost(
+        prs=[pull(40, "pr:ready-for-review", closes=1)], issues=[issue(1, "agent:review")]
+    )
     agent_tick.tick_once(host, home)
     assert not any("--add-label" in c and "agent:ready" in c for c in host.gh_calls("issue"))
     assert not (home / "paused-until").exists()
@@ -165,12 +189,21 @@ def test_plan_limit_in_a_pull_request_run_pauses(home: Path) -> None:
 
 
 def test_handed_over_issue_loses_agent_ready_but_failed_keeps_it(home: Path) -> None:
-    host = GitHost(issues=[issue(1, "agent:ready", "agent:review"),
-                           issue(2, "agent:ready", "agent:failed")])
+    host = GitHost(
+        issues=[issue(1, "agent:ready", "agent:review"), issue(2, "agent:ready", "agent:failed")]
+    )
     log = agent_tick.tick_once(host, home)
     edits = host.gh_calls("issue", "edit")
-    assert ["gh", "issue", "edit", "1", "--remove-label", "agent:ready",
-            "--repo", agent_tick.REPO] in edits
+    assert [
+        "gh",
+        "issue",
+        "edit",
+        "1",
+        "--remove-label",
+        "agent:ready",
+        "--repo",
+        agent_tick.REPO,
+    ] in edits
     assert not any(c[3] == "2" for c in edits)
     assert "issue-1: handed over, agent:ready removed" in log
 
@@ -180,10 +213,13 @@ def test_handed_over_issue_loses_agent_ready_but_failed_keeps_it(home: Path) -> 
 
 def test_kept_worktree_branch_is_archived_and_the_run_starts(home: Path) -> None:
     (home / "worktrees" / "issue-5").mkdir(parents=True)
-    host = GitHost(issues=[issue(5, "agent:ready")], git={
-        "branch --show-current": (0, "task/5-x\n"),
-        "branch --list": (0, "task/5-x\nfeat/5-old\n"),
-    })
+    host = GitHost(
+        issues=[issue(5, "agent:ready")],
+        git={
+            "branch --show-current": (0, "task/5-x\n"),
+            "branch --list": (0, "task/5-x\nfeat/5-old\n"),
+        },
+    )
     agent_tick.tick_once(host, home)
     stamp = int(NOW)
     renames = [c[-3:] for c in host.git_calls("branch -m")]
@@ -202,8 +238,7 @@ def test_failed_start_is_sent_once_until_the_key_starts(home: Path) -> None:
     agent_tick.tick_once(host, home)
     agent_tick.tick_once(host, home)
     failed = [m for m in host.sent if "did not start" in m]
-    assert failed == ["rr-test: ReviewRadar build for issue #5 did not start: "
-                      "worktree add failed"]
+    assert failed == ["rr-test: ReviewRadar build for issue #5 did not start: worktree add failed"]
     host.git = {}
     agent_tick.tick_once(host, home)
     host.alive_pids.clear()

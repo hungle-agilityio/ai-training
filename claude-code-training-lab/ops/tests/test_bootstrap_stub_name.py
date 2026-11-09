@@ -25,9 +25,20 @@ def test_bootstrap_still_writes_the_flow_config_test_under_its_test_name() -> No
 
 def test_pytest_ops_collects_nothing_under_bootstrap_stubs() -> None:
     done = subprocess.run(
-        [sys.executable, "-m", "pytest", "ops", "--collect-only", "-q", "--no-cov",
-         "-p", "no:cacheprovider"],
-        cwd=APP, capture_output=True, text=True,
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "ops",
+            "--collect-only",
+            "-q",
+            "--no-cov",
+            "-p",
+            "no:cacheprovider",
+        ],
+        cwd=APP,
+        capture_output=True,
+        text=True,
     )
     assert done.returncode == 0, done.stdout + done.stderr
     assert "ops/bootstrap_stubs/" not in done.stdout

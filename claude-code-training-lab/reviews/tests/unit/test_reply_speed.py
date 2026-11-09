@@ -64,12 +64,24 @@ def test_reply_speed_totals_sum_the_locations() -> None:
     speed = services.total_reply_speed(
         [
             BranchTotals(
-                branch_id=1, name="A", review_count=2, rating_total=2,
-                bad_counted=2, bad_replied=1, bad_replied_in_time=0, reply_seconds=day * 2,
+                branch_id=1,
+                name="A",
+                review_count=2,
+                rating_total=2,
+                bad_counted=2,
+                bad_replied=1,
+                bad_replied_in_time=0,
+                reply_seconds=day * 2,
             ),
             BranchTotals(
-                branch_id=2, name="B", review_count=1, rating_total=1,
-                bad_counted=1, bad_replied=1, bad_replied_in_time=1, reply_seconds=3 * HOUR,
+                branch_id=2,
+                name="B",
+                review_count=1,
+                rating_total=1,
+                bad_counted=1,
+                bad_replied=1,
+                bad_replied_in_time=1,
+                reply_seconds=3 * HOUR,
             ),
         ]
     )

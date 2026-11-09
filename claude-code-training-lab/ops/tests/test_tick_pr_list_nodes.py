@@ -43,8 +43,7 @@ def test_light_list_reads_one_hundred_and_heavy_list_forty(home: Path) -> None:
 
 
 def test_open_and_ended_pull_requests_are_both_seen_once(home: Path) -> None:
-    prs = [pull(20, "pr:ready-for-review", closes=5),
-           pull(21, state="MERGED", closes=6)]
+    prs = [pull(20, "pr:ready-for-review", closes=5), pull(21, state="MERGED", closes=6)]
     host = FakeHost(prs=prs)
     tick = agent_tick.Tick(host, home, agent_tick.read_settings(home / "agent.env"))
     found = agent_tick.loop_pull_requests(tick)

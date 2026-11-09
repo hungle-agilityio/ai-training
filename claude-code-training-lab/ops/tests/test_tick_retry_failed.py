@@ -53,8 +53,13 @@ def prompt(n: int) -> str:
 
 @pytest.mark.parametrize(
     ("exit_text", "kind"),
-    [("timeout", "transient"), ("1", "transient"), ("no-artifact", "transient"),
-     (None, "transient"), ("0", "stopped")],
+    [
+        ("timeout", "transient"),
+        ("1", "transient"),
+        ("no-artifact", "transient"),
+        (None, "transient"),
+        ("0", "stopped"),
+    ],
     ids=["timeout", "error", "no-artifact", "gone", "no-pull-request"],
 )
 def test_failed_build_writes_a_record_with_main_and_kind(
@@ -64,7 +69,11 @@ def test_failed_build_writes_a_record_with_main_and_kind(
     host = GitHost(issues=[issue(1, "agent:running")], git=on_main(OLD))
     agent_tick.tick_once(host, home)
     assert record(home, 1) | {"outcome": ""} == {
-        "main": OLD, "kind": kind, "retries": 0, "outcome": ""}
+        "main": OLD,
+        "kind": kind,
+        "retries": 0,
+        "outcome": "",
+    }
 
 
 def test_build_that_set_agent_failed_itself_is_stopped(home: Path) -> None:
@@ -98,11 +107,28 @@ def test_transient_failure_is_retried_at_the_next_free_slot(home: Path) -> None:
     host = GitHost(issues=[failed(1)], git=on_main(OLD))
     agent_tick.tick_once(host, home)
     assert started(host) == [prompt(1)]
-    assert ["gh", "issue", "edit", "1", "--add-label", "agent:running", "--remove-label",
-            "agent:ready,agent:failed", "--repo", REPO] in host.calls
-    assert ["gh", "issue", "comment", "1", "--body",
-            f"{MARKER}\nRetry 1 of 3: the last build stopped after 45 minutes.",
-            "--repo", REPO] in host.calls
+    assert [
+        "gh",
+        "issue",
+        "edit",
+        "1",
+        "--add-label",
+        "agent:running",
+        "--remove-label",
+        "agent:ready,agent:failed",
+        "--repo",
+        REPO,
+    ] in host.calls
+    assert [
+        "gh",
+        "issue",
+        "comment",
+        "1",
+        "--body",
+        f"{MARKER}\nRetry 1 of 3: the last build stopped after 45 minutes.",
+        "--repo",
+        REPO,
+    ] in host.calls
     assert "rr-test: ReviewRadar retrying #1 (1 of 3)" in host.sent
     assert record(home, 1)["retries"] == 1
 
@@ -119,9 +145,16 @@ def test_stopped_failure_is_retried_when_main_moved(home: Path) -> None:
     host = GitHost(issues=[failed(1)], git=on_main(NEW))
     agent_tick.tick_once(host, home)
     assert started(host) == [prompt(1)]
-    assert ["gh", "issue", "comment", "1", "--body",
-            f"{MARKER}\nRetry 2 of 3: main moved from 1111111 to 2222222.",
-            "--repo", REPO] in host.calls
+    assert [
+        "gh",
+        "issue",
+        "comment",
+        "1",
+        "--body",
+        f"{MARKER}\nRetry 2 of 3: main moved from 1111111 to 2222222.",
+        "--repo",
+        REPO,
+    ] in host.calls
 
 
 def test_unreadable_main_does_not_retry_a_stopped_failure(home: Path) -> None:
@@ -140,8 +173,7 @@ def test_third_retry_is_the_last(home: Path) -> None:
 
 def test_manual_issue_is_never_retried(home: Path) -> None:
     write(home, 1, kind="transient")
-    host = GitHost(issues=[issue(1, "agent:failed", "agent:manual", body=FILES)],
-                   git=on_main(OLD))
+    host = GitHost(issues=[issue(1, "agent:failed", "agent:manual", body=FILES)], git=on_main(OLD))
     agent_tick.tick_once(host, home)
     assert started(host) == []
 
@@ -196,8 +228,10 @@ def test_failure_after_three_retries_notifies_once(home: Path) -> None:
     add_run(home, "issue-1", 77, exit_text="1")
     host = GitHost(issues=[issue(1, "agent:running")], git=on_main(OLD))
     agent_tick.tick_once(host, home)
-    message = (f"rr-test: ReviewRadar #1 failed after 3 retries, needs you: "
-               f"https://github.com/{REPO}/issues/1")
+    message = (
+        f"rr-test: ReviewRadar #1 failed after 3 retries, needs you: "
+        f"https://github.com/{REPO}/issues/1"
+    )
     assert host.sent.count(message) == 1
     (home / "worktrees" / "issue-1").rmdir()
     host.clock += 600
