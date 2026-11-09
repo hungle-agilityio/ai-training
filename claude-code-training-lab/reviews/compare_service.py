@@ -1,10 +1,19 @@
+import csv
+import io
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from reviews import compare_repository, topic_repository
 from reviews.compare_repository import STARS, CompareTotals
-from reviews.services import RATING_RANGES, average_from_totals, reply_share_percent
+from reviews.services import (
+    CSV_BOM,
+    RATING_RANGES,
+    average_from_totals,
+    csv_safe,
+    location_slug,
+    reply_share_percent,
+)
 from reviews.topic_service import percent
 from reviews.topics import TOPICS
 
@@ -103,7 +112,7 @@ def _topic_rows(a_id: int, b_id: int, created_from: datetime | None) -> tuple[To
 
 
 def compare_locations(
-    a_id: int, b_id: int, period_days: int | None, now: datetime
+    a_id: int, b_id: int, period_days: int | None, now: datetime, with_topics: bool = True
 ) -> Comparison | None:
     """The numbers of the Compare page; None when an id is not a location or both are the same."""
     if a_id == b_id:
@@ -120,5 +129,41 @@ def compare_locations(
         a=a,
         b=b,
         difference=_difference(a.average_rating, b.average_rating),
-        topic_rows=_topic_rows(a_id, b_id, created_from),
+        topic_rows=_topic_rows(a_id, b_id, created_from) if with_topics else (),
     )
+
+
+PERIOD_SLUGS: dict[int | None, str] = {None: "all-time", 30: "30-days", 90: "90-days"}
+
+
+def export_filename(comparison: Comparison) -> str:
+    period = PERIOD_SLUGS.get(comparison.period_days) or f"{comparison.period_days}-days"
+    a, b = comparison.a, comparison.b
+    slug_a, slug_b = location_slug(a.name, a.branch_id), location_slug(b.name, b.branch_id)
+    return f"compare-{slug_a}-{slug_b}-{period}.csv"
+
+
+def _cell(value: object) -> str:
+    return "" if value is None else str(value)
+
+
+def comparison_csv(comparison: Comparison) -> str:
+    """The Compare table as CSV text: BOM first, CRLF line ends, names safe for a spreadsheet."""
+    a, b = comparison.a, comparison.b
+    score = [None if s.average_rating is None else f"{s.average_rating:.1f}" for s in (a, b)]
+    rows: list[tuple[str, object, object]] = [
+        ("Reviews", a.review_count, b.review_count),
+        ("Score", score[0], score[1]),
+        ("Good reviews %", a.good_percent, b.good_percent),
+        ("Bad reviews %", a.bad_percent, b.bad_percent),
+        ("Replied in 24h %", a.replied_in_time_percent, b.replied_in_time_percent),
+    ]
+    for a_row, b_row in zip(a.star_rows, b.star_rows, strict=True):
+        label = f"{a_row.stars} star" + ("" if a_row.stars == 1 else "s")
+        rows.append((label, a_row.count, b_row.count))
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\r\n")
+    writer.writerow(("Measure", csv_safe(a.name), csv_safe(b.name)))
+    for label, left, right in rows:
+        writer.writerow((label, _cell(left), _cell(right)))
+    return CSV_BOM + buffer.getvalue()

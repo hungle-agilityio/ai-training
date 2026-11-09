@@ -3,7 +3,13 @@
 {% block title %}Compare locations · ReviewRadar{% endblock %}
 {% block heading %}Compare locations{% endblock %}
 {% block subtitle %}Two locations side by side for a period.{% endblock %}
-{% block actions %}{% endblock %}
+{% block actions %}
+{% if comparison %}
+<div class="export-action">
+  <a class="button" href="{% url 'compare-export' %}?a={{ a_id }}&amp;b={{ b_id }}&amp;period={{ period }}">Download CSV</a>
+</div>
+{% endif %}
+{% endblock %}
 
 {% block content %}
 <section class="panel">

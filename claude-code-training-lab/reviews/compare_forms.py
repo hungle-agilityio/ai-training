@@ -21,6 +21,11 @@ class CompareForm(forms.Form):
     def b_id(self, known: set[int]) -> int | None:
         return self._id("b", known)
 
+    def raw_ids(self) -> tuple[int | None, int | None]:
+        """The two chosen ids as typed; whether they are locations is the service's answer."""
+        self.is_valid()
+        return self.cleaned_data.get("a"), self.cleaned_data.get("b")
+
     def period_days(self) -> int | None:
         self.is_valid()
         value = self.cleaned_data.get("period")
