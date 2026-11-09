@@ -8,7 +8,7 @@
 
 ## Acceptance criteria
 
-Each AC can be checked by a person or a test, with exact values, pages or texts.
+Each AC can be checked by a person or a test, with exact values, pages or texts. Write the test rule as "every test on `main` passes unchanged". In an epic, a task that changes a number or behaviour set by an earlier task names it in its ACs (ADR-022).
 
 - **AC1.** <observable result>
 - **AC2.** <observable result>

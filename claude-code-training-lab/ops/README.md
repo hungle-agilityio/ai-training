@@ -134,7 +134,8 @@ When every open issue with `Part of the epic #<N>` has `agent:in-epic` (at least
 - It starts no run while it has no `pr:*` label; `mark_green_ready` gives it `pr:ready-for-review` once its checks are green. It needs no verify report link of its own.
 - The owner's approval comment merges it as any loop pull request (ADR-016, `--merge`, branch deleted); GitHub then closes the tasks and the epic.
 - Any other owner comment is a change request: a loop run on this pull request, on `epic/<N>-<slug>`, pushes its fix to that branch.
-- A task that reaches the epic branch while it is open gets its `Closes #<task>` line in the body at that tick.
+- A section `## Tests changed by the tasks` lists every test file a merged task pull request changed or removed (not added), with its task and pull request, read from GitHub. Tasks reach the epic branch without a human review, so this is where the owner sees a test from an earlier task that a later task changed. If the files of a pull request cannot be read, the epic pull request waits for the next tick.
+- A task that reaches the epic branch while it is open gets its `Closes #<task>` line and its lines of that section in the body at that tick.
 - `main` keeps going into the branch each tick; a conflict sends one message per hour.
 
 Tests: `ops/tests/test_epic_pull_request.py`.
