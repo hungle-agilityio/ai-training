@@ -536,7 +536,7 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
     tail = log_tail(run)
     limit = outcome != "no-artifact" and USAGE_LIMIT.search(tail) is not None
     if outcome == "0" and kind == "pr":
-        remove_worktree(tick, worktree)
+        remove_worktree(tick, worktree, handed_over=True)
         tick.say(f"{key}: ended normally")
         pr = next((p for p in prs if p["number"] == int(number)), None)
         if pr is not None and pr["state"] == "OPEN":
@@ -559,7 +559,7 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
     has_pr = any(closes(pr) == int(number) for pr in prs)
     opened = newest_open_pr(prs, int(number))
     if "agent:running" not in labels or has_pr:
-        remove_worktree(tick, worktree)
+        remove_worktree(tick, worktree, handed_over=has_pr)
         tick.say(
             f"{key}: ended normally"
             if outcome == "0"
@@ -734,9 +734,42 @@ def pause_for_limit(tick: Tick, key: str, number: str, worktree: Path) -> None:
     tick.notify(f"{NAME} loop paused 60 minutes: plan limit reached ({key})")
 
 
-def remove_worktree(tick: Tick, worktree: Path) -> None:
-    if worktree.exists():
-        tick.host.run(["git", "-C", str(REPO_ROOT), "worktree", "remove", str(worktree)])
+def remove_worktree(tick: Tick, worktree: Path, handed_over: bool = False) -> None:
+    """A build that handed over a pull request never holds its branch: leftovers go to a patch."""
+    if not worktree.exists():
+        return
+    remove = ["git", "-C", str(REPO_ROOT), "worktree", "remove"]
+    code, out = tick.host.run([*remove, str(worktree)])
+    if code == 0:
+        return
+    name = worktree.name
+    if not handed_over:
+        tick.say(f"{name}: worktree kept ({out.strip()[:200]})")
+        return
+    patch = save_leftovers(tick, worktree)
+    if patch is None:
+        tick.say(f"{name}: worktree not removed (its changes could not be saved)")
+        return
+    code, out = tick.host.run([*remove, "--force", str(worktree)])
+    if code != 0:
+        tick.say(f"{name}: worktree not removed ({out.strip()[:200]})")
+        return
+    tick.say(f"{name}: uncommitted changes saved to {patch}, worktree removed")
+
+
+def save_leftovers(tick: Tick, worktree: Path) -> Path | None:
+    """What a build left uncommitted, untracked files included, as one patch in the archive."""
+    git = ["git", "-C", str(worktree)]
+    if tick.host.run([*git, "add", "-A"])[0] != 0:
+        return None
+    code, diff = tick.host.run([*git, "diff", "--cached", "--binary", "HEAD"])
+    if code != 0:
+        return None
+    folder = tick.home / "archive"
+    folder.mkdir(exist_ok=True)
+    patch = folder / f"{worktree.name}-{int(tick.host.now())}.patch"
+    patch.write_text(diff)
+    return patch
 
 
 def ensure_label(tick: Tick, label: str) -> None:
@@ -876,6 +909,28 @@ def pr_needs_run(tick: Tick, pr: dict[str, Any]) -> bool:
     checks = pr.get("statusCheckRollup") or []
     red = any((c.get("conclusion") or c.get("state") or "") in RED_CI for c in checks)
     return "pr:ready-for-review" in labels and red
+
+
+def mark_green_ready(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> None:
+    """A finished pull request with green checks and a report needs no build to get its label."""
+    for pr in prs:
+        number = pr["number"]
+        if (
+            pr["state"] != "OPEN"
+            or names(pr) & PR_LABELS
+            or "claude.ai/artifact/" not in pr["body"]
+        ):
+            continue
+        if f"pr-{number}" in running or f"issue-{closes(pr)}" in running:
+            continue
+        checks = [check_state(c) for c in pr.get("statusCheckRollup") or []]
+        if not checks or set(checks) != {"green"} or open_requests(tick, pr):
+            continue
+        if tick.gh("pr", "edit", str(number), "--add-label", "pr:ready-for-review")[0] != 0:
+            tick.say(f"pr-{number}: pr:ready-for-review could not be set")
+            continue
+        pr["labels"] = [*(pr.get("labels") or []), {"name": "pr:ready-for-review"}]
+        tick.say(f"pr-{number}: CI is green and the report is linked; pr:ready-for-review")
 
 
 def labelled_by_owner(tick: Tick, number: int) -> bool:
@@ -2273,6 +2328,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
         tidy_failed(tick)
         needs_you(tick, prs)
         running = running_keys(tick)
+        mark_green_ready(tick, prs, running)
         settle_children(tick, prs)
         settle_epic_children(tick, prs)
         merge_approved(tick, prs, running)
