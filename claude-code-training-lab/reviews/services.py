@@ -133,6 +133,11 @@ def reply_time_label(total_seconds: float, count: int) -> str:
     return f"{days} days"
 
 
+def overdue_total(rows: Sequence[repositories.BranchTotals]) -> int:
+    """Bad reviews past 24 hours with no reply: the counted ones minus those with a reply."""
+    return sum(row.bad_counted - row.bad_replied for row in rows)
+
+
 def _reply_speed(counted: int, replied: int, in_time: int, seconds: float) -> ReplySpeed:
     return ReplySpeed(
         counted=counted,
@@ -197,6 +202,7 @@ class DashboardOverview:
     rating_bars: list[RatingBar]
     recent_reviews: list[ReviewRow]
     reply_speed: ReplySpeed = ReplySpeed()
+    overdue_count: int = 0
 
 
 def branch_status(average: float) -> tuple[str, str]:
@@ -356,6 +362,7 @@ def dashboard_overview(recent_limit: int = 6, now: datetime | None = None) -> Da
         rating_bars=bars,
         recent_reviews=recent,
         reply_speed=total_reply_speed(totals_list),
+        overdue_count=overdue_total(totals_list),
     )
 
 
