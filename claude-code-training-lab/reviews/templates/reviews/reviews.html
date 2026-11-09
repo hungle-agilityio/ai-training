@@ -1,5 +1,5 @@
 {% extends "reviews/base.html" %}
-{% load humanize review_dates %}
+{% load humanize review_dates topic_tags %}
 
 {% block title %}Reviews · ReviewRadar{% endblock %}
 {% block heading %}Reviews{% endblock %}
@@ -109,7 +109,7 @@
                   {{ row.text }}
                 {% endif %}
               </td>
-              <td><span class="badge badge-{{ row.sentiment }}">{{ row.sentiment_label }}</span></td>
+              <td><span class="badge badge-{{ row.sentiment }}">{{ row.sentiment_label }}</span>{% for topic in row.text|review_topics %} <span class="badge badge-neutral topic-label">{{ topic.label }}</span>{% endfor %}</td>
               <td class="nowrap"><time datetime="{{ row.created_at|date:'c' }}" title="{{ row.created_at|full_review_date }}">{{ row.created_at|relative_review_date }}</time></td>
               <td class="nowrap">
                 {% if row.has_reply %}<span class="reply-status reply-done">Replied</span> <a class="row-link" href="{% url 'review-reply' row.review_id %}">Edit reply</a>{% else %}<span class="reply-status reply-open">Not replied</span> <a class="row-link" href="{% url 'review-reply' row.review_id %}">Reply</a>{% endif %}
