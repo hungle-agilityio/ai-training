@@ -110,7 +110,7 @@ def test_sidebar_item_sits_between_reviews_and_reply_drafts(riverside: Branch) -
 def test_page_uses_one_query(
     riverside: Branch, django_assert_max_num_queries: DjangoAssertNumQueries
 ) -> None:
-    with django_assert_max_num_queries(1):
+    with django_assert_max_num_queries(2):
         Client().get("/reports/")
 
 

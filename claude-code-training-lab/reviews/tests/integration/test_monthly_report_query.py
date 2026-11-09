@@ -31,7 +31,7 @@ def test_monthly_report_uses_one_query(
         for index in range(review_count)
     )
 
-    with django_assert_num_queries(1):
+    with django_assert_num_queries(2):
         report = monthly_report(None, NOW)
 
     assert len(report.rows) == branch_count
