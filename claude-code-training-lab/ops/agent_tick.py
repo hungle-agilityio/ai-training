@@ -79,6 +79,10 @@ LABEL_COLORS = {
     "agent:running": ("FBCA04", "The loop is building this issue"),
     "agent:failed": ("D93F0B", "The loop could not finish this issue; see the comment"),
     "pr:blocked": ("B60205", "the loop cannot go on without the owner; the reason is a comment"),
+    "agent:in-epic": (
+        "0E8A16",
+        "Task merged into its epic branch; closes with the epic pull request",
+    ),
 }
 REPO_ROOT = Path(__file__).resolve().parents[2]
 NEEDS_YOU = ("pr:blocked", "pr:ci-failed")
@@ -94,6 +98,8 @@ APPROVALS = {
     "duyệt",
     "ship it",
 }
+IN_EPIC = "agent:in-epic"
+REPORT_LINK = "https://claude.ai/artifact/"
 REDO_CONFLICT = "/redo merge origin/main into this branch and fix the conflict"
 UPDATE_FROM_MAIN = "Merge branch 'main'"
 DONE_MARKS = {"rocket", "confused"}
@@ -239,7 +245,6 @@ class Target:
     stack_pr: int = 0
     stack_branch: str = ""
     stack_head: str = ""
-    stack_prs: tuple[int, ...] = ()
     ui: bool = False
     test_edits: tuple[str, ...] = ()
 
@@ -429,9 +434,9 @@ def is_loop_pr(pr: dict[str, Any]) -> bool:
 def loop_pull_requests(tick: Tick) -> list[dict[str, Any]]:
     """All states with light fields, open ones with every field: GitHub caps a query at 500,000
     nodes, and the heavy fields cost about 10,000 per pull request asked for."""
-    light = "number,state,body,labels,headRefName,author,isCrossRepository,createdAt"
+    light = "number,state,body,labels,headRefName,baseRefName,author,isCrossRepository,createdAt"
     heavy = light + ",commits,comments,statusCheckRollup,isDraft,mergeStateStatus,headRefOid"
-    heavy += ",baseRefName,title"
+    heavy += ",title"
     every = tick.gh_json(
         "pr", "list", "--state", "all", "--limit", str(ALL_PR_LIMIT), "--json", light
     )
@@ -1109,11 +1114,12 @@ def stack_issues(prs: list[dict[str, Any]], parent_pr: dict[str, Any]) -> set[in
 
 @dataclass(frozen=True)
 class EpicStart:
-    """#264: where a task of an epic starts, or why it waits (one reason per dependency)."""
+    """#364: the epic branch a task starts on, or why it waits (one reason per dependency)."""
 
+    number: int
     branch: str
+    exists: bool
     head: str
-    prs: tuple[int, ...]
     waits: tuple[tuple[int, str], ...]
 
 
@@ -1129,58 +1135,52 @@ def epic_of(tick: Tick, issue: dict[str, Any]) -> dict[str, Any] | None:
 def epic_start(
     tick: Tick, prs: list[dict[str, Any]], epic: dict[str, Any], waiting: set[int]
 ) -> EpicStart:
-    """#264 AC1, AC6: every unmet dependency has its pull request inside the epic branch."""
+    """#364 AC3: a dependency inside the epic is met once its issue has agent:in-epic."""
     branch = epic_branch.branch_name(epic["number"], epic.get("title") or "")
-    git = ["git", "-C", str(REPO_ROOT)]
     ref = f"refs/remotes/origin/{branch}"
-    code, out = tick.host.run([*git, "rev-parse", "--verify", "--quiet", ref])
-    if code != 0:
-        none_yet = tuple((m, f"no {branch} yet") for m in sorted(waiting))
-        return EpicStart(branch, "", (), none_yet)
-    head = out.strip()
+    code, out = tick.host.run(
+        ["git", "-C", str(REPO_ROOT), "rev-parse", "--verify", "--quiet", ref]
+    )
     by_number = {i["number"]: i for i in open_issue_list(tick)}
-    found: list[int] = []
     waits: list[tuple[int, str]] = []
     for m in sorted(waiting):
         dep = by_number.get(m)
         if dep is None or epic_branch.epic_number(dep.get("body") or "") != epic["number"]:
             waits.append((m, "it belongs to another epic: merge it first"))
-            continue
-        pr = newest_open_pr(prs, m)
-        if pr is None:
-            building = "agent:running" in names(dep)
-            waits.append((m, "building" if building else "no pull request yet"))
-            continue
-        why = epic_absence(tick, pr, branch)
-        if why:
-            waits.append((m, f"PR #{pr['number']} is not in {branch} ({why})"))
-        else:
-            found.append(pr["number"])
-    return EpicStart(branch, head, tuple(sorted(found)), tuple(waits))
+        elif IN_EPIC not in names(dep):
+            pr = newest_open_pr(prs, m)
+            if pr is not None:
+                waits.append((m, f"PR #{pr['number']} is not in {branch} yet"))
+            else:
+                waits.append(
+                    (m, "building" if "agent:running" in names(dep) else "no pull request yet")
+                )
+    return EpicStart(
+        epic["number"], branch, code == 0, out.strip() if code == 0 else "", tuple(waits)
+    )
 
 
-def epic_absence(tick: Tick, pr: dict[str, Any], branch: str) -> str:
-    """#264 AC6: why a dependency's pull request is not in the epic branch, or empty."""
-    if pr.get("isDraft"):
-        return "it is a draft"
-    if not epic_branch.is_green(pr):
-        return "checks are red" if pr.get("statusCheckRollup") else "no checks yet"
-    if "pr:ready-for-review" not in names(pr):
-        return "it is not ready for review"
-    oid = str(pr.get("headRefOid") or "")
-    git = ["git", "-C", str(REPO_ROOT), "merge-base", "--is-ancestor", oid, f"origin/{branch}"]
-    if not oid or tick.host.run(git)[0] != 0:
-        return "not merged into it yet"
-    return ""
+def epic_head(tick: Tick, start: EpicStart) -> str | None:
+    """#364 AC1: the head of the epic branch, made from main for the first task; None on failure."""
+    if start.exists:
+        return start.head
+    git = ["git", "-C", str(REPO_ROOT)]
+    code, out = tick.host.run([*git, "push", "origin", f"origin/main:refs/heads/{start.branch}"])
+    if code != 0:
+        tick.say(
+            f"epic #{start.number}: {start.branch} not created ({epic_branch.first_line(out)})"
+        )
+        return None
+    tick.host.run([*git, "fetch", "origin", start.branch])
+    tick.say(f"epic #{start.number}: branch {start.branch} created")
+    code, out = tick.host.run([*git, "rev-parse", f"origin/{start.branch}"])
+    return out.strip() if code == 0 else ""
 
 
-def epic_prompt(number: int, start: EpicStart) -> str:
-    listed = ", ".join(f"#{n}" for n in start.prs)
+def epic_prompt(start: EpicStart) -> str:
     return (
-        f" Stacked on epic branch {start.branch}: branch from origin/{start.branch} and open the"
-        f" pull request into {start.branch} as a draft (`gh pr create --draft`). Put the line"
-        f" `Stacked on {listed} through"
-        f" {start.branch} (merge those first).` just above `Closes #{number}`."
+        f" Task of epic branch {start.branch}: branch from origin/{start.branch} and open a normal"
+        f" pull request into {start.branch} (not a draft, no `Stacked on` line)."
     )
 
 
@@ -1238,7 +1238,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         depends = depends_on(issue.get("body") or "")
         retry = ""
         waiting = unmet(tick, depends, open_numbers)
-        epic = epic_of(tick, issue) if waiting else None
+        epic = epic_of(tick, issue)
         on_epic = epic_start(tick, prs, epic, waiting) if epic is not None else None
         parent_pr = (
             stack_parent(tick, prs, next(iter(waiting)), open_numbers)
@@ -1269,6 +1269,9 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         if not labelled_by_owner(tick, issue["number"]):
             tick.say(f"{key}: agent:ready was not added by {OWNER}; skipped")
             continue
+        head = epic_head(tick, on_epic) if on_epic is not None else ""
+        if head is None:
+            continue
         prompt = f"Use the work-queue skill for issue #{issue['number']} only."
         title = issue.get("title") or ""
         message = f"{NAME} started #{issue['number']}: {title}" if title else ""
@@ -1289,15 +1292,10 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
                 "stack_branch": branch,
                 "stack_head": str(parent_pr.get("headRefOid") or ""),
             }
-        if on_epic is not None and not on_epic.waits:
-            prompt += epic_prompt(issue["number"], on_epic)
+        if on_epic is not None:
+            prompt += epic_prompt(on_epic)
             message = f"{NAME} started #{issue['number']} on {on_epic.branch}: {title}"
-            stack = {
-                "stack_pr": on_epic.prs[0],
-                "stack_branch": on_epic.branch,
-                "stack_head": on_epic.head,
-                "stack_prs": on_epic.prs,
-            }
+            stack = {"stack_branch": on_epic.branch, "stack_head": head}
         if retry:
             record = failed_record(tick, issue["number"]) or {}
             count = int(record.get("retries") or 0) + 1
@@ -1382,8 +1380,6 @@ def start(tick: Tick, target: Target) -> bool:
                 "branch": target.stack_branch,
                 "head": target.stack_head,
             }
-            if target.stack_prs:
-                info["prs"] = list(target.stack_prs)
             stacked.write_text(json.dumps(info, sort_keys=True))
         else:
             stacked.unlink(missing_ok=True)
@@ -1795,7 +1791,12 @@ def announce_one(tick: Tick, pr: dict[str, Any]) -> None:
 def announce_merged(tick: Tick, prs: list[dict[str, Any]]) -> None:
     """#78 AC4: each merged loop pull request once, after the pull of main of this tick."""
     record = tick.home / "announced-merged"
-    merged = [pr for pr in prs if pr["state"] == "MERGED"]
+    merged = [
+        pr
+        for pr in prs
+        if pr["state"] == "MERGED"
+        and not str(pr.get("baseRefName") or "").startswith(epic_branch.EPIC_PREFIX)
+    ]  # #364 AC6: a merge into an epic branch has its own message
     if not record.exists():
         record.write_text("\n".join(str(pr["number"]) for pr in merged))
         return
@@ -1934,6 +1935,8 @@ def keep_stacked_as_drafts(tick: Tick, prs: list[dict[str, Any]]) -> None:
         base = str(pr.get("baseRefName") or "main")
         if pr["state"] != "OPEN" or base == "main" or pr.get("isDraft"):
             continue
+        if base.startswith(epic_branch.EPIC_PREFIX):
+            continue  # #364 AC4: a task pull request into its epic branch is a normal one
         number = pr["number"]
         code, out = tick.gh("pr", "ready", str(number), "--undo")
         if code != 0:
@@ -2186,6 +2189,97 @@ def merge_approved(tick: Tick, prs: list[dict[str, Any]], running: dict[str, boo
         announce_one(tick, pr)
 
 
+def epic_merge_wait(tick: Tick, pr: dict[str, Any], running: dict[str, bool]) -> str:
+    """#364 AC5: why a task pull request may not go into its epic branch yet, or empty."""
+    number = pr["number"]
+    if pr.get("isDraft"):
+        return "it is a draft"
+    if "pr:ready-for-review" not in names(pr):
+        return "it is not pr:ready-for-review"
+    if not epic_branch.is_green(pr):
+        return "its checks are not all green"
+    if REPORT_LINK not in (pr.get("body") or ""):
+        return "its verify report is not linked"
+    if open_requests(tick, pr):
+        return "a change request is open"
+    if f"pr-{number}" in running or f"issue-{closes(pr)}" in running:
+        return "a run is going"
+    return ""
+
+
+def merge_epic_tasks(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> None:
+    """#364 AC5, AC7: no owner comment; at most one merge per epic branch and tick."""
+    open_epics = {i["number"] for i in open_issue_list(tick) if "epic" in names(i)}
+    branches = epic_branch.EpicBranches(tick, REPO, REPO_ROOT, NAME)
+    merged: set[str] = set()
+    for pr in sorted(prs, key=lambda p: p["number"]):
+        number = pr["number"]
+        base = str(pr.get("baseRefName") or "main")
+        if pr["state"] != "OPEN" or number in tick.retargeted or base in merged:
+            continue
+        if epic_branch.number_of(base) not in open_epics:
+            continue
+        why = epic_merge_wait(tick, pr, running)
+        if why:
+            tick.say(f"pr-{number}: not merged into {base}: {why}")
+            continue
+        status = str(pr.get("mergeStateStatus") or "")
+        if status == "DIRTY":
+            branches.ask_redo(pr, base)
+            continue
+        if status == "BLOCKED":
+            tick.say(f"pr-{number}: not merged into {base}: merge state is BLOCKED")
+            continue
+        if status == "BEHIND":
+            code, out = tick.gh("pr", "update-branch", str(number))
+            if code == 0:
+                tick.say(f"pr-{number}: behind {base}; branch updated")
+            elif "conflict" in out.lower():
+                branches.ask_redo(pr, base)
+            else:
+                tick.say(f"pr-{number}: not updated from {base} ({epic_branch.first_line(out)})")
+            continue
+        code, out = tick.gh(
+            "pr", "merge", str(number), "--merge", "--delete-branch",
+            "--match-head-commit", str(pr.get("headRefOid") or ""),
+        )  # fmt: skip
+        if code != 0:
+            tick.say(f"pr-{number}: not merged into {base} ({epic_branch.first_line(out)})")
+            continue
+        pr["state"] = "MERGED"
+        merged.add(base)
+
+
+def settle_merged_epic_tasks(tick: Tick, prs: list[dict[str, Any]]) -> None:
+    """#364 AC6: each merge into an open epic's branch, the tick's or a hand merge, once."""
+    record = tick.home / "epic-tasks-merged"
+    seen = set(record.read_text().split()) if record.exists() else set()
+    issues = {i["number"]: i for i in open_issue_list(tick)}
+    for pr in prs:
+        base = str(pr.get("baseRefName") or "main")
+        number, task = pr["number"], closes(pr)
+        epic = issues.get(epic_branch.number_of(base) or 0)
+        item = issues.get(task or 0)
+        if pr["state"] != "MERGED" or str(number) in seen or epic is None or item is None:
+            continue
+        if "epic" not in names(epic):
+            continue
+        ensure_label(tick, IN_EPIC)
+        code, out = tick.gh(
+            "issue", "edit", str(task), "--add-label", IN_EPIC,
+            "--remove-label", "agent:review,agent:running,agent:ready",
+        )  # fmt: skip
+        if code != 0:
+            tick.say(f"pr-{number}: {IN_EPIC} not set ({epic_branch.first_line(out)}); next tick")
+            continue
+        seen.add(str(number))
+        record.write_text("\n".join(sorted(seen)))
+        gone = {"agent:review", "agent:running", "agent:ready"}
+        item["labels"] = [{"name": x} for x in sorted((names(item) - gone) | {IN_EPIC})]
+        tick.say(f"pr-{number}: merged into {base}; #{task} {IN_EPIC}")
+        tick.notify(f"PR #{number} merged into {base} (#{task})")
+
+
 def dependency_reason(
     tick: Tick, prs: list[dict[str, Any]], issues: dict[int, dict[str, Any]], number: int
 ) -> str:
@@ -2336,6 +2430,8 @@ def tick_once(host: Host, home: Path) -> list[str]:
         settle_epic_children(tick, prs)
         keep_stacked_as_drafts(tick, prs)
         adopt_build_drafts(tick, prs)
+        merge_epic_tasks(tick, prs, running)
+        settle_merged_epic_tasks(tick, prs)
         keep_epic_branches(tick, prs)
         delete_kept_branches(tick, prs)
         rescue_epic_merges(tick, prs)

@@ -19,6 +19,12 @@ def epic_number(body: str) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def number_of(branch: str) -> int | None:
+    """The epic number of an `epic/<N>-<slug>` branch, None for any other branch."""
+    match = re.fullmatch(r"epic/(\d+)-.*", branch)
+    return int(match.group(1)) if match else None
+
+
 def slug(title: str) -> str:
     """The epic title without `Epic:`, lowercase, letters and digits only, 40 characters."""
     text = re.sub(r"^\s*epic\s*:\s*", "", title, flags=re.IGNORECASE).lower()
@@ -49,21 +55,6 @@ def is_green(pr: dict[str, Any]) -> bool:
     return True
 
 
-def is_ready(pr: dict[str, Any]) -> bool:
-    labels = {label["name"] for label in pr.get("labels") or []}
-    return (
-        pr.get("state") == "OPEN"
-        and not pr.get("isDraft")
-        and "pr:ready-for-review" in labels
-        and is_green(pr)
-    )
-
-
-def closes(pr: dict[str, Any]) -> int | None:
-    match = re.search(r"Closes #(\d+)", pr.get("body") or "")
-    return int(match.group(1)) if match else None
-
-
 class EpicBranches:
     """One tick's work on the epic branches; `tick` is the agent_tick.Tick."""
 
@@ -78,27 +69,15 @@ class EpicBranches:
         return code, str(out)
 
     def keep(self, prs: list[dict[str, Any]], issues: list[dict[str, Any]]) -> None:
-        """AC1 to AC6, for every open issue labelled `epic`; one failure never stops the tick."""
+        """#364: main goes into every epic branch; a failure never stops the tick."""
         epics = [i for i in issues if "epic" in {label["name"] for label in i.get("labels") or []}]
-        tasks: dict[int, int] = {}
-        for issue in issues:
-            parent = epic_number(issue.get("body") or "")
-            if parent is not None:
-                tasks[issue["number"]] = parent
         if self.git("fetch", "origin", "--prune")[0] != 0:
             self.tick.say("epic branches: git fetch failed; next tick")
             return
         open_epics = {e["number"] for e in epics}
         for epic in sorted(epics, key=lambda e: e["number"]):
-            ready = [
-                pr
-                for pr in sorted(prs, key=lambda p: p["number"])
-                if is_ready(pr)
-                and str(pr.get("baseRefName") or "main") == "main"  # AC1: stacked PRs stay out
-                and tasks.get(closes(pr) or 0) == epic["number"]
-            ]
             try:
-                self.keep_one(epic, ready)
+                self.keep_one(epic)
             except RuntimeError as error:
                 self.tick.say(f"epic #{epic['number']}: {error}; next tick")
         self.delete_ended(prs, open_epics)
@@ -106,16 +85,11 @@ class EpicBranches:
     def exists(self, branch: str) -> bool:
         return self.git("rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{branch}")[0] == 0
 
-    def keep_one(self, epic: dict[str, Any], ready: list[dict[str, Any]]) -> None:
+    def keep_one(self, epic: dict[str, Any]) -> None:
         number = epic["number"]
         branch = branch_name(number, epic.get("title") or "")
         if not self.exists(branch):
-            if not ready:
-                return
-            code, out = self.git("push", "origin", f"origin/main:refs/heads/{branch}")
-            if code != 0:
-                raise RuntimeError(f"{branch} not created ({first_line(out)})")
-            self.git("fetch", "origin", branch)
+            return  # #364 AC1: the first task of the epic creates it
         work = self.tick.home / "epic-work" / str(number)
         self.git("worktree", "remove", "--force", str(work))
         work.parent.mkdir(parents=True, exist_ok=True)
@@ -123,59 +97,31 @@ class EpicBranches:
         if code != 0:
             raise RuntimeError(f"worktree failed ({first_line(out)})")
         try:
-            self.merge_all(number, branch, work, ready)
+            self.merge_main(number, branch, work)
         finally:
             self.git("worktree", "remove", "--force", str(work))
 
     def contains(self, work: Path, commit: str) -> bool:
         return self.git("merge-base", "--is-ancestor", commit, "HEAD", cwd=work)[0] == 0
 
-    def merge_all(self, number: int, branch: str, work: Path, ready: list[dict[str, Any]]) -> None:
-        changed = False
-        main_conflict = False
-        if not self.contains(work, "origin/main"):  # AC3
+    def merge_main(self, number: int, branch: str, work: Path) -> None:
+        if not self.contains(work, "origin/main"):
             code, out = self.git(
                 "merge", "--no-ff", "-m", f"Merge main into {branch}", "origin/main", cwd=work
             )
-            if code == 0:
-                changed = True
-                self.clear_conflict(number)
-            else:
+            if code != 0:
                 self.git("merge", "--abort", cwd=work)
-                main_conflict = True
                 if "CONFLICT" in out:  # any other failure is a log line, never a message
                     self.remind_conflict(number, branch)
+                    self.tick.say(f"epic #{number}: branch {branch}, conflict with main")
                 else:
                     self.tick.say(f"epic #{number}: merge of main failed ({first_line(out)})")
-        for pr in [] if main_conflict else ready:  # AC2: nothing merges onto a broken branch
-            oid = str(pr.get("headRefOid") or "")
-            if not oid or self.contains(work, oid):
-                continue
-            code, out = self.git(
-                "merge",
-                "--no-ff",
-                "-m",
-                f"Merge pull request #{pr['number']} into {branch}",
-                oid,
-                cwd=work,
-            )
-            if code == 0:
-                changed = True
-                continue
-            self.git("merge", "--abort", cwd=work)
-            if "CONFLICT" in out:
-                self.ask_redo(pr, branch)
-            else:
-                self.tick.say(f"epic: PR #{pr['number']} not merged ({first_line(out)})")
-        if changed:
+                return
+            self.clear_conflict(number)
             code, out = self.git("push", "origin", f"HEAD:refs/heads/{branch}", cwd=work)
             if code != 0:
                 raise RuntimeError(f"{branch} not pushed ({first_line(out)})")
-        if main_conflict:
-            self.tick.say(f"epic #{number}: branch {branch}, conflict with main")
-            return
-        count = sum(1 for pr in ready if self.contains(work, str(pr.get("headRefOid") or "")))
-        self.tick.say(f"epic #{number}: branch {branch}, {count} pull requests in it")
+        self.tick.say(f"epic #{number}: branch {branch}, up to date with main")
 
     def ask_redo(self, pr: dict[str, Any], branch: str) -> None:
         """AC4: one `/redo` per pull request head; the conflict stays until it is fixed."""

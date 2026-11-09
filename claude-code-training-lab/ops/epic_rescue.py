@@ -75,6 +75,9 @@ class EpicRescue:
         base = str(old.get("baseRefName") or "")
         if not base.startswith(EPIC_PREFIX):
             return
+        if not parents_of(str(old.get("body") or "")):
+            remember(tick.home, number)  # #364 AC4: a task merged into its epic branch stays there
+            return
         head = str(old.get("headRefName") or "")
         in_main = self.in_main(str(old.get("headRefOid") or ""))
         if in_main is None:

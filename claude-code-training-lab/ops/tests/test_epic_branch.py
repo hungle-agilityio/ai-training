@@ -158,11 +158,10 @@ def test_epic_number_reads_the_first_part_of_line() -> None:
 # AC1
 
 
-def test_branch_is_made_from_main_for_the_first_ready_pull_request(home: Path) -> None:
+def test_a_ready_pull_request_into_main_makes_no_branch(home: Path) -> None:
     host = host_for(epic_pr())
     tick(host, home)
-    assert [BRANCH in " ".join(p) for p in host.pushes][0]
-    assert host.pushes[0] == ["push", "origin", f"origin/main:refs/heads/{BRANCH}"]
+    assert host.pushes == []
 
 
 @pytest.mark.parametrize(
@@ -192,16 +191,11 @@ def test_no_branch_for_a_task_without_an_epic_line(home: Path) -> None:
 # AC2
 
 
-def test_ready_pull_request_is_merged_with_a_merge_commit_and_pushed(home: Path) -> None:
+def test_a_ready_pull_request_is_never_merged_locally(home: Path) -> None:
     host = host_for(epic_pr(), branches={BRANCH})
     tick(host, home)
-    assert ["merge", "--no-ff", "-m", f"Merge pull request #20 into {BRANCH}", "abc1234def"] in (
-        merges(host)
-    )
-    assert any(
-        p[:2] == ["push", "origin"] and p[2] == f"HEAD:refs/heads/{BRANCH}" for p in host.pushes
-    )
-    assert not any("rebase" in c for c in host.calls)
+    assert merges(host) == []
+    assert host.pushes == []
 
 
 def test_pull_request_already_in_the_branch_is_not_merged_again(home: Path) -> None:
@@ -209,14 +203,6 @@ def test_pull_request_already_in_the_branch_is_not_merged_again(home: Path) -> N
     tick(host, home)
     assert merges(host) == []
     assert host.pushes == []
-
-
-def test_new_commits_after_review_are_merged_again(home: Path) -> None:
-    host = host_for(
-        epic_pr(oid="newhead99"), branches={BRANCH}, in_branch={"origin/main", "oldhead11"}
-    )
-    tick(host, home)
-    assert any(m[-1] == "newhead99" for m in merges(host))
 
 
 def test_red_pull_request_is_not_merged(home: Path) -> None:
@@ -245,28 +231,6 @@ def test_main_already_in_the_branch_pushes_nothing(home: Path) -> None:
 # AC4
 
 
-def test_pull_request_conflict_posts_one_redo_and_leaves_the_branch(home: Path) -> None:
-    host = host_for(epic_pr(), branches={BRANCH}, conflicts={"abc1234def"})
-    tick(host, home)
-    tick(host, home)
-    assert len(host.comments) == 1
-    assert host.comments[0][3:6] == [
-        "20",
-        "--body",
-        (f"/redo merge origin/{BRANCH} into this branch and fix the conflict"),
-    ]
-    assert any(c[3:5] == ["merge", "--abort"] for c in host.calls if c[0] == "git")
-    assert host.pushes == []
-
-
-def test_a_new_head_after_a_conflict_may_post_again(home: Path) -> None:
-    host = host_for(epic_pr(), branches={BRANCH}, conflicts={"abc1234def", "second22"})
-    tick(host, home)
-    host.prs[0]["headRefOid"] = "second22"
-    tick(host, home)
-    assert len(host.comments) == 2
-
-
 def test_main_conflict_sends_one_message_per_hour(home: Path) -> None:
     host = host_for(epic_pr(), branches={BRANCH}, in_branch=set(), conflicts={"origin/main"})
     tick(host, home)
@@ -287,7 +251,7 @@ def test_one_log_line_per_epic(home: Path) -> None:
     host = host_for(epic_pr(), branches={BRANCH})
     log = tick(host, home)
     assert [line for line in log if line.startswith("epic #")] == [
-        f"epic #236: branch {BRANCH}, 1 pull requests in it"
+        f"epic #236: branch {BRANCH}, up to date with main"
     ]
 
 

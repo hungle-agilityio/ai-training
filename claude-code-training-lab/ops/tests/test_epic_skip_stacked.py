@@ -16,19 +16,17 @@ def home(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_pull_request_based_on_the_epic_branch_is_not_merged_into_it(home: Path) -> None:
+def test_pull_request_based_on_the_epic_branch_is_not_merged_locally(home: Path) -> None:
     stacked = epic_pr(number=21, closes=6, oid="bbb2222") | {"baseRefName": BRANCH}
     host = host_for(epic_pr(), stacked, branches={BRANCH})
     tick(host, home)
-    merged = [m[-1] for m in merges(host)]
-    assert "abc1234def" in merged
-    assert "bbb2222" not in merged
+    assert merges(host) == []
 
 
-def test_log_line_counts_only_pull_requests_based_on_main(home: Path) -> None:
+def test_log_line_says_the_branch_has_main(home: Path) -> None:
     stacked = epic_pr(number=21, closes=6, oid="bbb2222") | {"baseRefName": BRANCH}
     host = host_for(epic_pr(), stacked, branches={BRANCH})
     log = tick(host, home)
     assert [line for line in log if line.startswith("epic #")] == [
-        f"epic #236: branch {BRANCH}, 1 pull requests in it"
+        f"epic #236: branch {BRANCH}, up to date with main"
     ]
