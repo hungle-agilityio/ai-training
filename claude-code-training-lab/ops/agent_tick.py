@@ -67,7 +67,9 @@ VERSION = re.compile(r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?")
 LOG_TAIL = 20
 SKIP_LABELS = {"agent:running", "agent:review", "agent:failed", "agent:manual"}
 PR_LABELS = {"pr:ready-for-review", "pr:changes-requested", "pr:blocked", "pr:ci-failed"}
-RED_CI = {"FAILURE", "ERROR", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE"}
+RED_CI = {"FAILURE", "ERROR", "TIMED_OUT", "ACTION_REQUIRED", "STARTUP_FAILURE"}
+REPLACED_RUNS = {"cancelled", "skipped"}
+MAIN_RUNS_READ = "10"
 ALONE_WORDS: tuple[str, ...] = ()
 USAGE_LIMIT = re.compile(
     r"usage limit|limit reached|rate_limit|extra_usage|usage_limit|hit your .*limit", re.IGNORECASE
@@ -967,7 +969,7 @@ def open_issue_list(tick: Tick) -> list[dict[str, Any]]:
 
 
 def main_is_red(tick: Tick) -> bool:
-    """#70 AC5: the latest completed Checks run on main; unreadable counts as green."""
+    """#70 AC5, #344: the latest decided Checks run on main; none or unreadable is green."""
     code, out = tick.gh(
         "run",
         "list",
@@ -978,7 +980,7 @@ def main_is_red(tick: Tick) -> bool:
         "--status",
         "completed",
         "--limit",
-        "1",
+        MAIN_RUNS_READ,
         "--json",
         "conclusion,headSha,url",
     )
@@ -989,7 +991,11 @@ def main_is_red(tick: Tick) -> bool:
     if not isinstance(runs, list) or not runs or not isinstance(runs[0], dict):
         tick.say("main checks could not be read; going on as if main were green")
         return False
-    run = runs[0]
+    decided = [r for r in runs if isinstance(r, dict) and r.get("conclusion") not in REPLACED_RUNS]
+    if not decided:
+        tick.say("main checks were all cancelled or skipped; going on as if main were green")
+        return False
+    run = decided[0]
     if run.get("conclusion") == "success":
         return False
     sha = str(run.get("headSha") or "")[:7]
