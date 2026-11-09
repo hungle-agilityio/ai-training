@@ -127,6 +127,18 @@ A task belongs to an epic when its issue body has the line `Part of the epic #<N
 
 Tests: `ops/tests/test_epic_branch.py`, `ops/tests/test_epic_task_merge.py`.
 
+## The epic pull request
+
+When every open issue with `Part of the epic #<N>` has `agent:in-epic` (at least one does) and no open pull request from `epic/<N>-<slug>` into `main` exists, the tick (`ops/epic_pull_request.py`, after the step that merges `main` into the branch) opens one: title `[EPIC] <epic title without "Epic:">`, body starting with the marker, a table task → pull request → verify report link, then one `Closes #<task>` line per task and `Closes #<N>`. It sends one ntfy message `Epic #<N> is ready for your review: PR #<p>`. While the branch does not have `main` (a conflict), it waits and logs `epic #<N>: pull request waits, <branch> does not have main`.
+
+- It starts no run while it has no `pr:*` label; `mark_green_ready` gives it `pr:ready-for-review` once its checks are green. It needs no verify report link of its own.
+- The owner's approval comment merges it as any loop pull request (ADR-016, `--merge`, branch deleted); GitHub then closes the tasks and the epic.
+- Any other owner comment is a change request: a loop run on this pull request, on `epic/<N>-<slug>`, pushes its fix to that branch.
+- A task that reaches the epic branch while it is open gets its `Closes #<task>` line in the body at that tick.
+- `main` keeps going into the branch each tick; a conflict sends one message per hour.
+
+Tests: `ops/tests/test_epic_pull_request.py`.
+
 ## The Artifact tool check
 
 A build needs the `Artifact` tool to publish its verify report. Each build starts `claude -p` with `--output-format stream-json`, reads the tool list of the first `init` event and starts again (three starts at most) when `Artifact` is missing.
