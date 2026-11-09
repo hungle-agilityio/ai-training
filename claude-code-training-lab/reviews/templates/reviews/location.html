@@ -4,7 +4,7 @@
 {% block title %}{{ page.name }} · ReviewRadar{% endblock %}
 {% block heading %}{{ page.name }}{% endblock %}
 {% block subtitle %}Score, weekly trend and latest reviews for this location.{% endblock %}
-{% block actions %}{% endblock %}
+{% block actions %}<a class="button" href="{% url 'compare' %}?a={{ page.branch_id }}">Compare with another location</a>{% endblock %}
 
 {% block content %}
 <div class="grid location-grid">
