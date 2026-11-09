@@ -85,6 +85,33 @@
       </tbody>
     </table>
   </div>
+  <section class="compare-topics" id="compare-topics" aria-label="What customers talk about">
+    <h2>What customers talk about</h2>
+    {% if comparison.topic_rows %}
+    <div class="table-wrap">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <td></td>
+            <th scope="col">{{ comparison.a.name }}</th>
+            <th scope="col">{{ comparison.b.name }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in comparison.topic_rows %}
+          <tr>
+            <th scope="row">{{ row.label }}</th>
+            <td>{{ row.a.review_count }}{% if row.a.bad_count %} · {{ row.a.bad_count }} bad{% endif %}</td>
+            <td>{{ row.b.review_count }}{% if row.b.bad_count %} · {{ row.b.bad_count }} bad{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="compare-message">No topics found for these locations in this period.</p>
+    {% endif %}
+  </section>
   {% elif same_location %}
   <p class="compare-message is-bad">Choose two different locations.</p>
   {% else %}

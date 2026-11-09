@@ -24,6 +24,7 @@ def patch(mocker: MockerFixture, *rows: CompareTotals) -> None:
     mocker.patch(
         "reviews.compare_service.compare_repository.compare_totals", return_value=list(rows)
     )
+    mocker.patch("reviews.compare_service._topic_rows", return_value=())
 
 
 def test_side_numbers_follow_the_shared_rules(mocker: MockerFixture) -> None:

@@ -24,7 +24,7 @@ def test_demo_data_all_time(django_assert_num_queries: DjangoAssertNumQueries) -
     ids = seed()
     now = timezone.now()
 
-    with django_assert_num_queries(1):
+    with django_assert_num_queries(3):
         result = compare_service.compare_locations(ids["Downtown"], ids["Riverside"], None, now)
 
     assert result is not None
