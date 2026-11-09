@@ -79,6 +79,7 @@ An open loop issue carries exactly one of these four labels, and the tick (not t
 | `agent:failed` | stopped without a pull request; the reason is in the issue comment |
 
 - Starting a build swaps `agent:ready` for `agent:running` in one call. Each tick, an issue with an open loop pull request gets `agent:review` and loses `agent:running` and `agent:ready` (log: `issue-<n>: has PR #<p>, agent:review`).
+- A build that handed over a pull request never holds its branch: when its worktree still has uncommitted changes, the tick saves them as `archive/<key>-<time>.patch` in the state folder and removes the worktree. A build with no pull request keeps its worktree.
 - A build that ends without a pull request swaps `agent:running` and `agent:ready` for `agent:failed`. To rebuild, remove `agent:failed` and add `agent:ready`; an issue with only `agent:failed` is started again only by the retry rule (Self-repair), and an issue with no status label is never started. An old issue with both `agent:ready` and `agent:failed` is left alone.
 - The plan limit sends the issue back to `agent:ready` alone.
 
@@ -86,6 +87,7 @@ An open loop issue carries exactly one of these four labels, and the tick (not t
 
 - First, open loop pull requests with an owner approval comment are merged when the checks of ADR-016 hold (see Review from the phone).
 - The tick itself removes the `pr:*` labels of merged or closed loop pull requests and `agent:review` from the issue they close, and `agent:ready` from closed issues; it starts no build for that.
+- A loop pull request with no status label, no open change request, a report link in its body and every check green gets `pr:ready-for-review` from the tick itself, so it needs no build for that (log: `pr-<n>: CI is green and the report is linked; pr:ready-for-review`).
 - Pull requests of the loop that need a run go first (an open change request, no status label, ready but CI red), then the oldest `agent:ready` issues.
 - An issue is skipped when it is `agent:running`, `agent:review`, `agent:failed` (except a retry, see Self-repair) or `agent:manual`, when a `Depends on #M` is still open or #M was closed as not planned, or when `agent:ready` was added by anyone but `hungle-agilityio`. There is no limit on open pull requests; only `AGENT_CONCURRENCY` and these rules limit the builds.
 - An issue labelled `risk:high`, or whose body names `migrations/` or `models.py`, runs alone.
