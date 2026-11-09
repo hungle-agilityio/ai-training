@@ -2117,7 +2117,7 @@ def keep_epic_pull_requests(tick: Tick, prs: list[dict[str, Any]]) -> None:
     """#366 AC1, AC5: one pull request into main per epic whose tasks are all in its branch."""
     try:
         issues = open_issue_list(tick)
-        epic_pull_request.EpicPullRequests(tick, REPO_ROOT, MARKER).keep(prs, issues)
+        epic_pull_request.EpicPullRequests(tick, REPO, REPO_ROOT, MARKER).keep(prs, issues)
     except (RuntimeError, ValueError) as error:
         tick.say(f"epic pull requests: {error}; next tick")
 
