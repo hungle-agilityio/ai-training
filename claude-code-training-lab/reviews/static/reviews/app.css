@@ -133,6 +133,7 @@ h1, h2, p { margin: 0; }
 .kpi-value { font-size: 32px; font-weight: 700; letter-spacing: -.02em; margin-top: 4px; }
 .kpi-unit { font-size: 15px; color: var(--muted); font-weight: 500; }
 .kpi-hint { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.kpi-hint .kpi-overdue { color: var(--bad); font-weight: 600; }
 .kpi-alert { border-color: var(--bad); }
 .kpi-alert .kpi-value { color: var(--bad); }
 

@@ -38,6 +38,11 @@
       <p class="kpi-label">Need a reply</p>
       <p class="kpi-value">{{ overview.needs_reply_count }}</p>
       <p class="kpi-hint">{% if overview.needs_reply_count %}Reviews with no reply yet{% else %}Every review has a reply{% endif %}</p>
+      {% if overview.overdue_count %}
+        <p class="kpi-hint"><a class="row-link kpi-overdue" href="/replies/?overdue=1">{{ overview.overdue_count }} overdue (bad, over 24 h)</a></p>
+      {% else %}
+        <p class="kpi-hint">None overdue</p>
+      {% endif %}
       <p class="kpi-hint"><a class="row-link" href="/replies/">Open reply drafts</a></p>
     </article>
     <article class="kpi" id="kpi-reply-speed">
