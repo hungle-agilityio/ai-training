@@ -1,6 +1,7 @@
 # ADR-012: Gate 1 is a spec pull request; scripts drive the loop
 
 - Status: Accepted (changes parts of ADR-008, ADR-009 and ADR-011)
+- Superseded in part by ADR-023 (no agent:manual)
 - Date: 2026-10-28
 
 ## Context

@@ -22,7 +22,7 @@
 - **Risk:** low | medium | high
 - **needs-ui:** yes | no
 - **Screens to capture:** (needs-ui only) each page and the selector of the part that changes, for example `/reviews/` → `#filter-rating`
-- **Label:** `agent:ready`, or `agent:manual` when it changes `.claude/`
+- **Label:** `agent:ready` (every task; list every file it will change, guarded ones included, ADR-023)
 
 ## T2: <short title>
 
