@@ -10,7 +10,7 @@
 
 {% block content %}
 {% if goals_saved %}<p class="notice" id="goals-saved" role="status">Goals saved.</p>{% endif %}
-{% if templates_saved %}<p class="notice" id="templates-saved" role="status">Template added.</p>{% endif %}
+{% if templates_notice %}<p class="notice" id="templates-saved" role="status">{{ templates_notice }}</p>{% endif %}
 {% if saved %}<p class="notice" id="password-saved" role="status">Password changed.</p>{% endif %}
 <section class="panel settings-panel" id="settings-account">
   <h2>Account</h2>

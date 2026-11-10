@@ -14,6 +14,12 @@ from reviews.goal_repository import LocationGoal
 from reviews.reply_templates import KIND_LABELS
 from reviews.template_forms import KIND_ORDER, TemplateForm
 
+TEMPLATE_NOTICES = {
+    "added": "Template added.",
+    "saved": "Template saved.",
+    "deleted": "Template deleted.",
+}
+
 
 @dataclass(frozen=True)
 class GoalField:
@@ -54,7 +60,7 @@ def settings_context(
         "template_kinds": [(kind, KIND_LABELS[kind]) for kind in KIND_ORDER],
         "template_typed": template_form.typed if template_form else {},
         "template_errors": template_form.errors if template_form else {},
-        "templates_saved": request.GET.get("templates") == "added",
+        "templates_notice": TEMPLATE_NOTICES.get(request.GET.get("templates", "")),
         "suggestions": settings_service.suggestion_status(),
     }
 

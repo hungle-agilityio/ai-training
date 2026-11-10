@@ -9,9 +9,9 @@ DUPLICATE_ERROR = "A template with this name already exists."
 
 
 class TemplateForm:
-    """Reads name, kind and text of a new template; errors are kept per field."""
+    """Reads name, kind and text of a new or edited template; errors are kept per field."""
 
-    def __init__(self, data: Mapping[str, str]) -> None:
+    def __init__(self, data: Mapping[str, str], exclude_id: int | None = None) -> None:
         self.name = data.get("name", "").strip()
         self.kind = data.get("kind", "")
         self.text = data.get("text", "").strip()
@@ -25,7 +25,7 @@ class TemplateForm:
             self.errors.setdefault("name" if message == NAME_ERROR else "text", []).append(message)
         if self.kind not in KIND_LABELS:
             self.errors["kind"] = [KIND_ERROR]
-        if "name" not in self.errors and template_repository.name_exists(self.name):
+        if "name" not in self.errors and template_repository.name_exists(self.name, exclude_id):
             self.errors["name"] = [DUPLICATE_ERROR]
 
     def is_valid(self) -> bool:

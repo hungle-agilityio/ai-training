@@ -1,0 +1,39 @@
+{% extends "reviews/base.html" %}
+{% load static %}
+
+{% block title %}Edit reply template · ReviewRadar{% endblock %}
+{% block heading %}Edit reply template{% endblock %}
+{% block subtitle %}Use {location} for the location's name.{% endblock %}
+{% block actions %}{% endblock %}
+
+{% block head %}<link rel="stylesheet" href="{% static 'reviews/settings.css' %}">{% endblock %}
+
+{% block content %}
+<section class="panel settings-panel">
+  <form class="settings-form" method="post" action="/settings/templates/{{ template.id }}/">
+    {% csrf_token %}
+    <div class="settings-field">
+      <label for="template-name">Name</label>
+      <input type="text" id="template-name" name="name" maxlength="60" value="{{ template_typed.name }}" data-sensitive{% if template_errors.name %} aria-describedby="template-name-error" aria-invalid="true"{% endif %}>
+      {% if template_errors.name %}<div id="template-name-error">{% for error in template_errors.name %}<p class="settings-error">{{ error }}</p>{% endfor %}</div>{% endif %}
+    </div>
+    <div class="settings-field">
+      <label for="template-kind">Kind</label>
+      <select id="template-kind" name="kind"{% if template_errors.kind %} aria-describedby="template-kind-error" aria-invalid="true"{% endif %}>
+        {% for value, label in template_kinds %}<option value="{{ value }}"{% if template_typed.kind == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      {% if template_errors.kind %}<div id="template-kind-error">{% for error in template_errors.kind %}<p class="settings-error">{{ error }}</p>{% endfor %}</div>{% endif %}
+    </div>
+    <div class="settings-field">
+      <label for="template-text">Text</label>
+      <textarea id="template-text" name="text" maxlength="1000" rows="4" data-sensitive{% if template_errors.text %} aria-describedby="template-text-error" aria-invalid="true"{% endif %}>{{ template_typed.text }}</textarea>
+      {% if template_errors.text %}<div id="template-text-error">{% for error in template_errors.text %}<p class="settings-error">{{ error }}</p>{% endfor %}</div>{% endif %}
+    </div>
+    <div class="settings-row">
+      <button type="submit" class="button">Save template</button>
+      <a href="/settings/#settings-templates">Cancel</a>
+      <a href="/settings/templates/{{ template.id }}/delete/">Delete template</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

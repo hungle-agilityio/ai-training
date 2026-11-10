@@ -20,6 +20,16 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("settings/", views.settings_page, name="settings"),
     path("settings/goals/", goal_views.goals_save, name="settings-goals"),
     path("settings/templates/", template_views.templates_add, name="settings-templates"),
+    path(
+        "settings/templates/<int:template_id>/",
+        template_views.template_edit,
+        name="settings-template-edit",
+    ),
+    path(
+        "settings/templates/<int:template_id>/delete/",
+        template_views.template_delete,
+        name="settings-template-delete",
+    ),
     path("reports/", views.reports, name="reports"),
     path("reports/export/", views.reports_export, name="reports-export"),
     path("topics/", topic_views.topics, name="topics"),
