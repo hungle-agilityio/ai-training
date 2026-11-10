@@ -14,6 +14,14 @@
        ```
      The build copies the block unchanged into `build_report.py --browser --spec`. A needs-ui issue without a valid block, or with "steps": [], opens no pull request (agent:failed). A task with needs-ui: no has no section and its report runs with --no-ui. -->
 
+<!-- Epic only: keep a query budget so later tasks list the query-cap tests earlier tasks add (ADR-024). -->
+
+## Query budget
+
+| Page | Queries on main | After T1 | After T2 |
+|---|---|---|---|
+| <url> | <n> | <n> | <n> |
+
 ## T1: <short title>
 
 - **ACs:** AC1, AC2
@@ -22,7 +30,7 @@
 - **Risk:** low | medium | high
 - **needs-ui:** yes | no
 - **Screens to capture:** (needs-ui only) each page and the selector of the part that changes, for example `/reviews/` → `#filter-rating`
-- **Label:** `agent:ready` (every task; list every file it will change, guarded ones included, ADR-023)
+- **Label:** `agent:ready` (every task; list every file it will change, guarded ones included, ADR-023). A task that changes a file under `.claude/`: no `agent:*` label, built by hand (ADR-023, "Exception: .claude/")
 
 ## T2: <short title>
 
