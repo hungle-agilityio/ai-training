@@ -24,6 +24,11 @@ In loop mode `before-edit-check` refused every guarded file: anything in a `.cla
 | Q3 `agent:needs-permission` | Removed too; the hook allows the listed files | Keep it | Same cause, same fix |
 | Q4 Review | `## Guard files changed` in task and epic pull requests | Nothing extra | The owner sees at once what touches the flow |
 | Q5 First build | By hand once on the Mac mini (owner clicks Merge), with a probe of pushing a workflow file | Split for the loop | The loop cannot unlock its own guards |
+| Loop and .claude/ | Hand build, no agent label | Probe hook allow further | Built-in safety check; probing needs the owner to type commands |
+
+## Exception: .claude/ (2026-11-10)
+
+Claude Code's built-in safetyCheck treats every file under a `.claude` folder as a sensitive file. In `claude -p` nobody can approve it, so the edit is denied even with an allow rule and with the hook's allow (issue #392, `decision_reason_type` `safetyCheck`). An issue that changes a file under `.claude/` is built by hand through the Mac mini (interactive session, the owner clicks Merge) and gets no `agent:*` label. `route_issue.py` warns about such a path. The rest of this record (`.github/`, the plugin, the gate files, existing tests) stands.
 
 ## Workflow push probe
 
