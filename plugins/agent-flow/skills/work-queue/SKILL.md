@@ -7,7 +7,7 @@ description: Work the GitHub queue unattended. Work every open change request th
 
 One run: first the owner's answers (redo, merged), then **one new issue**, then end. Nothing waits for the user: pull requests pile up for review while the loop keeps going. Standing approvals and why: ADR-008, ADR-009, ADR-014.
 
-The tick (`ops/agent_tick.py`, started by `ops/start-loop.sh`) starts each run as `claude -p "Use the work-queue skill for issue #N only."` (or "pull request #N") with `REVIEWRADAR_LOOP=1`, in its own worktree. In that mode `before-edit-check` (rules, gates and existing tests are read-only) and `before-finish-check` (lint, types, tests must pass) are active, and `before-github-command-check` lets only a clean push, a pull request and the review marks below through and refuses every merge. Start the run on a clean tree (`git status`); if it is not clean, stop and say so.
+The tick (`ops/agent_tick.py`, started by `ops/start-loop.sh`) starts each run as `claude -p "Use the work-queue skill for issue #N only."` (or "pull request #N") with `REVIEWRADAR_LOOP=1`, in its own worktree. In that mode `before-edit-check` (rules, gates, the plugin and existing tests are read-only, except the files the issue lists: the tick passes them in `FLOW_ALLOWED_EDITS`, so the build may change the guarded files its issue lists and nothing else that is guarded; `.git/` and the settings keys that turn guards off stay refused, ADR-023) and `before-finish-check` (lint, types, tests must pass) are active, and `before-github-command-check` lets only a clean push, a pull request and the review marks below through and refuses every merge. Start the run on a clean tree (`git status`); if it is not clean, stop and say so.
 
 ## Check the tools
 

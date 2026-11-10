@@ -17,6 +17,13 @@ ignores it):
     ops/flow.toml, unless ALLOW_TEST_EDIT=1: fix the code, not the test. A file that the
     issue lists under `## Existing tests that change` is allowed: the tick passes those paths,
     relative to the project folder, one per line in FLOW_TEST_EDITS.
+
+A file the issue lists (`## Files likely touched`, `## Existing tests that change`) is allowed
+even when it is guarded: the tick passes those paths, relative to the project folder (`../` for
+the git root), one per line in FLOW_ALLOWED_EDITS, and the hook answers allow (ADR-023).
+Always refused in loop mode, even when listed: a path inside .git, and an edit of settings.json
+or settings.local.json in a .claude folder that changes a key that turns guards off
+(GUARD_KEYS); when the result cannot be worked out the edit is refused.
 """
 
 from __future__ import annotations
@@ -41,6 +48,10 @@ GATE_FILES = {
 }
 
 LOOP_VARS = ("FLOW_LOOP", "REVIEWRADAR_LOOP")
+SETTINGS_FILES = {"settings.json", "settings.local.json"}
+GUARD_KEYS = ("disableAllHooks", "enabledPlugins", "extraKnownMarketplaces", "hooks")
+DENY_KEY = "permissions.deny"
+MISSING = object()
 
 
 def is_loop(env: Mapping[str, str]) -> bool:
@@ -167,13 +178,109 @@ def listed_test_edit(path: Path, project: Path, env: Mapping[str, str]) -> bool:
     return rel in listed
 
 
-def evaluate(file_path: str, project: Path, env: Mapping[str, str], run: Runner) -> list[str]:
+def listed_edit(path: Path, project: Path, env: Mapping[str, str]) -> bool:
+    """The issue lists this file (FLOW_ALLOWED_EDITS), relative to the project folder."""
+    target = str(path.resolve()).casefold()
+    for line in env.get("FLOW_ALLOWED_EDITS", "").splitlines():
+        rel = line.strip().removeprefix("./")
+        if rel and str((project / rel).resolve()).casefold() == target:
+            return True
+    return False
+
+
+def apply_edit(text: str, old: object, new: object, every: bool) -> str | None:
+    """The text after one Edit, or None when the old text is not there."""
+    if not isinstance(old, str) or not isinstance(new, str) or not old or old not in text:
+        return None
+    return text.replace(old, new) if every else text.replace(old, new, 1)
+
+
+def settings_after(path: Path, tool_name: str, tool_input: Mapping[str, Any]) -> str | None:
+    """The settings file as the edit would leave it, or None when that cannot be worked out."""
+    if tool_name == "Write":
+        content = tool_input.get("content")
+        return content if isinstance(content, str) else None
+    try:
+        text: str | None = path.read_text() if path.exists() else ""
+    except OSError:
+        return None
+    if tool_name == "Edit":
+        edits: object = [tool_input]
+    elif tool_name == "MultiEdit":
+        edits = tool_input.get("edits")
+    else:
+        return None
+    if not isinstance(edits, list) or not edits:
+        return None
+    for edit in edits:
+        if text is None or not isinstance(edit, Mapping):
+            return None
+        text = apply_edit(
+            text, edit.get("old_string"), edit.get("new_string"), edit.get("replace_all") is True
+        )
+    return text
+
+
+def guard_values(data: Mapping[str, Any]) -> dict[str, object]:
+    values = {key: data.get(key, MISSING) for key in GUARD_KEYS}
+    permissions = data.get("permissions", MISSING)
+    values[DENY_KEY] = (
+        permissions.get("deny", MISSING) if isinstance(permissions, Mapping) else permissions
+    )
+    return values
+
+
+def changed_guard_keys(
+    path: Path, tool_name: str, tool_input: Mapping[str, Any]
+) -> list[str] | None:
+    """The guard keys the edit changes, or None when the result cannot be worked out."""
+    after = settings_after(path, tool_name, tool_input)
+    try:
+        before = json.loads(path.read_text()) if path.exists() else {}
+        result = json.loads(after) if after is not None else None
+    except (OSError, ValueError):
+        return None
+    if not isinstance(before, dict) or not isinstance(result, dict):
+        return None
+    old, new = guard_values(before), guard_values(result)
+    return [key for key in (*GUARD_KEYS, DENY_KEY) if old[key] != new[key]]
+
+
+def listed_problems(
+    path: Path, parts: tuple[str, ...], tool_name: str, tool_input: Mapping[str, Any]
+) -> list[str]:
+    """A listed file is allowed, except the settings keys that turn guards off."""
+    if parts[-1] in SETTINGS_FILES and ".claude" in parts[:-1]:
+        keys = changed_guard_keys(path, tool_name, tool_input)
+        if keys is None:
+            keys = [*GUARD_KEYS, DENY_KEY]
+        if keys:
+            return [
+                f"{path.name}: the loop never changes the keys that turn guards off "
+                f"({', '.join(keys)}); ask the user"
+            ]
+    return []
+
+
+def evaluate(
+    file_path: str,
+    project: Path,
+    env: Mapping[str, str],
+    run: Runner,
+    tool_name: str = "",
+    tool_input: Mapping[str, Any] | None = None,
+) -> list[str]:
     if not is_loop(env):
         return []
     path = Path(file_path).resolve()
     parts = tuple(part.casefold() for part in path.parts)
     name = parts[-1] if parts else ""
     project = project.resolve()
+
+    if ".git" in parts:
+        return [f"{path.name} is inside .git; the loop never edits git's own files, ask the user"]
+    if listed_edit(path, project, env):
+        return listed_problems(path, parts, tool_name, tool_input or {})
 
     if PROTECTED_DIRS & set(parts) or name in PROTECTED_FILES:
         if ".github" not in parts and ".claude" in parts:
@@ -207,6 +314,15 @@ def evaluate(file_path: str, project: Path, env: Mapping[str, str], run: Runner)
     return []
 
 
+ALLOW_ANSWER = {
+    "hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "allow",
+        "permissionDecisionReason": "the issue lists this file (FLOW_ALLOWED_EDITS)",
+    }
+}
+
+
 def main() -> int:
     loop = is_loop(os.environ)
     try:
@@ -228,8 +344,12 @@ def main() -> int:
             return 2
         return 0
     project = Path(os.environ.get("CLAUDE_PROJECT_DIR") or payload.get("cwd") or os.getcwd())
-    problems = evaluate(file_path, project, os.environ, real_run)
+    tool_name = str(payload.get("tool_name"))
+    edit_input = tool_input if isinstance(tool_input, dict) else {}
+    problems = evaluate(file_path, project, os.environ, real_run, tool_name, edit_input)
     if not problems:
+        if loop and listed_edit(Path(file_path), project.resolve(), os.environ):
+            print(json.dumps(ALLOW_ANSWER))
         return 0
     print("Blocked by before-edit-check: " + "; ".join(problems) + ".", file=sys.stderr)
     return 2
