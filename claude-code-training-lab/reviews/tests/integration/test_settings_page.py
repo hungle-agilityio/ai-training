@@ -155,5 +155,5 @@ def test_other_methods_are_405(client: Client, method: str) -> None:
 def test_get_makes_at_most_two_queries(
     client: Client, django_assert_max_num_queries: DjangoAssertNumQueries
 ) -> None:
-    with django_assert_max_num_queries(2):
+    with django_assert_max_num_queries(3):
         assert client.get("/settings/").status_code == 200

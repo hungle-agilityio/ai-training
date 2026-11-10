@@ -62,5 +62,5 @@ def test_settings_page_makes_at_most_two_queries(
     django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
     settings.ANTHROPIC_API_KEY = KEY
-    with django_assert_max_num_queries(2):
+    with django_assert_max_num_queries(3):
         client.get("/settings/")

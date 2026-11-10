@@ -14,6 +14,7 @@ from django.db.models import QuerySet
 from django.utils import timezone
 
 from reviews import repositories
+from reviews.goals import GoalStatus, goal_status
 from reviews.models import Review
 from reviews.search_text import normalize_for_search, tidy_search_input
 from reviews.topics import TOPICS, topic_by_slug
@@ -87,6 +88,7 @@ class BranchRow:
     status: str
     status_label: str
     reply_percent: int | None = None
+    goal: GoalStatus | None = None
 
 
 @dataclass(frozen=True)
@@ -260,6 +262,7 @@ class LocationPage:
     status_label: str
     rating_bars: list[RatingBar]
     latest_reviews: list[ReviewRow]
+    goal: GoalStatus
 
 
 def rating_bars_from(counts: dict[int, int]) -> list[RatingBar]:
@@ -293,6 +296,7 @@ def location_page(pk: int) -> LocationPage | None:
         status_label=status_label,
         rating_bars=rating_bars_from(repositories.rating_counts_for(pk)),
         latest_reviews=[to_review_row(review) for review in newest],
+        goal=goal_status(average, totals.target_score),
     )
 
 
@@ -307,6 +311,7 @@ def dashboard_overview(recent_limit: int = 6, now: datetime | None = None) -> Da
             average_rating=average_from_totals(totals.rating_total, totals.review_count),
         )
         reply_percent = reply_speed_of(totals).percent
+        goal = goal_status(score.average_rating, totals.target_score)
         if score.average_rating is None:
             # No reviews yet: no score, no bar, no status, and not "needs attention"
             rows.append(
@@ -319,6 +324,7 @@ def dashboard_overview(recent_limit: int = 6, now: datetime | None = None) -> Da
                     status="",
                     status_label="",
                     reply_percent=reply_percent,
+                    goal=goal,
                 )
             )
             continue
@@ -333,6 +339,7 @@ def dashboard_overview(recent_limit: int = 6, now: datetime | None = None) -> Da
                 status=status,
                 status_label=label,
                 reply_percent=reply_percent,
+                goal=goal,
             )
         )
 

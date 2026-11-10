@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from django.db.models import Count, DurationField, ExpressionWrapper, F, Q, QuerySet, Sum
 from django.db.models.functions import Coalesce
@@ -23,6 +24,7 @@ class BranchTotals:
     bad_replied_in_time: int = 0
     # Seconds from review to first reply, summed over the bad reviews with a reply
     reply_seconds: float = 0.0
+    target_score: Decimal | None = None
 
 
 REPLY_WINDOW = timedelta(hours=24)
@@ -48,7 +50,7 @@ def branch_rating_totals(*, now: datetime | None = None) -> list[BranchTotals]:
     )
     rows = (
         Branch.objects.order_by("id")
-        .values("id", "name")
+        .values("id", "name", "target_score")
         .annotate(
             review_count=Count("reviews"),
             rating_total=Coalesce(Sum("reviews__rating"), 0),
@@ -68,6 +70,7 @@ def branch_rating_totals(*, now: datetime | None = None) -> list[BranchTotals]:
             bad_replied=int(row["bad_replied"]),
             bad_replied_in_time=int(row["bad_replied_in_time"]),
             reply_seconds=row["reply_gap"].total_seconds() if row["reply_gap"] else 0.0,
+            target_score=row["target_score"],
         )
         for row in rows
     ]
@@ -98,7 +101,7 @@ def branch_rating_totals_for(pk: int) -> BranchTotals | None:
     """Count and rating sum of one branch in one query; None when it does not exist."""
     row = (
         Branch.objects.filter(pk=pk)
-        .values("id", "name")
+        .values("id", "name", "target_score")
         .annotate(review_count=Count("reviews"), rating_total=Coalesce(Sum("reviews__rating"), 0))
         .first()
     )
@@ -109,6 +112,7 @@ def branch_rating_totals_for(pk: int) -> BranchTotals | None:
         name=str(row["name"]),
         review_count=int(row["review_count"]),
         rating_total=int(row["rating_total"]),
+        target_score=row["target_score"],
     )
 
 

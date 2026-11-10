@@ -71,6 +71,7 @@
               <th scope="col">Location</th>
               <th scope="col" class="num">Reviews</th>
               <th scope="col">Rating</th>
+              <th scope="col">Goal</th>
               <th scope="col">Status</th>
               <th scope="col" class="num">Replied in 24h</th>
               <th scope="col">Details</th>
@@ -83,7 +84,6 @@
                 <td class="num">{{ row.review_count }}</td>
                 {% if row.average_rating is None %}
                   <td><span class="muted">No reviews yet</span></td>
-                  <td></td>
                 {% else %}
                   <td>
                     <div class="rating-cell">
@@ -91,6 +91,20 @@
                       <span class="stars" role="img" aria-label="{{ row.average_rating|floatformat:1 }} out of 5"><span style="--pct: {{ row.bar_percent }}%"></span></span>
                     </div>
                   </td>
+                {% endif %}
+                <td>
+                  {% if row.goal.goal is None %}
+                    <span class="muted">&ndash;</span>
+                  {% else %}
+                    {{ row.goal.goal|floatformat:1 }} &middot;
+                    {% if row.goal.met is True %}<span class="badge badge-positive">{{ row.goal.label }}</span>
+                    {% elif row.goal.met is False %}<span class="badge badge-watch">{{ row.goal.label }}</span>
+                    {% else %}<span class="muted">{{ row.goal.label }}</span>{% endif %}
+                  {% endif %}
+                </td>
+                {% if row.average_rating is None %}
+                  <td></td>
+                {% else %}
                   <td><span class="badge badge-{{ row.status }}">{{ row.status_label }}</span></td>
                 {% endif %}
                 <td class="num">{% if row.reply_percent is None %}<span class="muted">&ndash;</span>{% else %}{{ row.reply_percent }}%{% endif %}</td>
