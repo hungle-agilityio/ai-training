@@ -149,7 +149,7 @@ def test_a_query_count_test_is_listed_when_query_code_is_touched(project: Path, 
     write(project, "reviews/tests/test_a.py", COUNTING)
 
     assert pinned_tests.find_pins(touched(path), project) == [
-        "- `reviews/tests/test_a.py::test_count`: query count"
+        "- `reviews/tests/test_a.py::test_count`: query cap"
     ]
 
 
@@ -157,7 +157,7 @@ def test_assert_num_queries_counts_as_a_query_count_test(project: Path) -> None:
     write(project, "reviews/tests/test_a.py", UNITTEST_COUNTING)
 
     assert pinned_tests.find_pins(touched("reviews/views.py"), project) == [
-        "- `reviews/tests/test_a.py::test_count`: query count"
+        "- `reviews/tests/test_a.py::test_count`: query cap 2"
     ]
 
 
