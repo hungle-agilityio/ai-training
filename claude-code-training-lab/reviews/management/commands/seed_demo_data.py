@@ -1,5 +1,6 @@
 import os
 from datetime import timedelta
+from decimal import Decimal
 from typing import Any
 
 from django.contrib.auth import get_user_model
@@ -22,6 +23,9 @@ DEMO_BAD_REPLY_DELAY_HOURS: dict[tuple[str, str], int] = {
     ("Riverside", "Phone line always busy, could not book."): 3,
     ("Riverside", "Nhân viên lễ tân chưa nhiệt tình"): 20,
 }
+
+# Demo goals; a location not listed has no goal.
+DEMO_GOALS: dict[str, Decimal] = {"Downtown": Decimal("4.5"), "Riverside": Decimal("3.0")}
 
 DEMO_REVIEWS: dict[str, list[tuple[int, str]]] = {
     "Airport": [
@@ -95,7 +99,9 @@ class Command(BaseCommand):
     def _create_branch(
         business: Business, name: str, items: list[tuple[int, str]], now: Any
     ) -> None:
-        branch = Branch.objects.create(business=business, name=name)
+        branch = Branch.objects.create(
+            business=business, name=name, target_score=DEMO_GOALS.get(name)
+        )
         for offset, (rating, text) in enumerate(items):
             review = create_review(
                 branch=branch,
