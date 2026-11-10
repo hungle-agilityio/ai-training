@@ -38,3 +38,4 @@ One file per decision: `ADR-001-short-title.md`, numbered in order. Write one fo
 - [ADR-021: One shared branch per epic](ADR-021-epic-branch.md)
 - [ADR-022: An epic is reviewed once](ADR-022-epic-reviewed-once.md)
 - [ADR-023: No agent:manual; a loop build edits the files its issue lists](ADR-023-no-manual-label.md)
+- [ADR-024: A loop build fixes technical stops itself](ADR-024-loop-self-fix.md)
