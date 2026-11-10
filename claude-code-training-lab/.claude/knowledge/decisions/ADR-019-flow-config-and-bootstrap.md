@@ -1,6 +1,7 @@
 # ADR-019: The flow reads ops/flow.toml; a new project is bootstrapped by copy and rename
 
 - Status: Accepted
+- Superseded in part by ADR-023 (no agent:manual)
 - Date: 2026-11-05
 
 ## Context

@@ -1,6 +1,7 @@
 # ADR-020: The flow is a Claude Code plugin, agent-flow
 
 - Status: Accepted
+- Superseded in part by ADR-023 (no agent:manual)
 - Date: 2026-11-05
 
 ## Context
