@@ -12,6 +12,7 @@ class Business(models.Model):
 class Branch(models.Model):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="branches")
     name = models.CharField(max_length=120)
+    target_score = models.DecimalField(max_digits=2, decimal_places=1, null=True, blank=True)
 
     def __str__(self) -> str:
         return self.name
