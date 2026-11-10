@@ -67,7 +67,7 @@ PLUGIN_NOTIFY_SECONDS = 60 * 60
 TIMED_OUT = 124
 VERSION = re.compile(r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?")
 LOG_TAIL = 20
-SKIP_LABELS = {"agent:running", "agent:review", "agent:failed", "agent:manual"}
+SKIP_LABELS = {"agent:running", "agent:review", "agent:failed"}
 PR_LABELS = {"pr:ready-for-review", "pr:changes-requested", "pr:blocked", "pr:ci-failed"}
 RED_CI = {"FAILURE", "ERROR", "TIMED_OUT", "ACTION_REQUIRED", "STARTUP_FAILURE"}
 REPLACED_RUNS = {"cancelled", "skipped"}
@@ -112,6 +112,9 @@ TEST_EDITS_HEADING = re.compile(
     r"^##\s+Existing tests that change\s*$", re.IGNORECASE | re.MULTILINE
 )
 TEST_EDITS_FILE = "test-edits"
+ALLOWED_EDITS_FILE = "allowed-edits"
+GUARD_FLAG = " (changes guard files)"
+PROTECTED_TEST_DIRS: tuple[str, ...] = ()
 BULLET_PATH = re.compile(r"^\s*[-*]\s+[^`\n]*`([^`\n]+)`", re.MULTILINE)
 LAB_PREFIX = ""
 NTFY_TITLE = ""
@@ -129,6 +132,7 @@ def configure(config: flow_config.FlowConfig) -> None:
     """Set the project values from the flow config (spec flow-bootstrap AC5 to AC11)."""
     global REPO, OWNER, NAME, APP_DIR, SETUP_COMMAND, CI_WORKFLOW, STATE_DIR
     global ALONE_WORDS, LAB_PREFIX, NTFY_TITLE, LOW_PRIORITY, PLUGIN_ID, PLUGIN_MARKETPLACE, HINT
+    global PROTECTED_TEST_DIRS
     PLUGIN_ID = config.plugin_id
     PLUGIN_MARKETPLACE = config.plugin_marketplace
     HINT = BASE_HINT
@@ -142,6 +146,7 @@ def configure(config: flow_config.FlowConfig) -> None:
     CI_WORKFLOW = config.checks_ci_workflow
     STATE_DIR = config.loop_state_dir
     ALONE_WORDS = config.loop_alone_words
+    PROTECTED_TEST_DIRS = config.checks_protected_test_dirs
     LAB_PREFIX = "" if APP_DIR == "." else f"{APP_DIR}/"
     NTFY_TITLE = NAME
     LOW_PRIORITY = re.compile(f"(?:{re.escape(NAME)} )?" + LOW_PRIORITY_TAIL)
@@ -248,6 +253,7 @@ class Target:
     stack_head: str = ""
     ui: bool = False
     test_edits: tuple[str, ...] = ()
+    allowed_edits: tuple[str, ...] = ()
 
 
 @dataclass
@@ -483,9 +489,10 @@ def status_label(pr: dict[str, Any]) -> str:
 def pr_message(pr: dict[str, Any], verb: str) -> str:
     """#68: one message with the pull request and report links, from the list already read."""
     number = pr["number"]
+    flag = GUARD_FLAG if epic_pull_request.lists_guard_files(pr.get("body") or "") else ""
     return (
         f"{NAME} PR #{number} {verb} for #{closes(pr)} ({status_label(pr)})\n"
-        f"https://github.com/{REPO}/pull/{number}\nReport: {report_link(pr)}"
+        f"https://github.com/{REPO}/pull/{number}\nReport: {report_link(pr)}{flag}"
     )
 
 
@@ -940,11 +947,31 @@ def mark_green_ready(tick: Tick, prs: list[dict[str, Any]], running: dict[str, b
         checks = [check_state(c) for c in pr.get("statusCheckRollup") or []]
         if not checks or set(checks) != {"green"} or open_requests(tick, pr):
             continue
+        base, head = str(pr.get("baseRefName") or "main"), str(pr.get("headRefName") or "")
+        found = epic_pull_request.changed_files(tick, REPO_ROOT, base, head)
+        if found is None:
+            tick.say(f"pr-{number}: guard files not read (git diff failed); next tick")
+            continue
         if tick.gh("pr", "edit", str(number), "--add-label", "pr:ready-for-review")[0] != 0:
             tick.say(f"pr-{number}: pr:ready-for-review could not be set")
             continue
         pr["labels"] = [*(pr.get("labels") or []), {"name": "pr:ready-for-review"}]
         tick.say(f"pr-{number}: CI is green and the report is linked; pr:ready-for-review")
+        add_guard_section(tick, pr, epic_pull_request.guard_paths(found, PROTECTED_TEST_DIRS))
+
+
+def add_guard_section(tick: Tick, pr: dict[str, Any], guards: list[str]) -> None:
+    """AC8: the guarded files above `Closes #`; a flagged message when there are any."""
+    number = pr["number"]
+    body = epic_pull_request.with_guard_section(str(pr.get("body") or ""), guards)
+    path = tick.home / f"pr-{number}-body.md"
+    path.write_text(body)
+    if tick.gh("pr", "edit", str(number), "--body-file", str(path))[0] != 0:
+        tick.say(f"pr-{number}: Guard files changed section not written")
+        return
+    pr["body"] = body
+    if guards:
+        tick.notify(pr_message(pr, "ready for review"))
 
 
 def labelled_by_owner(tick: Tick, number: int) -> bool:
@@ -993,6 +1020,11 @@ def test_edits_of(body: str) -> tuple[str, ...]:
         if path:
             paths.add(path)
     return tuple(sorted(paths))
+
+
+def allowed_edits_of(body: str) -> tuple[str, ...]:
+    """ADR-023: every listed path the build may edit, guarded ones included (FLOW_ALLOWED_EDITS)."""
+    return tuple(sorted(files_of(body) | set(test_edits_of(body))))
 
 
 def runs_alone(issue: dict[str, Any]) -> bool:
@@ -1219,6 +1251,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
                     message=message,
                     ui=issue_needs_ui(tick, closes(pr)),
                     test_edits=issue_test_edits(tick, closes(pr)),
+                    allowed_edits=issue_allowed_edits(tick, closes(pr)),
                 )
             )
     if any(running.values()) or tick.main_red:
@@ -1321,6 +1354,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
                     message=message,
                     retry=retry,
                     test_edits=test_edits_of(issue.get("body") or ""),
+                    allowed_edits=allowed_edits_of(issue.get("body") or ""),
                     **stack,
                 )
             )
@@ -1333,6 +1367,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
                 message=message,
                 retry=retry,
                 test_edits=test_edits_of(issue.get("body") or ""),
+                allowed_edits=allowed_edits_of(issue.get("body") or ""),
                 **stack,
             )
         )
@@ -1427,6 +1462,8 @@ def start(tick: Tick, target: Target) -> bool:
         edits.write_text("\n".join(target.test_edits) + "\n")
     else:
         edits.unlink(missing_ok=True)
+    allowed = run / ALLOWED_EDITS_FILE
+    allowed.write_text("".join(f"{path}\n" for path in target.allowed_edits))
     wrapper = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -1442,6 +1479,20 @@ def start(tick: Tick, target: Target) -> bool:
     if target.message:
         tick.notify(target.message)
     return True
+
+
+def issue_allowed_edits(tick: Tick, number: int | None) -> tuple[str, ...]:
+    """A pull request round may edit the files its open issue lists (ADR-023)."""
+    if number is None:
+        return ()
+    try:
+        issues = open_issue_list(tick)
+    except RuntimeError:
+        return ()
+    for item in issues:
+        if item["number"] == number:
+            return allowed_edits_of(item.get("body") or "")
+    return ()
 
 
 def issue_test_edits(tick: Tick, number: int | None) -> tuple[str, ...]:
@@ -2117,7 +2168,9 @@ def keep_epic_pull_requests(tick: Tick, prs: list[dict[str, Any]]) -> None:
     """#366 AC1, AC5: one pull request into main per epic whose tasks are all in its branch."""
     try:
         issues = open_issue_list(tick)
-        epic_pull_request.EpicPullRequests(tick, REPO, REPO_ROOT, MARKER).keep(prs, issues)
+        epic_pull_request.EpicPullRequests(tick, REPO, REPO_ROOT, MARKER, PROTECTED_TEST_DIRS).keep(
+            prs, issues
+        )
     except (RuntimeError, ValueError) as error:
         tick.say(f"epic pull requests: {error}; next tick")
 
@@ -2520,6 +2573,10 @@ def run_start(
     edits = run / TEST_EDITS_FILE
     if edits.is_file():
         env["FLOW_TEST_EDITS"] = edits.read_text().strip()
+    env.pop("FLOW_ALLOWED_EDITS", None)
+    allowed = run / ALLOWED_EDITS_FILE
+    if allowed.is_file():
+        env["FLOW_ALLOWED_EDITS"] = allowed.read_text().strip()
     args = [
         "claude",
         "-p",

@@ -173,7 +173,7 @@ def test_third_retry_is_the_last(home: Path) -> None:
 
 def test_manual_issue_is_never_retried(home: Path) -> None:
     write(home, 1, kind="transient")
-    host = GitHost(issues=[issue(1, "agent:failed", "agent:manual", body=FILES)], git=on_main(OLD))
+    host = GitHost(issues=[issue(1, "agent:failed", "agent:review", body=FILES)], git=on_main(OLD))
     agent_tick.tick_once(host, home)
     assert started(host) == []
 

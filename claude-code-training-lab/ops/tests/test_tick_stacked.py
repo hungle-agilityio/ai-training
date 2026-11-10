@@ -113,7 +113,7 @@ def test_parent_closed_as_not_planned_does_not_stack(home: Path) -> None:
 
 
 def test_manual_child_does_not_start_stacked(home: Path) -> None:
-    host = tick(home, [parent_pr()], [PARENT_ISSUE, child(5, "agent:ready", "agent:manual")])
+    host = tick(home, [parent_pr()], [PARENT_ISSUE, child(5, "agent:ready", "agent:review")])
     assert started(host) == []
 
 

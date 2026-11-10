@@ -197,7 +197,7 @@ def test_issue_not_labelled_ready_by_the_owner_is_not_in_the_message(home: Path)
     assert blocked(host) == []
 
 
-@pytest.mark.parametrize("label", ["agent:failed", "agent:manual", "agent:review"])
+@pytest.mark.parametrize("label", ["agent:failed", "agent:review"])
 def test_skipped_issue_is_not_in_the_message(home: Path, label: str) -> None:
     host = WaitingHost(issues=[issue(4), issue(5, "agent:ready", label, body=depends(4))])
     agent_tick.tick_once(host, home)

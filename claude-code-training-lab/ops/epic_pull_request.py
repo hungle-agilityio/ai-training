@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,17 @@ CLOSES = re.compile(r"Closes #(\d+)")
 PULL_URL = re.compile(r"/pull/(\d+)")
 CHANGED_TESTS = "## Tests changed by the tasks"
 FIRST_CLOSES = re.compile(r"^Closes #", re.MULTILINE)
+GUARD_HEADING = "## Guard files changed"
+GUARD_SECTION = re.compile(
+    rf"\n*^{GUARD_HEADING}\n.*?(?=^##\s|^Closes #|\Z)", re.MULTILINE | re.DOTALL
+)
+GUARD_DIRS = {".claude", ".github"}
+GUARD_NAMES = {".mcp.json"}
+PLUGIN_ROOTS = {"plugins", ".claude-plugin"}
+GATE_FILES = {  # the same list as before-edit-check of the agent-flow plugin
+    "pyproject.toml", "uv.lock", "conftest.py", "ruff.toml", ".ruff.toml", "mypy.ini",
+    ".mypy.ini", "setup.cfg", "pytest.ini", "tox.ini", ".coveragerc",
+}  # fmt: skip
 
 
 def labels_of(item: dict[str, Any]) -> set[str]:
@@ -56,6 +68,61 @@ def is_test(path: str) -> bool:
     return "tests" in parts or parts[-1].startswith("test_")
 
 
+def guarded(status: str, path: str, test_dirs: Sequence[tuple[str, ...]]) -> bool:
+    """The files before-edit-check guards in loop mode; a new test file is not guarded."""
+    parts = tuple(part.casefold() for part in path.split("/") if part)
+    if not parts:
+        return False
+    if GUARD_DIRS & set(parts) or parts[-1] in GUARD_NAMES or parts[-1] in GATE_FILES:
+        return True
+    if parts[0] in PLUGIN_ROOTS:
+        return True
+    in_tests = any(
+        parts[i : i + len(folder)] == folder for folder in test_dirs for i in range(len(parts))
+    )
+    return in_tests and not status.startswith("A")
+
+
+def guard_paths(name_status: str, protected_test_dirs: Sequence[str]) -> list[str]:
+    """The guarded files of `git diff --name-status` output, in its order (ADR-023)."""
+    test_dirs = [
+        tuple(p.casefold() for p in folder.split("/") if p not in ("", "."))
+        for folder in protected_test_dirs
+    ]
+    test_dirs = [folder for folder in test_dirs if folder]
+    found: list[str] = []
+    for line in name_status.splitlines():
+        fields = line.split("\t")
+        if len(fields) < 2:
+            continue
+        path = fields[-1].strip()
+        if guarded(fields[0], path, test_dirs) and path not in found:
+            found.append(path)
+    return found
+
+
+def guard_block(paths: Sequence[str]) -> str:
+    listed = "\n".join(f"- `{path}`" for path in paths) if paths else "None."
+    return f"{GUARD_HEADING}\n\n{listed}\n"
+
+
+def with_guard_section(body: str, paths: Sequence[str]) -> str:
+    """The section stands just above the first `Closes` line; an old one is replaced."""
+    body = GUARD_SECTION.sub("\n\n", body).rstrip("\n") + "\n"
+    block = guard_block(paths)
+    match = FIRST_CLOSES.search(body)
+    if match is None:
+        return f"{body.rstrip()}\n\n{block}"
+    before = body[: match.start()].rstrip("\n")
+    return f"{before}\n\n{block}\n{body[match.start() :]}"
+
+
+def lists_guard_files(body: str) -> bool:
+    """The body's Guard files section names at least one file."""
+    match = GUARD_SECTION.search(body)
+    return match is not None and "\n- `" in match.group(0)
+
+
 def body_for(
     marker: str,
     epic: int,
@@ -63,12 +130,15 @@ def body_for(
     tasks: list[int],
     prs: list[dict[str, Any]],
     changes: list[str],
+    guards: Sequence[str] | None = None,
 ) -> str:
     rows = [row_for(task, branch, prs) for task in tasks]
     closing = [f"Closes #{task}" for task in tasks] + [f"Closes #{epic}"]
     lines = [marker, "", "| Task | Pull request | Verify report |", "|---|---|---|", *rows]
     if changes:
         lines += ["", CHANGED_TESTS, "", *changes]
+    if guards is not None:
+        lines += ["", guard_block(guards).rstrip("\n")]
     return "\n".join([*lines, "", *closing]) + "\n"
 
 
@@ -94,14 +164,37 @@ def with_changes(body: str, changes: list[str]) -> str:
     return f"{body.rstrip()}\n{block.removesuffix('Closes #')}"
 
 
+def changed_files(tick: Any, root: Path, base: str, head: str) -> str | None:
+    """`git diff --name-status` of head against base on origin, or None when it fails."""
+    tick.host.run(["git", "-C", str(root), "fetch", "-q", "origin", base, head])
+    span = f"origin/{base}...origin/{head}"
+    code, out = tick.host.run(["git", "-C", str(root), "diff", "--name-status", span])
+    return str(out) if code == 0 else None
+
+
 class EpicPullRequests:
     """One tick's work on the epic pull requests; `tick` is the agent_tick.Tick."""
 
-    def __init__(self, tick: Any, repo: str, repo_root: Path, marker: str) -> None:
+    def __init__(
+        self,
+        tick: Any,
+        repo: str,
+        repo_root: Path,
+        marker: str,
+        protected_test_dirs: Sequence[str] = (),
+    ) -> None:
         self.tick = tick
         self.repo = repo
         self.root = repo_root
         self.marker = marker
+        self.test_dirs = tuple(protected_test_dirs)
+
+    def guards(self, branch: str) -> list[str]:
+        """AC8: the guarded files of the whole epic branch against main."""
+        found = changed_files(self.tick, self.root, "main", branch)
+        if found is None:
+            raise RuntimeError(f"guard files of {branch} not read")
+        return guard_paths(found, self.test_dirs)
 
     def keep(self, prs: list[dict[str, Any]], issues: list[dict[str, Any]]) -> None:
         """AC1, AC5: one failure is one log line and never stops the other epics."""
@@ -167,7 +260,9 @@ class EpicPullRequests:
     ) -> None:
         number = epic["number"]
         changes = self.changed_tests(tasks, branch, prs)
-        path = self.write_body(number, body_for(self.marker, number, branch, tasks, prs, changes))
+        guards = self.guards(branch)
+        body = body_for(self.marker, number, branch, tasks, prs, changes, guards)
+        path = self.write_body(number, body)
         code, out = self.tick.gh(
             "pr", "create", "--base", "main", "--head", branch,
             "--title", title_for(epic), "--body-file", str(path),
@@ -179,7 +274,8 @@ class EpicPullRequests:
         match = PULL_URL.search(out)
         new = match.group(1) if match else "?"
         self.tick.say(f"epic #{number}: opened PR #{new} into main")
-        self.tick.notify(f"Epic #{number} is ready for your review: PR #{new}")
+        flag = " (changes guard files)" if guards else ""
+        self.tick.notify(f"Epic #{number} is ready for your review: PR #{new}{flag}")
 
     def changed_tests(self, tasks: list[int], branch: str, prs: list[dict[str, Any]]) -> list[str]:
         """#380 AC2, AC4: read from GitHub, because these merges had no human review."""
@@ -223,6 +319,7 @@ class EpicPullRequests:
         body = with_changes(body, self.changed_tests(missing, branch, prs))
         for task in missing:
             body = with_line(body, epic, task)
+        body = with_guard_section(body, self.guards(branch))
         path = self.write_body(epic, body)
         code, out = self.tick.gh("pr", "edit", str(pr["number"]), "--body-file", str(path))
         if code != 0:
