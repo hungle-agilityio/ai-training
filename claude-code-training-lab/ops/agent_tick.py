@@ -43,6 +43,12 @@ REPO_ENV = Path(__file__).resolve().parent / "agent.env"
 MARKER = "<!-- work-queue -->"
 STACKED_LINE = re.compile(r"^Stacked on\b", re.MULTILINE)
 DECISION_MARKER = "<!-- needs-decision -->"
+SELF_FIX_MARKER = "<!-- self-fix -->"
+PINNED_SCRIPT = Path(__file__).resolve().parent / "pinned_tests.py"
+PINNED_HIT = re.compile(r"^- `([^`]+::[^`]+)`", re.MULTILINE)
+PINNED_LINE = (
+    "Pinned tests not listed: {tests}. Settle them with the self-fix step before you write code."
+)
 WORKTREE_NAME = re.compile(r"^(issue|pr)-(\d+)(?:-(\d{9,}))?$")
 WORKTREE_ASIDE_DAYS = 3
 WORKTREE_TIDY_LIMIT = 10
@@ -1065,7 +1071,7 @@ def open_issue_list(tick: Tick) -> list[dict[str, Any]]:
             "--limit",
             "200",
             "--json",
-            "number,title,body,labels,createdAt",
+            "number,title,body,labels,createdAt,comments",
         )
     return tick.open_issues
 
@@ -1225,6 +1231,58 @@ def epic_prompt(start: EpicStart) -> str:
     )
 
 
+def self_fix_time(item: dict[str, Any]) -> float | None:
+    """When the newest self-fix comment of the issue was posted (fail-fix AC7), or None."""
+    newest: float | None = None
+    for comment in item.get("comments") or []:
+        lines = str(comment.get("body") or "").strip().splitlines()
+        if [line.strip() for line in lines[:2]] != [MARKER, SELF_FIX_MARKER]:
+            continue
+        try:
+            made = datetime.fromisoformat(str(comment.get("createdAt") or "")).timestamp()
+        except ValueError:
+            continue
+        newest = made if newest is None else max(newest, made)
+    return newest
+
+
+def last_start(tick: Tick, number: int) -> float:
+    """The start time of the newest build of the issue, running or archived; 0 when none."""
+    folders = [tick.runs / f"issue-{number}", *(tick.runs / "done").glob(f"issue-{number}-*")]
+    times = [0.0]
+    for folder in folders:
+        try:
+            times.append(float(int((folder / "started").read_text().strip())))
+        except (OSError, ValueError):
+            continue
+    return max(times)
+
+
+def self_fixed_first(tick: Tick, ready: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """fail-fix AC7: issues self-fixed since their last build go first, oldest self-fix first."""
+    fixed: list[tuple[float, dict[str, Any]]] = []
+    rest: list[dict[str, Any]] = []
+    for item in ready:
+        when = self_fix_time(item)
+        if when is not None and when > last_start(tick, item["number"]):
+            fixed.append((when, item))
+        else:
+            rest.append(item)
+    return [item for _, item in sorted(fixed, key=lambda pair: pair[0])] + rest
+
+
+def pinned_line(tick: Tick, issue: dict[str, Any]) -> str:
+    """fail-fix AC6: one prompt line naming the pinned tests the issue does not list."""
+    body = tick.home / f"issue-{issue['number']}-body.md"
+    body.write_text(str(issue.get("body") or ""))
+    code, out = tick.host.run([sys.executable, str(PINNED_SCRIPT), "--unlisted", str(body)])
+    tests = PINNED_HIT.findall(out) if code == 1 else []
+    if not tests:
+        return ""
+    tick.say(f"issue-{issue['number']}: {len(tests)} pinned tests not listed")
+    return "\n" + PINNED_LINE.format(tests=", ".join(tests))
+
+
 def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> list[Target]:
     """AC3 to AC6: pull requests first, then the oldest ready issues, within the free slots."""
     free = tick.settings.concurrency - len(running)
@@ -1265,9 +1323,12 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
                 busy.setdefault(path, item["number"])
                 owners.setdefault(path, set()).add(item["number"])
     open_numbers = {item["number"] for item in issues}
-    ready = sorted(
-        (i for i in issues if "agent:ready" in names(i)),
-        key=lambda i: (i["createdAt"], i["number"]),
+    ready = self_fixed_first(
+        tick,
+        sorted(
+            (i for i in issues if "agent:ready" in names(i)),
+            key=lambda i: (i["createdAt"], i["number"]),
+        ),
     )
     failed = sorted(
         (i for i in issues if "agent:failed" in names(i)),
@@ -1315,6 +1376,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         if head is None:
             continue
         prompt = f"Use the work-queue skill for issue #{issue['number']} only."
+        prompt += pinned_line(tick, issue)
         title = issue.get("title") or ""
         message = f"{NAME} started #{issue['number']}: {title}" if title else ""
         stack: dict[str, Any] = {}
