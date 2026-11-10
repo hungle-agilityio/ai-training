@@ -100,10 +100,14 @@ def review_reply(request: HttpRequest, pk: int) -> HttpResponse:
     typed: str | None = None
     invalid = False
     suggestion: reply_suggestion.ReplySuggestion | None = None
+    form = ReplyForm(request.POST if request.method == "POST" else None)
+    wants_template = False
     if request.method == "POST":
-        form = ReplyForm(request.POST)
         typed = form.typed()
-        if form.wants_suggestion():
+        wants_template = form.wants_template()
+        if wants_template:
+            pass
+        elif form.wants_suggestion():
             suggestion = reply_suggestion.suggest_reply(pk)
             if suggestion is None:
                 raise Http404("No such review")
@@ -120,6 +124,13 @@ def review_reply(request: HttpRequest, pk: int) -> HttpResponse:
     target = reply_service.reply_target(pk)
     if target is None:
         raise Http404("No such review")
+    templates = reply_service.fitting_templates(target.rating)
+    template_status = ""
+    if wants_template:
+        filled = reply_service.filled_template(templates, form.template_id(), target.branch_name)
+        template_status = "invalid" if filled is None else "filled"
+        if filled is not None:
+            typed = filled
     return render(
         request,
         "reviews/reply.html",
@@ -129,6 +140,8 @@ def review_reply(request: HttpRequest, pk: int) -> HttpResponse:
             "invalid": invalid,
             "suggest_on": reply_suggestion.suggestion_mode() != "off",
             "suggest_status": suggestion.status if suggestion is not None else "",
+            "templates": templates,
+            "template_status": template_status,
         },
     )
 

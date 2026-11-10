@@ -19,6 +19,21 @@
 <section class="panel">
   <form id="reply-form" class="reply-form" method="post">
     {% csrf_token %}
+    <div class="reply-template" id="reply-template">
+      {% if templates %}
+        <label for="reply-template-select">Template</label>
+        <div class="reply-template-row">
+          <select id="reply-template-select" name="template">
+            {% for option in templates %}<option value="{{ option.id }}">{{ option.name }}</option>{% endfor %}
+          </select>
+          <button type="submit" name="action" value="template" formnovalidate class="button secondary">Use template</button>
+        </div>
+        {% if template_status == "filled" %}<p class="suggest-note" role="status">Template filled in. Edit it before you save.</p>{% endif %}
+      {% else %}
+        <p class="field-hint">No reply templates yet. Add them in <a href="/settings/#settings-templates">Settings</a>.</p>
+      {% endif %}
+      {% if template_status == "invalid" %}<p class="alert">Choose a template from the list.</p>{% endif %}
+    </div>
     <label for="reply-text">Your reply</label>
     {% if suggest_status == "ok" %}<p class="suggest-note" role="status">Suggested by Claude. Read and edit it before you save.</p>{% endif %}
     {% if suggest_status == "failed" %}<p class="alert">Could not get a suggestion right now. Try again or write your own.</p>{% endif %}
