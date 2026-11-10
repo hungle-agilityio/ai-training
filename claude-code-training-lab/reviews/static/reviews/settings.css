@@ -5,6 +5,13 @@
 .settings-form { display: flex; flex-direction: column; gap: 14px; }
 .settings-field { display: flex; flex-direction: column; gap: 4px; }
 .settings-field label { font-weight: 600; font-size: 13.5px; }
+.settings-templates-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.settings-field select, .settings-field textarea {
+  width: 100%; box-sizing: border-box; padding: 7px 10px; font: inherit;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text);
+}
+.settings-field select { height: 40px; }
+.settings-field [aria-invalid="true"] { border-color: var(--bad); }
 .settings-field input {
   width: 100%; box-sizing: border-box; height: 40px; padding: 7px 10px; font: inherit;
   border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text);

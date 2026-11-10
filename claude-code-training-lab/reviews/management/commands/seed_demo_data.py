@@ -8,8 +8,9 @@ from django.core.management.base import BaseCommand, CommandParser
 from django.utils import timezone
 
 from reviews import reply_service
-from reviews.models import Branch, Business, Review
+from reviews.models import Branch, Business, ReplyTemplate, Review
 from reviews.repositories import create_review
+from reviews.template_repository import create_template
 
 DEMO_USERNAME = "demo"
 DEMO_PASSWORD_VARIABLE = "REVIEWRADAR_DEMO_PASSWORD"
@@ -26,6 +27,28 @@ DEMO_BAD_REPLY_DELAY_HOURS: dict[tuple[str, str], int] = {
 
 # Demo goals; a location not listed has no goal.
 DEMO_GOALS: dict[str, Decimal] = {"Downtown": Decimal("4.5"), "Riverside": Decimal("3.0")}
+
+# Demo reply templates: (name, kind, text).
+DEMO_TEMPLATES: list[tuple[str, str, str]] = [
+    (
+        "Thank you",
+        "good",
+        "Thank you for your kind words! The team at {location} is glad you had a good visit, "
+        "and we hope to see you again soon.",
+    ),
+    (
+        "We are sorry",
+        "bad",
+        "We are sorry your visit to {location} did not go well. "
+        "Please contact us so we can make it right.",
+    ),
+    (
+        "Thanks for the feedback",
+        "any",
+        "Thank you for taking the time to share your feedback about {location}. "
+        "It helps us improve.",
+    ),
+]
 
 DEMO_REVIEWS: dict[str, list[tuple[int, str]]] = {
     "Airport": [
@@ -66,6 +89,9 @@ class Command(BaseCommand):
         Review.objects.all().delete()
         Branch.objects.all().delete()
         Business.objects.all().delete()
+        ReplyTemplate.objects.all().delete()
+        for name, kind, text in DEMO_TEMPLATES:
+            create_template(name=name, text=text, kind=kind)
 
         business = Business.objects.create(name="Demo Clinics")
         now = timezone.now()

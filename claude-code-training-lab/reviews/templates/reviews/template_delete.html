@@ -1,0 +1,22 @@
+{% extends "reviews/base.html" %}
+{% load static %}
+
+{% block title %}Delete reply template · ReviewRadar{% endblock %}
+{% block heading %}Delete reply template{% endblock %}
+{% block subtitle %}Saved replies do not change.{% endblock %}
+{% block actions %}{% endblock %}
+
+{% block head %}<link rel="stylesheet" href="{% static 'reviews/settings.css' %}">{% endblock %}
+
+{% block content %}
+<section class="panel settings-panel">
+  <p data-sensitive>Delete the template "{{ template.name }}"? Saved replies do not change.</p>
+  <form class="settings-form" method="post" action="/settings/templates/{{ template.id }}/delete/">
+    {% csrf_token %}
+    <div class="settings-row">
+      <button type="submit" class="button">Delete template</button>
+      <a href="/settings/templates/{{ template.id }}/">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
