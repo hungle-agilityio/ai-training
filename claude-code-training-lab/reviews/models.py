@@ -45,3 +45,16 @@ class ReviewReply(models.Model):
 
     def __str__(self) -> str:
         return f"reply to {self.review_id}"
+
+
+class ReplyTemplate(models.Model):
+    KIND_CHOICES = [("good", "good"), ("bad", "bad"), ("any", "any")]
+
+    name = models.CharField(max_length=60)
+    text = models.TextField()
+    kind = models.CharField(max_length=4, choices=KIND_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return self.name
