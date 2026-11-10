@@ -80,6 +80,11 @@ Reproducible gotchas. Add one entry per pitfall with the symptom, the cause and 
 - **Cause:** an unattended session can only use a tool that is in `permissions.allow` of `.claude/settings.json`. A tool that needs a permission prompt is skipped, because nobody answers the prompt.
 - **Fix:** put the tool in the allow list and keep a hook as the real gate (`Artifact` is allowed, `before-artifact-publish` still checks every report). A `claude -p` run needs the same tool in `--allowedTools`.
 
+## A loop build cannot edit a file under .claude/
+
+- **Symptom:** a loop build stops with "Claude requested permissions to edit …/.claude/… which is a sensitive file", even though the issue lists the file (#392).
+- **Cause and fix:** Claude Code's built-in safetyCheck guards every `.claude` folder and `claude -p` cannot approve it; build such an issue by hand and give it no `agent:*` label (ADR-023, "Exception: .claude/").
+
 ## A session that starts without the Artifact tool
 
 - **Symptom:** #64 and #103 were built, passed their checks and ended `agent:failed` with "this session has no Artifact tool"; the same happened in a local session.

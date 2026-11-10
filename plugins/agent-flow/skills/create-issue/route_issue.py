@@ -6,7 +6,9 @@ area:flow or area:app, then agent:ready. Every issue is agent:ready (ADR-023): t
 listed files to the build and before-edit-check lets it edit exactly those, guarded ones
 included. A path outside the git repository is not routed. `--settings` is kept for old callers
 and ignored. The folder prefix stripped from each path is `project.app_dir` of ops/flow.toml (or
-of the file named by FLOW_CONFIG); `.` means no prefix.
+of the file named by FLOW_CONFIG); `.` means no prefix. A path under a .claude folder gets a
+warning on stderr: Claude Code's safetyCheck stops `claude -p` from editing it, so that issue is
+built by hand with no agent:* label (ADR-023, "Exception: .claude/").
 """
 
 from __future__ import annotations
@@ -75,6 +77,17 @@ def outside_repository(path: str) -> bool:
     return joined == ".." or joined.startswith("../") or posixpath.isabs(path)
 
 
+CLAUDE_WARNING = (
+    "WARNING: {path} is under .claude/; claude -p cannot edit it (safetyCheck, ADR-023). "
+    "Build this issue by hand and give it no agent:* label."
+)
+
+
+def claude_folder_paths(paths: list[str]) -> list[str]:
+    """The listed paths inside a .claude folder, which the loop cannot edit."""
+    return [p for p in paths if ".claude" in (part.casefold() for part in p.split("/"))]
+
+
 def route(text: str, allow: list[str] | None = None) -> list[str]:
     """area:flow when any path is in a flow folder or the plugin; every issue is agent:ready."""
     paths = paths_of(text)
@@ -90,8 +103,11 @@ def main(argv: list[str]) -> int:
     parser.add_argument("issue", type=Path)
     parser.add_argument("--settings", type=Path, default=SETTINGS, help="ignored (ADR-023)")
     args = parser.parse_args(argv)
+    text = args.issue.read_text()
     try:
-        print(" ".join(route(args.issue.read_text())))
+        print(" ".join(route(text)))
+        for path in claude_folder_paths(paths_of(text)):
+            print(CLAUDE_WARNING.format(path=path), file=sys.stderr)
     except ValueError as error:
         print(f"NOT ROUTED: {error}")
         return 1
