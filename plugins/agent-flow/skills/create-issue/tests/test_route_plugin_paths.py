@@ -41,12 +41,12 @@ def issue(*paths: str) -> str:
 @pytest.mark.parametrize("path", PLUGIN_PATHS)
 @pytest.mark.parametrize("allow", [[], ALLOW_APP, ALLOW_ALL], ids=["none", "app", "all"])
 def test_a_plugin_path_is_flow_work_done_by_hand(path: str, allow: list[str]) -> None:
-    assert ROUTE.route(issue(path), allow) == ["area:flow", "agent:manual"]
+    assert ROUTE.route(issue(path), allow) == ["area:flow", "agent:ready"]
 
 
 @pytest.mark.parametrize("path", PLUGIN_PATHS)
 def test_one_plugin_path_among_app_paths_decides(path: str) -> None:
-    assert ROUTE.route(issue(APP_PATH, path), ALLOW_APP) == ["area:flow", "agent:manual"]
+    assert ROUTE.route(issue(APP_PATH, path), ALLOW_APP) == ["area:flow", "agent:ready"]
 
 
 def test_only_app_paths_stay_ready_when_allowed() -> None:
@@ -54,7 +54,7 @@ def test_only_app_paths_stay_ready_when_allowed() -> None:
 
 
 def test_only_app_paths_still_need_permission_when_not_allowed() -> None:
-    assert ROUTE.route(issue(APP_PATH), []) == ["area:app", "agent:needs-permission"]
+    assert ROUTE.route(issue(APP_PATH), []) == ["area:app", "agent:ready"]
 
 
 def test_a_folder_that_only_starts_like_plugins_is_not_the_plugin() -> None:

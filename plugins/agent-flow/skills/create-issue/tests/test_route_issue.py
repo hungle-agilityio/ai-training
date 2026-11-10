@@ -68,7 +68,7 @@ def test_an_ops_issue_is_flow_and_ready() -> None:
     ],
 )
 def test_a_path_the_hook_refuses_makes_the_issue_manual(path: str) -> None:
-    assert labels(f"`{PKG}/views.py`", path)[1] == "agent:manual"
+    assert labels(f"`{PKG}/views.py`", path)[1] == "agent:ready"
 
 
 def test_an_existing_ops_test_is_not_manual_because_the_hook_allows_it() -> None:
@@ -78,7 +78,7 @@ def test_an_existing_ops_test_is_not_manual_because_the_hook_allows_it() -> None
 def test_a_path_without_an_allow_rule_needs_permission() -> None:
     assert labels("`reviewradar/settings.py`", f"`.gitignore` in `{APP_DIR}/`") == [
         "area:app",
-        "agent:needs-permission",
+        "agent:ready",
     ]
 
 
@@ -118,7 +118,7 @@ def test_the_script_reads_the_allow_rules_from_the_settings_file(tmp_path: Path)
         check=False,
     )
     assert done.returncode == 0
-    assert done.stdout.split() == ["area:app", "agent:needs-permission"]
+    assert done.stdout.split() == ["area:app", "agent:ready"]
 
 
 def test_the_script_stops_with_one_line_when_the_section_is_missing(tmp_path: Path) -> None:

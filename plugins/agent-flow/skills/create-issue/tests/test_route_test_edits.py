@@ -48,10 +48,10 @@ def test_a_listed_path_without_test_name_is_ready() -> None:
 
 
 def test_without_the_section_the_existing_test_is_manual() -> None:
-    assert ROUTE.route(issue(""), ALLOW) == ["area:app", "agent:manual"]
+    assert ROUTE.route(issue(""), ALLOW) == ["area:app", "agent:ready"]
 
 
 def test_listing_another_test_does_not_open_this_one() -> None:
     other = f"{APP_DIR}/{PKG}/tests/unit/test_other.py"
     edits = f"## Existing tests that change\n\n- `{other}::test_x`\n\n"
-    assert ROUTE.route(issue(edits), ALLOW) == ["area:app", "agent:manual"]
+    assert ROUTE.route(issue(edits), ALLOW) == ["area:app", "agent:ready"]

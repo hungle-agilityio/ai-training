@@ -31,6 +31,7 @@ Everything that leaves this machine goes through GitHub: issues and pull request
    - **Title:** the first line of the file without the `# `, for example `[BUG] Dashboard numbers look wrong`.
    - **Body:** a temporary file holding the issue from `## Summary` to the end, with one first line `Reporter: <name>, reported on <date>`. Drop the `Reporter`, `Reported on`, `Type` and `Labels` lines (they become fields). GitHub has no due date for issues, so a deadline becomes one line `Deadline: <date>` in the body.
    - **Labels:** the labels of the issue, with the same names (see the mapping below).
+   - **Loop label:** every issue that the loop builds is `agent:ready`, never `agent:manual` or `agent:needs-permission` (ADR-023). `route_issue.py <issue file>` in this skill's folder prints the area label and `agent:ready`; it refuses an issue whose `## Files likely touched` names a path outside the repository. List every file the issue will change, guarded ones included: the build may edit only those.
    - **Assignee:** `hungle-agilityio`.
    - **Parent:** the epic number, when the issue is a child.
 4. Check the labels with `gh label list --json name`. Create each missing one with `gh label create "<name>"` and tell the user which ones you created.

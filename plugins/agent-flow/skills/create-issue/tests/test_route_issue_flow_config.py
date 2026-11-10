@@ -86,4 +86,4 @@ def test_cli_with_dot_app_dir_keeps_paths_from_the_root(tmp_path: Path) -> None:
     config = config_with_app_dir(tmp_path, ".")
     assert route_cli(tmp_path, config, "ops/x.py") == "area:flow agent:ready"
     other = route_cli(tmp_path, config, f"{APP_DIR}/ops/x.py")
-    assert other == "area:app agent:needs-permission"
+    assert other == "area:app agent:ready"
