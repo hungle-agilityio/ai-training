@@ -10,6 +10,7 @@
 
 {% block content %}
 {% if goals_saved %}<p class="notice" id="goals-saved" role="status">Goals saved.</p>{% endif %}
+{% if templates_saved %}<p class="notice" id="templates-saved" role="status">Template added.</p>{% endif %}
 {% if saved %}<p class="notice" id="password-saved" role="status">Password changed.</p>{% endif %}
 <section class="panel settings-panel" id="settings-account">
   <h2>Account</h2>
@@ -49,6 +50,43 @@
   {% else %}
   <p class="muted">No locations yet.</p>
   {% endif %}
+</section>
+
+<section class="panel settings-panel" id="settings-templates">
+  <h2>Reply templates</h2>
+  <p class="muted">Use {location} for the location's name.</p>
+  {% if template_rows %}
+  <ul class="settings-templates-list">
+    {% for row in template_rows %}
+    <li class="settings-row"><strong data-sensitive>{{ row.name }}</strong> <span class="muted">{{ row.kind_label }}</span> <a href="/settings/templates/{{ row.id }}/">Edit</a></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No reply templates yet.</p>
+  {% endif %}
+
+  <h3>Add a template</h3>
+  <form class="settings-form" method="post" action="{% url 'settings-templates' %}">
+    {% csrf_token %}
+    <div class="settings-field">
+      <label for="template-name">Name</label>
+      <input type="text" id="template-name" name="name" maxlength="60" value="{{ template_typed.name }}"{% if template_errors.name %} aria-describedby="template-name-error" aria-invalid="true"{% endif %}>
+      {% if template_errors.name %}<div id="template-name-error">{% for error in template_errors.name %}<p class="settings-error">{{ error }}</p>{% endfor %}</div>{% endif %}
+    </div>
+    <div class="settings-field">
+      <label for="template-kind">Kind</label>
+      <select id="template-kind" name="kind"{% if template_errors.kind %} aria-describedby="template-kind-error" aria-invalid="true"{% endif %}>
+        {% for value, label in template_kinds %}<option value="{{ value }}"{% if template_typed.kind == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      {% if template_errors.kind %}<div id="template-kind-error">{% for error in template_errors.kind %}<p class="settings-error">{{ error }}</p>{% endfor %}</div>{% endif %}
+    </div>
+    <div class="settings-field">
+      <label for="template-text">Text</label>
+      <textarea id="template-text" name="text" maxlength="1000" rows="4"{% if template_errors.text %} aria-describedby="template-text-error" aria-invalid="true"{% endif %}>{{ template_typed.text }}</textarea>
+      {% if template_errors.text %}<div id="template-text-error">{% for error in template_errors.text %}<p class="settings-error">{{ error }}</p>{% endfor %}</div>{% endif %}
+    </div>
+    <button type="submit" class="button">Add template</button>
+  </form>
 </section>
 
 <section class="panel settings-panel" id="settings-suggestions">
