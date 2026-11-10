@@ -275,7 +275,7 @@ def test_a_step_asks_for_edit_rules_without_the_flag(
 
     out = capsys.readouterr().out
     assert "Edit(./<folder>/**)" in out
-    assert "agent:needs-permission" in out
+    assert "agent:needs-permission" not in out
 
 
 def test_no_such_step_with_the_flag(run: Run, capsys: pytest.CaptureFixture[str]) -> None:

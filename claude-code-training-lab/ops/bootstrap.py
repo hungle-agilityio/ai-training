@@ -461,8 +461,8 @@ def steps(params: Params, has_pyproject: bool = False) -> list[str]:
         )
     if not params.code_dirs:
         extra.append(
-            "Add an Edit(./<folder>/**) rule to .claude/settings.json for each code folder, or "
-            "new issues will get agent:needs-permission."
+            "Add an Edit(./<folder>/**) rule to .claude/settings.json for each code folder, so "
+            "an interactive session edits it without a prompt."
         )
     return [
         f"Run: claude plugin marketplace add {PLUGIN_SOURCE_REPO}",

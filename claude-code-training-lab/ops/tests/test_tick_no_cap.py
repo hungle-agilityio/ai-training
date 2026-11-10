@@ -65,7 +65,7 @@ def test_no_ready_issue_left_sends_queue_empty(home: Path) -> None:
 
 
 def test_ready_issue_held_by_a_skip_label_does_not_block_queue_empty(home: Path) -> None:
-    host = FakeHost(issues=[issue(1, "agent:ready", "agent:manual")])
+    host = FakeHost(issues=[issue(1, "agent:ready", "agent:review")])
     agent_tick.tick_once(host, home)
     assert host.sent == ["rr-test: ReviewRadar queue empty, 0 pull requests waiting"]
 

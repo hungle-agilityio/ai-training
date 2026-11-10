@@ -135,16 +135,6 @@ color = "D93F0B"
 description = "The loop stopped; a human decides"
 
 [[label]]
-name = "agent:manual"
-color = "BFD4F2"
-description = "Built in an interactive session, not by the loop"
-
-[[label]]
-name = "agent:needs-permission"
-color = "FBCA04"
-description = "The loop may not write a file this issue needs; waits for an allow rule"
-
-[[label]]
 name = "pr:ready-for-review"
 color = "0E8A16"
 description = "CI is green and the verify report passed; waiting for the owner"

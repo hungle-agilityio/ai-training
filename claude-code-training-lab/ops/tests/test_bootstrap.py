@@ -365,7 +365,7 @@ def test_eighteen_labels_are_created_with_force_and_a_failed_one_does_not_stop_t
     code = run()
 
     calls = gh_log.read_text().splitlines()
-    assert len(calls) == 18
+    assert len(calls) == 16
     assert all(call.startswith("label create ") for call in calls)
     assert all(call.endswith("--force -R acme/shop") for call in calls)
     assert any(
