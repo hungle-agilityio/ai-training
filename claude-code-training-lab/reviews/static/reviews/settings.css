@@ -9,6 +9,7 @@
   width: 100%; box-sizing: border-box; height: 40px; padding: 7px 10px; font: inherit;
   border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text);
 }
+.settings-field input[aria-invalid="true"] { border-color: var(--bad); }
 .settings-error { margin: 0; color: var(--bad); font-size: 13px; }
 .settings-hint { margin: 0; font-size: 12.5px; }
 .settings-form .button { align-self: flex-start; }

@@ -19,11 +19,11 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from reviews import (
+    goal_views,
     reply_service,
     reply_suggestion,
     report_service,
     services,
-    settings_service,
     topic_service,
     trend_service,
 )
@@ -91,12 +91,7 @@ def settings_page(request: HttpRequest) -> HttpResponse:
         form.save()
         update_session_auth_hash(request, form.user)
         return redirect(reverse("settings") + "?saved=1")
-    saved = SavedForm(request.GET).is_saved()
-    context = {
-        "form": form,
-        "saved": saved,
-        "suggestions": settings_service.suggestion_status(),
-    }
+    context = goal_views.settings_context(request, password_form=form)
     return render(request, "reviews/settings.html", context)
 
 

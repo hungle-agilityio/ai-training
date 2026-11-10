@@ -9,6 +9,7 @@
 {% block head %}<link rel="stylesheet" href="{% static 'reviews/settings.css' %}">{% endblock %}
 
 {% block content %}
+{% if goals_saved %}<p class="notice" id="goals-saved" role="status">Goals saved.</p>{% endif %}
 {% if saved %}<p class="notice" id="password-saved" role="status">Password changed.</p>{% endif %}
 <section class="panel settings-panel" id="settings-account">
   <h2>Account</h2>
@@ -28,6 +29,26 @@
     <p class="muted settings-hint" id="id_new_password1_helptext">At least 8 characters, not only numbers, not a common password and not like your username.</p>
     <button type="submit" class="button">Change password</button>
   </form>
+</section>
+
+<section class="panel settings-panel" id="settings-goals">
+  <h2>Location goals</h2>
+  <p class="muted">Target score from 1.0 to 5.0. Leave empty for no goal.</p>
+  {% if goal_fields %}
+  <form class="settings-form" method="post" action="{% url 'settings-goals' %}">
+    {% csrf_token %}
+    {% for field in goal_fields %}
+    <div class="settings-field">
+      <label for="goal-{{ field.location_id }}" data-sensitive>{{ field.name }}</label>
+      <input type="number" id="goal-{{ field.location_id }}" name="goal-{{ field.location_id }}" step="0.1" min="1.0" max="5.0" value="{{ field.value }}"{% if field.error %} aria-describedby="goal-{{ field.location_id }}-error" aria-invalid="true"{% endif %}>
+      {% if field.error %}<p class="settings-error" id="goal-{{ field.location_id }}-error">{{ field.error }}</p>{% endif %}
+    </div>
+    {% endfor %}
+    <button type="submit" class="button">Save goals</button>
+  </form>
+  {% else %}
+  <p class="muted">No locations yet.</p>
+  {% endif %}
 </section>
 
 <section class="panel settings-panel" id="settings-suggestions">
