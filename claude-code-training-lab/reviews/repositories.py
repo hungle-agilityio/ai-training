@@ -101,7 +101,7 @@ def branch_rating_totals_for(pk: int) -> BranchTotals | None:
     """Count and rating sum of one branch in one query; None when it does not exist."""
     row = (
         Branch.objects.filter(pk=pk)
-        .values("id", "name")
+        .values("id", "name", "target_score")
         .annotate(review_count=Count("reviews"), rating_total=Coalesce(Sum("reviews__rating"), 0))
         .first()
     )
@@ -112,6 +112,7 @@ def branch_rating_totals_for(pk: int) -> BranchTotals | None:
         name=str(row["name"]),
         review_count=int(row["review_count"]),
         rating_total=int(row["rating_total"]),
+        target_score=row["target_score"],
     )
 
 

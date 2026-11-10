@@ -262,6 +262,7 @@ class LocationPage:
     status_label: str
     rating_bars: list[RatingBar]
     latest_reviews: list[ReviewRow]
+    goal: GoalStatus
 
 
 def rating_bars_from(counts: dict[int, int]) -> list[RatingBar]:
@@ -295,6 +296,7 @@ def location_page(pk: int) -> LocationPage | None:
         status_label=status_label,
         rating_bars=rating_bars_from(repositories.rating_counts_for(pk)),
         latest_reviews=[to_review_row(review) for review in newest],
+        goal=goal_status(average, totals.target_score),
     )
 
 

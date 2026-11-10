@@ -319,6 +319,7 @@ a.pager-link:hover { border-color: var(--brand); color: var(--brand); }
 }
 
 .location-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); margin-bottom: 20px; }
+.location-side { display: grid; gap: 20px; align-content: start; min-width: 0; }
 .score-value { font-size: 36px; letter-spacing: -.02em; }
 .see-all { margin: 14px 0 0; }
 .bars .bar-link { cursor: default; }
