@@ -17,7 +17,7 @@ For every new request:
 3. **Spec.**
    - **Full lane:** a thread writes `specs/<feature>/intent.md`, `spec.md` and `tasks.md` from the templates in `docs/app/templates/spec/`.
      - `spec.md`: numbered ACs that can be checked, and an empty "Open questions" section.
-     - `tasks.md`: per task, the files likely touched, `Depends on`, `risk:low|medium|high`, and `needs-ui`. Tasks meant to run in parallel never share a file. Keep each task under about 400 lines of diff.
+     - `tasks.md`: per task, the files likely touched, `Depends on`, `risk:low|medium|high`, and `needs-ui`. For an epic it also has a `## Query budget` table: each page the epic changes, its queries on `main`, and its queries after each task; a later task lists the query-cap tests an earlier task of the epic adds (ADR-024). Tasks meant to run in parallel never share a file. Keep each task under about 400 lines of diff.
      - If users will see a change, it also builds a design card (normal, empty, error and narrow-screen states, demo data) and puts its link in `design/<feature>/README.md`.
      - It opens one pull request, titled `spec: <feature>`, that changes only `specs/` and `design/`.
    - **Fast lane:** no spec pull request. The short spec (Summary, ACs, files likely touched, `Depends on`) is written for the issue body, and I confirm the design card here if there is one.
@@ -38,6 +38,7 @@ For every new request:
    - a `## Files likely touched` section with one backticked path per bullet line (for example ``- `reviews/services.py` ``) naming every file the task will change, guarded ones included, because the tick reads it to keep two builds off the same file and the build may edit only the files listed there and under `## Existing tests that change`;
    - assignee hungle-agilityio.
    - before the issue is posted, search the tests (`ops/tests/`, `reviews/tests/`, the plugin's tests) for assertions on the behaviour the issue changes. When there are any, the issue lists them under `## Existing tests that change` (one backticked `path::test_name` per bullet), an AC allows exactly those to change, and the issue never says "every existing test passes unchanged". An existing test means a test on `main`: a test added by an earlier task of the same epic is not one, needs no listing, and the epic pull request shows any change to it (ADR-022). The issue stays `agent:ready`: the build may edit exactly the listed tests.
+   - before an issue gets `agent:ready`, run `uv run python ops/pinned_tests.py --unlisted <body file>` (from the app folder) on its body and settle every hit: list the test under `## Existing tests that change` with old → new, or reword the AC so the test stays unchanged and say so in the AC. Run it again until it exits 0 (ADR-024).
 
    It also adds a comment titled `Decisions` with the table question / chosen / rejected / why, and a comment titled `Design` with the link, if any. No Requester, Type or Labels lines in the body, and no Claude attribution anywhere. At the end, print a table: task → issue → depends on. Your work ends at the issues.
 
