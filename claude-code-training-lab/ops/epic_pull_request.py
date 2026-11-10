@@ -24,6 +24,12 @@ GUARD_HEADING = "## Guard files changed"
 GUARD_SECTION = re.compile(
     rf"\n*^{GUARD_HEADING}\n.*?(?=^##\s|^Closes #|\Z)", re.MULTILINE | re.DOTALL
 )
+SELF_FIXES = "## Self-decided fixes"
+SELF_FIX_SECTION = re.compile(
+    rf"\n*^{SELF_FIXES}\n.*?(?=^##\s|^Closes #|\Z)", re.MULTILINE | re.DOTALL
+)
+QUEUE_MARKER = "<!-- work-queue -->"
+SELF_FIX_MARKER = "<!-- self-fix -->"
 GUARD_DIRS = {".claude", ".github"}
 GUARD_NAMES = {".mcp.json"}
 PLUGIN_ROOTS = {"plugins", ".claude-plugin"}
@@ -123,6 +129,31 @@ def lists_guard_files(body: str) -> bool:
     return match is not None and "\n- `" in match.group(0)
 
 
+def self_fix_urls(comments: Sequence[dict[str, Any]]) -> list[str]:
+    """The links of the comments whose first lines are the work-queue and self-fix markers."""
+    found: list[str] = []
+    for comment in comments:
+        lines = str(comment.get("body") or "").strip().splitlines()
+        if [line.strip() for line in lines[:2]] == [QUEUE_MARKER, SELF_FIX_MARKER]:
+            found.append(str(comment.get("url") or ""))
+    return found
+
+
+def self_fix_block(lines: Sequence[str]) -> str:
+    return f"{SELF_FIXES}\n\n{chr(10).join(lines) if lines else 'None.'}\n"
+
+
+def with_self_fixes(body: str, lines: Sequence[str]) -> str:
+    """fail-fix AC12: the section stands just above the first `Closes` line; an old one goes."""
+    body = SELF_FIX_SECTION.sub("\n\n", body).rstrip("\n") + "\n"
+    block = self_fix_block(lines)
+    match = FIRST_CLOSES.search(body)
+    if match is None:
+        return f"{body.rstrip()}\n\n{block}"
+    before = body[: match.start()].rstrip("\n")
+    return f"{before}\n\n{block}\n{body[match.start() :]}"
+
+
 def body_for(
     marker: str,
     epic: int,
@@ -131,12 +162,15 @@ def body_for(
     prs: list[dict[str, Any]],
     changes: list[str],
     guards: Sequence[str] | None = None,
+    fixes: Sequence[str] | None = None,
 ) -> str:
     rows = [row_for(task, branch, prs) for task in tasks]
     closing = [f"Closes #{task}" for task in tasks] + [f"Closes #{epic}"]
     lines = [marker, "", "| Task | Pull request | Verify report |", "|---|---|---|", *rows]
     if changes:
         lines += ["", CHANGED_TESTS, "", *changes]
+    if fixes is not None:
+        lines += ["", self_fix_block(fixes).rstrip("\n")]
     if guards is not None:
         lines += ["", guard_block(guards).rstrip("\n")]
     return "\n".join([*lines, "", *closing]) + "\n"
@@ -188,6 +222,15 @@ class EpicPullRequests:
         self.root = repo_root
         self.marker = marker
         self.test_dirs = tuple(protected_test_dirs)
+
+    def self_fixes(self, tasks: list[int]) -> list[str]:
+        """fail-fix AC12: one line per self-fix comment of a task, read from GitHub."""
+        lines: list[str] = []
+        for task in tasks:
+            found = self.tick.gh_json("issue", "view", str(task), "--json", "comments")
+            comments = found.get("comments") if isinstance(found, dict) else None
+            lines += [f"- #{task}: {url}" for url in self_fix_urls(comments or [])]
+        return lines
 
     def guards(self, branch: str) -> list[str]:
         """AC8: the guarded files of the whole epic branch against main."""
@@ -261,7 +304,8 @@ class EpicPullRequests:
         number = epic["number"]
         changes = self.changed_tests(tasks, branch, prs)
         guards = self.guards(branch)
-        body = body_for(self.marker, number, branch, tasks, prs, changes, guards)
+        fixes = self.self_fixes(tasks)
+        body = body_for(self.marker, number, branch, tasks, prs, changes, guards, fixes)
         path = self.write_body(number, body)
         code, out = self.tick.gh(
             "pr", "create", "--base", "main", "--head", branch,
@@ -319,6 +363,8 @@ class EpicPullRequests:
         body = with_changes(body, self.changed_tests(missing, branch, prs))
         for task in missing:
             body = with_line(body, epic, task)
+        everyone = sorted(have | set(missing))
+        body = with_self_fixes(body, self.self_fixes([t for t in everyone if t != epic]))
         body = with_guard_section(body, self.guards(branch))
         path = self.write_body(epic, body)
         code, out = self.tick.gh("pr", "edit", str(pr["number"]), "--body-file", str(path))
