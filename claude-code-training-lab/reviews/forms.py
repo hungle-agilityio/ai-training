@@ -34,6 +34,14 @@ class ReplyForm(forms.Form):
         self.is_valid()
         return str(self.cleaned_data.get("action", "")) == "suggest"
 
+    def wants_template(self) -> bool:
+        self.is_valid()
+        return str(self.cleaned_data.get("action", "")) == "template"
+
+    def template_id(self) -> int | None:
+        raw = str(self.data.get("template", "")).strip()
+        return int(raw) if raw.isascii() and raw.isdigit() else None
+
     def typed(self) -> str:
         self.is_valid()
         return str(self.cleaned_data.get("text", "")).replace("\r\n", "\n")

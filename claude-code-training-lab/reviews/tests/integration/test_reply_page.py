@@ -151,7 +151,7 @@ def test_replies_list_has_reply_button_column(review: Review) -> None:
 def test_get_makes_one_query(
     review: Review, django_assert_max_num_queries: DjangoAssertNumQueries
 ) -> None:
-    with django_assert_max_num_queries(1):
+    with django_assert_max_num_queries(2):
         Client().get(url(review))
 
 

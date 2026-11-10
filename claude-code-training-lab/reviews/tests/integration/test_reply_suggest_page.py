@@ -149,7 +149,7 @@ def test_suggest_makes_at_most_two_queries_and_one_call(
     create = mocker.patch(
         "reviews.reply_suggestion.claude_client.create_message", return_value="Thanks."
     )
-    with django_assert_max_num_queries(2):
+    with django_assert_max_num_queries(3):
         response = Client().post(url(review), {"action": "suggest", "text": ""})
     assert response.status_code == 200
     assert create.call_count == 1

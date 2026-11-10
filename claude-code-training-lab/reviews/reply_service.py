@@ -5,8 +5,9 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator
 from django.utils import timezone
 
-from reviews import reply_repository
+from reviews import reply_repository, template_repository
 from reviews.models import Review
+from reviews.reply_templates import fill_template, kinds_for_rating
 from reviews.repositories import BAD_RATINGS, REPLY_WINDOW
 from reviews.services import (
     REVIEWS_PER_PAGE,
@@ -24,6 +25,13 @@ class ReplyInfo:
     text: str
     updated_at: datetime
     replied_by: str | None
+
+
+@dataclass(frozen=True)
+class TemplateOption:
+    id: int
+    name: str
+    text: str
 
 
 @dataclass(frozen=True)
@@ -142,6 +150,22 @@ def reply_target(review_id: int) -> ReplyTarget | None:
         created_at=review.created_at,
         reply=info,
     )
+
+
+def fitting_templates(rating: int) -> list[TemplateOption]:
+    """The templates whose kind fits the rating, by name ignoring case, then id."""
+    found = template_repository.list_templates_for_kinds(kinds_for_rating(rating))
+    return [TemplateOption(item.id, item.name, item.text) for item in found]
+
+
+def filled_template(
+    options: list[TemplateOption], template_id: int | None, location: str
+) -> str | None:
+    """The chosen template filled with the location name; None when it is not in the list."""
+    for option in options:
+        if option.id == template_id:
+            return fill_template(option.text, location)
+    return None
 
 
 def save_reply(review_id: int, text: str, user_id: int | None, now: datetime) -> bool:
