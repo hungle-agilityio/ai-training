@@ -56,9 +56,11 @@ def review_with_branch(review_id: int) -> Review | None:
 
 
 def review_with_reply(review_id: int) -> Review | None:
-    """The review, its location, its reply and the reply's user in one query."""
+    """The review, its location, its reply, its follow-up case and their users in one query."""
     return (
-        Review.objects.select_related("branch", "reply", "reply__replied_by")
+        Review.objects.select_related(
+            "branch", "reply", "reply__replied_by", "followup", "followup__updated_by"
+        )
         .filter(pk=review_id)
         .first()
     )
