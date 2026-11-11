@@ -29,7 +29,7 @@ ZONE = ZoneInfo("UTC")
 CI_WORKFLOW = ""
 DEPLOY_LINE = ""
 PR_NUMBER = re.compile(r"#(\d+)")
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = flow_config.PROJECT_DIR
 
 
 def configure(config: flow_config.FlowConfig) -> None:

@@ -56,7 +56,7 @@ Part of <id>
 
 ## 4. Push and pull request (only when asked)
 
-- Push only when the user asks: `git push -u origin <branch>`, never with `--force`. `origin` is the GitHub repository named in `project.repo` of `ops/flow.toml`.
+- Push only when the user asks: `git push -u origin <branch>`, never with `--force`. `origin` is the GitHub repository named in `project.repo` of the flow config (`.flow/flow.toml`, else `ops/flow.toml`).
 - The pull request targets `main`. Its title is `[type] title`, for example `[FEAT] Reviews page to show all reviews`, and its description has the sections What, Why, How tested and Screenshot and ends with `Closes #<number>`.
 - Create it with the `create-pull-request` skill (`gh` command), after the user approves the preview. Never merge or approve it.
 

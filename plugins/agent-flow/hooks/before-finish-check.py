@@ -41,19 +41,47 @@ def app_dir(env: Mapping[str, str], cwd: Path | str | None = None) -> Path:
     return Path(session or cwd or os.getcwd())
 
 
+def config_path(app: Path, named: str | None) -> Path:
+    """FLOW_CONFIG, else <project>/.flow/flow.toml when it exists, else <project>/ops/flow.toml."""
+    if named:
+        return Path(named)
+    new = app / ".flow" / "flow.toml"
+    return new if new.is_file() else app / "ops" / "flow.toml"
+
+
+def new_layout_loader(config: Path) -> list[Path]:
+    """`<paths.loop_dir>/flow_config.py` of a .flow/flow.toml (default .flow/loop); else none."""
+    if config.parent.name != ".flow":
+        return []
+    folder = ".flow/loop"
+    try:
+        import tomllib
+
+        named = tomllib.loads(config.read_text()).get("paths", {}).get("loop_dir")
+        folder = named if isinstance(named, str) and named else folder
+    except Exception:  # the loader reports a broken file with its own message
+        pass
+    return [config.parent.parent / folder / "flow_config.py"]
+
+
 def loader_path(app: Path, named: str | None) -> Path:
-    """ops/flow_config.py of the project, else beside FLOW_CONFIG, else of the session's project."""
-    candidates = [app / "ops" / "flow_config.py"]
+    """The reader of the config's project (.flow/loop/ or ops/), else beside FLOW_CONFIG."""
+    candidates = [
+        *new_layout_loader(config_path(app, named)),
+        app / "ops" / "flow_config.py",
+        *new_layout_loader(config_path(app, None)),
+    ]
     if named:
         candidates.append(Path(named).parent / "flow_config.py")
     session = os.environ.get("CLAUDE_PROJECT_DIR")
     if session:
+        candidates.extend(new_layout_loader(config_path(Path(session), None)))
         candidates.append(Path(session) / "ops" / "flow_config.py")
     return next((path for path in candidates if path.is_file()), candidates[0])
 
 
 def flow_config(env: Mapping[str, str], cwd: Path | str | None = None) -> Any:
-    """The flow config of the project (ops/flow.toml), or the file named by FLOW_CONFIG."""
+    """The flow config of the project (.flow/flow.toml or ops/flow.toml), or FLOW_CONFIG's."""
     app = app_dir(env, cwd)
     named = env.get("FLOW_CONFIG")
     module_path = loader_path(app, named)
@@ -63,7 +91,7 @@ def flow_config(env: Mapping[str, str], cwd: Path | str | None = None) -> Any:
     module = util.module_from_spec(spec)
     sys.modules[spec.name] = module  # its dataclass looks its module up by name
     spec.loader.exec_module(module)
-    return module.load(Path(named) if named else app / "ops" / "flow.toml")
+    return module.load(config_path(app, named))
 
 
 def real_run(args: list[str], cwd: Path) -> tuple[int, str]:
@@ -107,9 +135,7 @@ def report_problems(project: Path, run: Runner) -> list[str]:
         lines = (project / "out" / "artifact-publish.log").read_text().splitlines()
     except OSError:
         lines = []
-    published = [
-        line for line in lines if " allowed " in line and " url=https://" in f" {line}"
-    ]
+    published = [line for line in lines if " allowed " in line and " url=https://" in f" {line}"]
     if not published:
         return [
             f"PR #{data.get('pr')}: this round added commits but did not republish the verify "

@@ -7,7 +7,10 @@ no `gh` command but `gh label create`. Standard library only.
 
     uv run python ops/bootstrap.py --target <folder> --repo <owner/name> --owner <login> \
         --app-dir <folder or .> --name <display name> --slug <slug> --ntfy-topic <topic> \
-        [--code-dirs <a,b,...>] [--dry-run] [--no-labels]
+        [--code-dirs <a,b,...>] [--stack python|node|other] [--dry-run] [--no-labels]
+
+With `--stack` it writes the stack-agnostic layout of bootstrap_layout.py instead (spec:
+specs/project-layout/spec.md); `--app-dir` is then `.` and may be left out.
 """
 
 from __future__ import annotations
@@ -23,6 +26,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+try:
+    from ops import bootstrap_layout as layout
+except ImportError:  # started as `python ops/bootstrap.py`: ops/ is the first path entry
+    import bootstrap_layout as layout  # type: ignore[import-not-found,no-redef,unused-ignore]
 
 APP_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = Path(__file__).resolve().with_name("bootstrap_manifest.toml")
@@ -111,6 +119,7 @@ class Params:
     dry_run: bool
     labels: bool
     code_dirs: tuple[str, ...] = ()
+    stack: str = ""
 
 
 @dataclass(frozen=True)
@@ -134,7 +143,15 @@ def parse(argv: Sequence[str]) -> Params:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--no-labels", action="store_true")
     parser.add_argument("--code-dirs", default=None)
+    parser.add_argument("--stack", choices=layout.STACKS, default=None)
     args = parser.parse_args(argv)
+    if args.stack:
+        if args.app_dir not in (None, "."):
+            raise BootstrapError(
+                f"--app-dir {args.app_dir!r}: the layout of --stack has no app folder; "
+                "use --app-dir . or leave it out"
+            )
+        args.app_dir = "."
     missing = [flag for dest, flag in FLAGS if not getattr(args, dest)]
     if missing:
         raise BootstrapError("missing required flags: " + ", ".join(missing))
@@ -157,6 +174,7 @@ def parse(argv: Sequence[str]) -> Params:
         dry_run=args.dry_run,
         labels=not args.no_labels,
         code_dirs=code_dirs,
+        stack=args.stack or "",
     )
 
 
@@ -333,7 +351,60 @@ marketplace = "ai-training"
 """
 
 
+def layout_text(rel: str, data: bytes, params: Params) -> bytes:
+    """A copied file for the new layout: old folders moved, old project values renamed."""
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data
+    if rel == PROJECT_INSTRUCTIONS:
+        text = text.replace("reviews/tests/", "src/<feature>/tests/")
+    if rel == ".claude/settings.json":
+        text = layout.plugin_settings(adapt_settings(text, ["src"]), params.repo, params.slug)
+    if not rel.endswith(".py"):
+        text = layout.move_text(text)
+    text = _rename(text, params)
+    text = text.replace(MARKETPLACE_NAME, params.slug).replace(OLD_NAME.lower(), params.slug)
+    if rel.endswith(".claude-plugin/plugin.json"):
+        text = layout.plugin_manifest(text, params.repo)
+    return text.encode("utf-8")
+
+
+def build_layout_plan(params: Params, manifest: dict[str, Any]) -> Plan:
+    """The new layout (AC17 to AC23): only the files below, nothing else at the root."""
+    root = source_root()
+    exclude: list[str] = manifest.get("exclude", [])
+    planned: dict[Path, Planned] = {}
+
+    def put(rel: str, data: bytes, mode: int) -> None:
+        dest = params.target / rel
+        planned[dest] = Planned(dest, data, mode)
+
+    for entry in manifest["copy"]:
+        scope_source = APP_ROOT if entry["scope"] == "app" else root
+        source = scope_source / entry["path"]
+        if not source.exists():
+            continue
+        files = (
+            [p for p in sorted(source.rglob("*")) if p.is_file()] if source.is_dir() else [source]
+        )
+        for path in files:
+            rel = path.relative_to(scope_source).as_posix()
+            new = layout.destination(rel)
+            if new is None or _excluded(path, scope_source, exclude):
+                continue
+            put(new, layout_text(rel, path.read_bytes(), params), path.stat().st_mode & 0o777)
+    for rel, path in [*layout.loop_files(APP_ROOT), *layout.plugin_files(root)]:
+        put(rel, layout_text(rel, path.read_bytes(), params), path.stat().st_mode & 0o777)
+    texts = layout.generated(params.repo, params.owner, params.name, params.slug, params.stack)
+    for rel, text in texts.items():
+        put(rel, text.encode("utf-8"), 0o755 if rel.endswith(".sh") else 0o644)
+    return Plan(tuple(sorted(planned.values(), key=lambda p: p.dest)), ())
+
+
 def build_plan(params: Params, manifest: dict[str, Any]) -> Plan:
+    if params.stack:
+        return build_layout_plan(params, manifest)
     root = source_root()
     exclude: list[str] = manifest.get("exclude", [])
     dest_app = params.target if params.app_dir == "." else params.target / params.app_dir
@@ -451,7 +522,29 @@ def create_labels(params: Params, labels: Sequence[dict[str, str]]) -> list[str]
     return failed
 
 
+def layout_steps(params: Params) -> list[str]:
+    return [
+        f"Run: claude plugin marketplace add {params.repo}",
+        f"Run: claude plugin install agent-flow@{params.slug} --scope project",
+        f"Add {params.repo} to the Mac mini fine-grained token and install the Claude GitHub App "
+        "on it. Without the token the labels and every loop call fail.",
+        "Create the ruleset on main by hand (pull request required, checks must pass).",
+        "Write the app skeleton of the stack in src/, make scripts/check.sh pass, then make the "
+        "first commit (with the lock file) and push of main yourself.",
+        f"Create a Claude Project, attach {params.repo}, paste .claude/project-instructions.md, "
+        "approve the folder for Remote Control, and start Remote Control sessions in ./.",
+        "Fill in the stubs: CLAUDE.md, README.md, docs/architecture.md, "
+        ".claude/rules/architecture.md and .claude/rules/domain.md (each has the line "
+        f"TODO: fill in for {params.name}).",
+        f"Run bash {layout.LOOP_DIR}/install-launchd.sh once.",
+        f"Subscribe to the ntfy topic {params.ntfy_topic} on your phone.",
+        "Keep the total AGENT_CONCURRENCY of all loops on this Mac mini at 2 to 3.",
+    ]
+
+
 def steps(params: Params, has_pyproject: bool = False) -> list[str]:
+    if params.stack:
+        return layout_steps(params)
     app = "" if params.app_dir == "." else f"{params.app_dir}/"
     extra: list[str] = []
     if has_pyproject:
@@ -500,7 +593,9 @@ def run(params: Params) -> int:
     if not params.dry_run:
         write_files(plan)
     for item in plan.files:
-        print(f"{verb} {item.dest.relative_to(params.target)}")
+        path = item.dest.relative_to(params.target).as_posix()
+        # AC24: the layout's dry run prints the tree, one path per line.
+        print(path if params.dry_run and params.stack else f"{verb} {path}")
     for path in plan.skipped:
         print(f"skipped, not found in the source: {path}")
     if params.dry_run:
