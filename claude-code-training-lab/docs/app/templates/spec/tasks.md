@@ -25,6 +25,7 @@
 ## T1: <short title>
 
 - **ACs:** AC1, AC2
+- **Matrix rows:** M1, M2
 - **Files likely touched:** `reviews/services.py`, `reviews/tests/unit/test_<name>.py`
 - **Depends on:** none
 - **Risk:** low | medium | high
@@ -35,6 +36,7 @@
 ## T2: <short title>
 
 - **ACs:** AC3
+- **Matrix rows:** M3
 - **Files likely touched:** <paths>
 - **Depends on:** T1
 - **Risk:** low | medium | high
