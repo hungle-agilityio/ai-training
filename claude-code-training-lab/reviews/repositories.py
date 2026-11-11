@@ -7,7 +7,7 @@ from django.db.models import Count, DurationField, ExpressionWrapper, F, Q, Quer
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
-from reviews.models import Branch, Review
+from reviews.models import Branch, Review, ReviewFollowUp
 from reviews.search_text import normalize_for_search
 from reviews.topics import Topic
 
@@ -184,6 +184,26 @@ def create_review(*, branch: Branch, rating: int, text: str, created_at: datetim
         text=text,
         search_text=normalize_for_search(text),
         created_at=created_at,
+    )
+
+
+def upsert_followup(
+    *, review_id: int, status: str, note: str, user_id: int | None, now: datetime
+) -> None:
+    """One insert that updates the record of the review on a clash; two first saves never fail."""
+    ReviewFollowUp.objects.bulk_create(
+        [
+            ReviewFollowUp(
+                review_id=review_id,
+                status=status,
+                note=note,
+                updated_by_id=user_id,
+                updated_at=now,
+            )
+        ],
+        update_conflicts=True,
+        unique_fields=["review"],
+        update_fields=["status", "note", "updated_by", "updated_at"],
     )
 
 
