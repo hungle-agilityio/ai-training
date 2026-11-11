@@ -40,6 +40,9 @@ Read the code the issue touches and the code next to it: urls, views, services, 
 
 ## Output format
 
+When `paths.plans_dir` of the flow config is not empty, the main assistant saves your approved plan as `<plans_dir>/<issue number>-<short-description>.md`, so write it to read on its own. When it is empty, nothing is saved.
+
+
 Write in the language the user used (Vietnamese unless told otherwise). Cite code as `path:line`. Be concrete and short; give signatures, not implementations.
 
 ```

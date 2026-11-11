@@ -5,10 +5,11 @@ Usage: route_issue.py <issue body file> [--settings <settings.json>]. Prints two
 area:flow or area:app, then agent:ready. Every issue is agent:ready (ADR-023): the tick passes the
 listed files to the build and before-edit-check lets it edit exactly those, guarded ones
 included. A path outside the git repository is not routed. `--settings` is kept for old callers
-and ignored. The folder prefix stripped from each path is `project.app_dir` of ops/flow.toml (or
-of the file named by FLOW_CONFIG); `.` means no prefix. A path under a .claude folder gets a
-warning on stderr: Claude Code's safetyCheck stops `claude -p` from editing it, so that issue is
-built by hand with no agent:* label (ADR-023, "Exception: .claude/").
+and ignored. The config is .flow/flow.toml when it exists, else ops/flow.toml (or the file named
+by FLOW_CONFIG). The folder prefix stripped from each path is its `project.app_dir`; `.` means no
+prefix. The flow folders are its `paths.flow_dirs` and `paths.plugin_dir`. A path under a
+.claude folder gets a warning on stderr: Claude Code's safetyCheck stops `claude -p` from
+editing it, so that issue is built by hand with no agent:* label (ADR-023, "Exception: .claude/").
 """
 
 from __future__ import annotations
@@ -24,7 +25,9 @@ from types import ModuleType
 
 PROJECT = Path(os.environ.get("CLAUDE_PROJECT_DIR") or Path.cwd())
 SETTINGS = PROJECT / ".claude" / "settings.json"
-FLOW_MODULE = PROJECT / "ops" / "flow_config.py"
+NEW_LAYOUT = (PROJECT / ".flow" / "flow.toml").is_file()
+FLOW_MODULE = PROJECT / (".flow/loop" if NEW_LAYOUT else "ops") / "flow_config.py"
+# Today's folders; a config with a [paths] table replaces them with paths.flow_dirs.
 FLOW_FOLDERS = ("ops/", ".claude/", ".github/", "specs/", "docs/learning/")
 PLUGIN_FOLDERS = ("../plugins/", "plugins/")
 SECTION = re.compile(r"^##\s+Files likely touched\s*$(.*?)(?=^##\s|\Z)", re.M | re.S)
@@ -49,7 +52,20 @@ def prefix_for(app_dir: str) -> str:
     return "" if folder in ("", ".") else f"{folder}/"
 
 
-LAB_PREFIX = prefix_for(FLOW.load().project_app_dir)
+CONFIG = FLOW.load(FLOW.find_config(PROJECT)) if hasattr(FLOW, "find_config") else FLOW.load()
+LAB_PREFIX = prefix_for(CONFIG.project_app_dir)
+
+
+def folder_prefix(folder: str) -> str:
+    return folder.strip().removeprefix("./").rstrip("/") + "/"
+
+
+def flow_prefixes() -> tuple[str, ...]:
+    """paths.flow_dirs and the plugin folder (paths.plugin_dir) of the config, plus plugins/."""
+    flow = tuple(getattr(CONFIG, "paths_flow_dirs", FLOW_FOLDERS))
+    plugin = getattr(CONFIG, "paths_plugin_dir", "")
+    extra = (folder_prefix(plugin),) if plugin else ()
+    return tuple(dict.fromkeys((*flow, *extra, *PLUGIN_FOLDERS)))
 
 
 def paths_of(text: str, prefix: str | None = None) -> list[str]:
@@ -94,7 +110,7 @@ def route(text: str, allow: list[str] | None = None) -> list[str]:
     for path in paths:
         if outside_repository(path):
             raise ValueError(f"{path} is outside the repository")
-    flow = any(p.startswith((*FLOW_FOLDERS, *PLUGIN_FOLDERS)) for p in paths)
+    flow = any(p.startswith(flow_prefixes()) for p in paths)
     return ["area:flow" if flow else "area:app", "agent:ready"]
 
 

@@ -1,10 +1,11 @@
 """List the existing tests an issue's ACs would change, before the issue gets agent:ready.
 
 Spec: specs/loop-verify-failures/spec.md (AC6 to AC9), specs/fail-fix/spec.md (AC1 to AC5).
-Run from claude-code-training-lab/:
-`uv run python ops/pinned_tests.py [--unlisted] <issue body file>`.
-`--unlisted` prints only the hits the body does not name and exits 1 when there is one.
-Standard library only; it writes no file and runs no test.
+Run from the app folder: `uv run python <loop folder>/pinned_tests.py [--unlisted] <issue body>`
+(`ops/` in ReviewRadar, `.flow/loop/` in a new project). `--unlisted` prints only the hits the
+body does not name and exits 1 when there is one. The test roots are `checks.protected_test_dirs`,
+the loop's own tests and `paths.plugin_dir`; the app folders are `paths.code_dirs` (spec:
+specs/project-layout/spec.md, AC15). Standard library only; it writes no file and runs no test.
 """
 
 from __future__ import annotations
@@ -15,9 +16,24 @@ import re
 import sys
 from pathlib import Path
 
-PROJECT = Path(__file__).resolve().parents[1]
-APP_PREFIX = "claude-code-training-lab/"
-TEST_ROOTS = ("reviews/tests", "ops/tests", "../plugins/agent-flow")
+try:
+    from ops import flow_config
+except ImportError:  # started as a script: its own folder is the first path entry
+    import flow_config  # type: ignore[import-not-found,no-redef,unused-ignore]
+
+
+def folder(path: str) -> str:
+    return path.strip().removeprefix("./").rstrip("/")
+
+
+CONFIG = flow_config.load()
+PROJECT = flow_config.PROJECT_DIR
+APP_PREFIX = "" if folder(CONFIG.project_app_dir) in ("", ".") else f"{CONFIG.project_app_dir}/"
+TEST_ROOTS = (
+    *(folder(d) for d in CONFIG.checks_protected_test_dirs),
+    f"{folder(CONFIG.paths_loop_dir)}/tests",
+    folder(CONFIG.paths_plugin_dir),
+)
 NOTHING_FOUND = "No existing test pins this task."
 MIN_NAME_LENGTH = 4
 COMMON_NAMES = {"main", "None", "True", "False"}
@@ -37,8 +53,9 @@ CAP_LEN = re.compile(r"\blen\(\s*\w+(?:\.captured_queries)?\s*\)\s*(?:==|<=|<)\s
 NOT_NAMES = {
     "views.py", "services.py", "repositories.py", "models.py", "urls.py", "forms.py", "app.css",
 }  # fmt: skip
-APP_FOLDERS = ("reviews/", "reviewradar/")
-PLUGIN_ROOT = "../plugins/"
+APP_FOLDERS = tuple(f"{folder(d)}/" for d in CONFIG.paths_code_dirs)
+QUERY_CODE_DIR = APP_FOLDERS[0] if APP_FOLDERS else ""
+PLUGIN_ROOT = folder(CONFIG.paths_plugin_dir)
 UNLISTED = "--unlisted"
 FILES_HEADING = "## files likely touched"
 
@@ -121,8 +138,8 @@ def cap_reason(source: str) -> str:
 
 
 def is_query_code(path: str) -> bool:
-    """A view, a template, a service or a repository under reviews/."""
-    if not path.startswith("reviews/") or path.startswith("reviews/tests/"):
+    """A view, a template, a service or a repository in the first code folder, not a test."""
+    if not QUERY_CODE_DIR or not path.startswith(QUERY_CODE_DIR) or "tests" in path.split("/"):
         return False
     return path.endswith(".html") or Path(path).stem.endswith(QUERY_CODE_ENDINGS)
 
@@ -167,10 +184,20 @@ def source_of_test(node: FunctionNode, lines: list[str], module: dict[str, str])
 
 
 def test_files(project: Path, roots: tuple[str, ...] = TEST_ROOTS) -> list[Path]:
+    """Test files under each root; a one-part root also matches inside the code folders."""
+    # `tests` finds src/<feature>/tests/ too, as the edit guard matches it at any depth.
     files: set[Path] = set()
     for root in roots:
         base = project / root
         files |= {p for p in base.rglob("*.py") if p.name.startswith("test_")}
+        if "/" in root:
+            continue
+        for code in APP_FOLDERS:
+            files |= {
+                p
+                for p in (project / code).rglob("test_*.py")
+                if root in p.relative_to(project).parts[:-1]
+            }
     return sorted(files)
 
 
