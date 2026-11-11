@@ -11,9 +11,11 @@ from reviews import goal_repository, settings_service, template_repository
 from reviews.forms import AccountPasswordForm, SavedForm
 from reviews.goal_forms import GoalsForm
 from reviews.goal_repository import LocationGoal
+from reviews.location_forms import LocationForm
 from reviews.reply_templates import KIND_LABELS
 from reviews.template_forms import KIND_ORDER, TemplateForm
 
+LOCATION_NOTICES = {"added": "Location added."}
 TEMPLATE_NOTICES = {
     "added": "Template added.",
     "saved": "Template saved.",
@@ -46,13 +48,21 @@ def settings_context(
     password_form: AccountPasswordForm | None = None,
     goal_form: GoalsForm | None = None,
     template_form: TemplateForm | None = None,
+    location_form: LocationForm | None = None,
+    locations: list[LocationGoal] | None = None,
 ) -> dict[str, Any]:
-    """Everything the settings page shows, so a refused form renders the whole page."""
+    """Everything the settings page shows; the locations are read once for both panels."""
+    if locations is None:
+        locations = goal_repository.location_goals()
     return {
         "form": password_form or AccountPasswordForm(cast(User, request.user), None),
         "saved": SavedForm(request.GET).is_saved(),
         "goals_saved": request.GET.get("goals") == "saved",
-        "goal_fields": goal_fields(goal_repository.location_goals(), goal_form),
+        "location_rows": [{"id": row.location_id, "name": row.name} for row in locations],
+        "location_typed": location_form.typed if location_form else "",
+        "location_errors": location_form.errors if location_form else [],
+        "locations_notice": LOCATION_NOTICES.get(request.GET.get("locations", "")),
+        "goal_fields": goal_fields(locations, goal_form),
         "template_rows": [
             {"id": t.id, "name": t.name, "kind_label": KIND_LABELS[t.kind]}
             for t in template_repository.list_templates()
