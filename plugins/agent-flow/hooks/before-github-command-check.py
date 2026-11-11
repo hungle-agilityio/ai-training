@@ -22,7 +22,17 @@ from pathlib import Path
 from typing import Any
 
 GH_TOP_LEVEL = {
-    "issue", "pr", "label", "run", "workflow", "release", "repo", "api", "auth", "version", "help",
+    "issue",
+    "pr",
+    "label",
+    "run",
+    "workflow",
+    "release",
+    "repo",
+    "api",
+    "auth",
+    "version",
+    "help",
 }
 GIT_NETWORK = {"push", "pull", "fetch", "ls-remote"}
 
@@ -32,9 +42,7 @@ ADMIN_GH = re.compile(
     r"|auth\s+(?:login|logout|refresh|token|switch|setup-git)"
     r"|gist|ssh-key|gpg-key|org|secret|variable|codespace|extension|alias|search)\b"
 )
-RELEVANT = re.compile(
-    r"\bgh\b|\bgit\b|github|\bcurl\b|\bwget\b|\bssh\b|\bscp\b|\bsftp\b|\brsync\b"
-)
+RELEVANT = re.compile(r"\bgh\b|\bgit\b|github|\bcurl\b|\bwget\b|\bssh\b|\bscp\b|\bsftp\b|\brsync\b")
 QUOTED_HEREDOC = re.compile(r"<<-?\s*'(\w+)'[^\n]*\n.*?\n\s*\1[ \t]*(?:\n|$)", re.S)
 SHELL_WORD = re.compile(r"\b(?:bash|sh|zsh|dash|ksh|eval|source)\b")
 CONFIG_READ_FLAGS = {"--get", "--get-all", "--get-regexp", "--get-urlmatch", "--list", "-l"}
@@ -245,8 +253,17 @@ def api_parts(tokens: list[str]) -> tuple[str, str, dict[str, str]] | None:
 
 
 API_FLAGS_WITH_VALUE = API_VALUE_FLAGS | {
-    "-H", "--header", "-q", "--jq", "-t", "--template", "--input", "--hostname", "-p",
-    "--preview", "--cache",
+    "-H",
+    "--header",
+    "-q",
+    "--jq",
+    "-t",
+    "--template",
+    "--input",
+    "--hostname",
+    "-p",
+    "--preview",
+    "--cache",
 }
 
 
@@ -334,7 +351,7 @@ def check_git(rest: str, allowed: str) -> list[str]:
         index += 2 if tokens[index] in ("-C", "-c", "--git-dir", "--work-tree") else 1
     if index >= len(tokens):
         return []
-    sub, args = tokens[index], tokens[index + 1:]
+    sub, args = tokens[index], tokens[index + 1 :]
     positional = [arg for arg in args if not arg.startswith("-")]
     problems: list[str] = []
     if sub == "config":
@@ -376,7 +393,7 @@ def without_inert_heredocs(command: str) -> str:
 
     def drop(match: re.Match[str]) -> str:
         line_start = command.rfind("\n", 0, match.start()) + 1
-        head = command[line_start:match.start()] + match.group(0).split("\n", 1)[0]
+        head = command[line_start : match.start()] + match.group(0).split("\n", 1)[0]
         return match.group(0) if SHELL_WORD.search(head) else "\n"
 
     return QUOTED_HEREDOC.sub(drop, command)
@@ -417,19 +434,47 @@ def check_command(command: str, allowed: str, loop: bool = False) -> list[str]:
     return list(dict.fromkeys(problems))
 
 
+def config_path(app: Path, named: str | None) -> Path:
+    """FLOW_CONFIG, else <project>/.flow/flow.toml when it exists, else <project>/ops/flow.toml."""
+    if named:
+        return Path(named)
+    new = app / ".flow" / "flow.toml"
+    return new if new.is_file() else app / "ops" / "flow.toml"
+
+
+def new_layout_loader(config: Path) -> list[Path]:
+    """`<paths.loop_dir>/flow_config.py` of a .flow/flow.toml (default .flow/loop); else none."""
+    if config.parent.name != ".flow":
+        return []
+    folder = ".flow/loop"
+    try:
+        import tomllib
+
+        named = tomllib.loads(config.read_text()).get("paths", {}).get("loop_dir")
+        folder = named if isinstance(named, str) and named else folder
+    except Exception:  # the loader reports a broken file with its own message
+        pass
+    return [config.parent.parent / folder / "flow_config.py"]
+
+
 def loader_path(app: Path, named: str | None) -> Path:
-    """ops/flow_config.py of the project, else beside FLOW_CONFIG, else of the session's project."""
-    candidates = [app / "ops" / "flow_config.py"]
+    """The reader of the config's project (.flow/loop/ or ops/), else beside FLOW_CONFIG."""
+    candidates = [
+        *new_layout_loader(config_path(app, named)),
+        app / "ops" / "flow_config.py",
+        *new_layout_loader(config_path(app, None)),
+    ]
     if named:
         candidates.append(Path(named).parent / "flow_config.py")
     session = os.environ.get("CLAUDE_PROJECT_DIR")
     if session:
+        candidates.extend(new_layout_loader(config_path(Path(session), None)))
         candidates.append(Path(session) / "ops" / "flow_config.py")
     return next((path for path in candidates if path.is_file()), candidates[0])
 
 
 def flow_config(env: Mapping[str, str], cwd: str | None = None) -> Any:
-    """The project's ops/flow.toml (CLAUDE_PROJECT_DIR, else the cwd), or FLOW_CONFIG's file."""
+    """The project's flow.toml (CLAUDE_PROJECT_DIR, else the cwd), or FLOW_CONFIG's file."""
     session = env.get("CLAUDE_PROJECT_DIR") or os.environ.get("CLAUDE_PROJECT_DIR")
     app = Path(session or cwd or os.getcwd())
     named = env.get("FLOW_CONFIG")
@@ -440,7 +485,7 @@ def flow_config(env: Mapping[str, str], cwd: str | None = None) -> Any:
     module = util.module_from_spec(spec)
     sys.modules[spec.name] = module  # its dataclass looks its module up by name
     spec.loader.exec_module(module)
-    return module.load(Path(named) if named else app / "ops" / "flow.toml")
+    return module.load(config_path(app, named))
 
 
 def read_allowed(env: Mapping[str, str] | None = None, cwd: str | None = None) -> str:
@@ -457,6 +502,7 @@ LOOP_VARS = ("FLOW_LOOP", "REVIEWRADAR_LOOP")
 def is_loop() -> bool:
     """Loop mode is on when FLOW_LOOP=1 or REVIEWRADAR_LOOP=1."""
     return any(os.environ.get(name) == "1" for name in LOOP_VARS)
+
 
 LOOP_BRANCH = re.compile(r"^(?:bug|feat|task)/\d+-[a-z0-9][a-z0-9-]*$")
 SPEC_BRANCH = re.compile(r"^task/spec-[a-z0-9][a-z0-9-]*$")
