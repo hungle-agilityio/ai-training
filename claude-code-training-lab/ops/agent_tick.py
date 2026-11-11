@@ -77,7 +77,8 @@ PLUGIN_NOTIFY_SECONDS = 60 * 60
 TIMED_OUT = 124
 VERSION = re.compile(r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?")
 LOG_TAIL = 20
-SKIP_LABELS = {"agent:running", "agent:review", "agent:failed"}
+PLAN_REVIEW = "agent:plan-review"
+SKIP_LABELS = {"agent:running", "agent:review", "agent:failed", PLAN_REVIEW}
 PR_LABELS = {"pr:ready-for-review", "pr:changes-requested", "pr:blocked", "pr:ci-failed"}
 RED_CI = {"FAILURE", "ERROR", "TIMED_OUT", "ACTION_REQUIRED", "STARTUP_FAILURE"}
 REPLACED_RUNS = {"cancelled", "skipped"}
@@ -90,6 +91,7 @@ LABEL_COLORS = {
     "agent:running": ("FBCA04", "The loop is building this issue"),
     "agent:failed": ("D93F0B", "The loop could not finish this issue; see the comment"),
     "pr:blocked": ("B60205", "the loop cannot go on without the owner; the reason is a comment"),
+    PLAN_REVIEW: ("5319E7", "The loop posted a plan and waits for the owner's approval"),
     "agent:in-epic": (
         "0E8A16",
         "Task merged into its epic branch; closes with the epic pull request",
@@ -560,6 +562,15 @@ def decision_stop(tick: Tick, number: int) -> None:
     tick.notify(f"{NAME} #{number} needs your decision: https://github.com/{REPO}/issues/{number}")
 
 
+def plan_posted(tick: Tick, key: str, number: int, worktree: Path) -> None:
+    """#471 AC2: a plan that waits for the owner is a hand-over, not a failure; one message."""
+    remove_worktree(tick, worktree, handed_over=True)
+    tick.say(f"{key}: plan posted; waiting for the owner")
+    tick.notify(
+        f"{NAME} #{number} plan waits for your approval: https://github.com/{REPO}/issues/{number}"
+    )
+
+
 def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -> None:
     key = run.name
     kind, number = key.split("-", 1)
@@ -589,6 +600,9 @@ def handle_end(tick: Tick, run: Path, outcome: str, prs: list[dict[str, Any]]) -
     labels = names(tick.gh_json("issue", "view", number, "--json", "labels"))
     has_pr = any(closes(pr) == int(number) for pr in prs)
     opened = newest_open_pr(prs, int(number))
+    if "agent:running" not in labels and not has_pr and PLAN_REVIEW in labels:
+        plan_posted(tick, key, int(number), worktree)
+        return
     if "agent:running" not in labels or has_pr:
         remove_worktree(tick, worktree, handed_over=has_pr)
         tick.say(
