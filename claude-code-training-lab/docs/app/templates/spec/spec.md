@@ -31,6 +31,10 @@ Each AC can be checked by a person or a test, with exact values, pages or texts.
 |---|---|---|---|
 | <question settled in grill-me> | <option> | <option> | <reason> |
 
+## Decisions during build
+
+See [decisions/](decisions/): one file per task, written by its build.
+
 ## Design
 
 <link to the design card in design/<feature>/README.md, or "nothing visible to users">
