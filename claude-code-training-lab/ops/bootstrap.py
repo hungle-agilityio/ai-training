@@ -361,6 +361,7 @@ def layout_text(rel: str, data: bytes, params: Params) -> bytes:
         text = text.replace("reviews/tests/", "src/<feature>/tests/")
     if rel == ".claude/settings.json":
         text = layout.plugin_settings(adapt_settings(text, ["src"]), params.repo, params.slug)
+    text = layout.one_loop_variable(text)
     if not rel.endswith(".py"):
         text = layout.move_text(text)
     text = _rename(text, params)
