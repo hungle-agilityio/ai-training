@@ -46,6 +46,9 @@ STATUSES = ("PASS", "FAIL", "NOT CONFIGURED", "NOT APPLICABLE")
 NO_UI_EVIDENCE = "the task changes no screen"
 # The plugin's own tests run as in CI: a build's loop mode must not leak into them (#243).
 WITHOUT_LOOP = ["env", "-u", "FLOW_LOOP", "-u", "REVIEWRADAR_LOOP"]
+MATRIX_STATUSES = ("PASS", "FAIL", "MANUAL")
+NO_MATRIX = "the issue has no test matrix rows"
+EMPTY_MATRIX = "the matrix list is empty"
 NO_SCREENS = 'no screens given: pass --spec from the issue\'s "Screens to capture"'
 
 
@@ -136,6 +139,42 @@ def issue_axis(data: dict[str, Any] | None) -> dict[str, str]:
     status = "FAIL" if failed else "NOT CONFIGURED" if pending else "PASS"
     passed = len([c for c in criteria if c.get("status") == "PASS"])
     return axis("Issue", status, f"{passed} of {len(criteria)} criteria pass")
+
+
+def matrix_rows(data: dict[str, Any] | None) -> list[Any]:
+    """The "matrix" list of the criteria file; empty when it is missing or not a list."""
+    rows = (data or {}).get("matrix")
+    return rows if isinstance(rows, list) else []
+
+
+def matrix_row_fails(entry: Any) -> bool:
+    """A row fails unless it is MANUAL, or PASS and names its test."""
+    if not isinstance(entry, dict) or entry.get("status") not in MATRIX_STATUSES:
+        return True
+    if entry["status"] == "PASS":
+        test = entry.get("test")
+        return not (isinstance(test, str) and test.strip())
+    return bool(entry["status"] == "FAIL")
+
+
+def matrix_axis(data: dict[str, Any] | None) -> dict[str, str]:
+    """Every row of the issue's test matrix needs a passing test, or is checked by a person."""
+    if not data or "matrix" not in data:
+        return axis("Test matrix", "NOT APPLICABLE", NO_MATRIX)
+    rows = matrix_rows(data)
+    if not rows:
+        return axis("Test matrix", "FAIL", EMPTY_MATRIX)
+    failed = [
+        str(entry.get("row") or "?") if isinstance(entry, dict) else "?"
+        for entry in rows
+        if matrix_row_fails(entry)
+    ]
+    if failed:
+        detail = f"{len(failed)} of {len(rows)} rows fail: {', '.join(failed)}"
+        return axis("Test matrix", "FAIL", detail)
+    manual = len([entry for entry in rows if entry["status"] == "MANUAL"])
+    detail = f"{len(rows) - manual} of {len(rows)} rows pass, {manual} manual"
+    return axis("Test matrix", "PASS", detail)
 
 
 def test_dirs(root: Path) -> list[Path]:
@@ -275,7 +314,7 @@ CSS = (
     "th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}"
     ".PASS{color:var(--pass);font-weight:700}.FAIL{color:var(--fail);font-weight:700}"
     ".NOT\\ CONFIGURED,.INCOMPLETE{color:var(--warn);font-weight:700}"
-    ".NOT\\ APPLICABLE{color:var(--muted);font-weight:700}"
+    ".NOT\\ APPLICABLE,.MANUAL{color:var(--muted);font-weight:700}"
     ".shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}"
     ".shots .pair{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px;"
     "align-items:start}"
@@ -311,6 +350,17 @@ def render_body(report: dict[str, Any]) -> str:
         for a in report["axes"]
     )
 
+    def cell(entry: Any, key: str) -> str:
+        return esc(str(entry.get(key, ""))) if isinstance(entry, dict) else ""
+
+    matrix = "".join(
+        f"<tr><td>{cell(entry, 'row')}</td><td>{cell(entry, 'ac')}</td>"
+        f"<td>{cell(entry, 'test')}</td>"
+        f'<td class="{cell(entry, "status")}">{cell(entry, "status")}</td>'
+        f"<td>{cell(entry, 'evidence')}</td></tr>"
+        for entry in report.get("matrix") or []
+    )
+
     def figure(path: str, caption: str) -> str:
         data = base64.b64encode(Path(path).read_bytes()).decode()
         return (
@@ -340,6 +390,13 @@ def render_body(report: dict[str, Any]) -> str:
         '<div class="table-wrap"><table><thead><tr><th>Axis</th><th>Result</th>'
         "<th>Evidence</th></tr></thead>"
         f"<tbody>{rows}</tbody></table></div>"
+        + (
+            '<h2>Test matrix</h2><div class="table-wrap"><table><thead><tr><th>Row</th>'
+            "<th>AC</th><th>Test</th><th>Status</th><th>Evidence</th></tr></thead>"
+            f"<tbody>{matrix}</tbody></table></div>"
+            if matrix
+            else ""
+        )
         + (f'<h2>Screenshots</h2><div class="shots">{shots}</div>{LIGHTBOX}' if shots else "")
         + review
         + (f"<h2>What to check yourself</h2><ol>{check}</ol>" if check else "")
@@ -394,13 +451,15 @@ def build(
     out_dir.mkdir(parents=True, exist_ok=True)
     axes = run_checks(root, run)
     axes.append(issue_axis(criteria))
+    axes.append(matrix_axis(criteria))
+    matrix = matrix_rows(criteria)
     axes.append(query_axis(root))
     _, diff = run(["git", "diff", "HEAD", "-U0"], root)
     axes.append(security_axis(diff))
     shots: list[str] = []
     close_ups: dict[str, str] = {}
     masking: dict[str, Any] = {"status": "not run"}
-    texts = [title, json.dumps(criteria or {}), review or ""]
+    texts = [title, json.dumps(criteria or {}), json.dumps(matrix), review or ""]
     if no_ui:
         axes.append(axis("Browser", "NOT APPLICABLE", NO_UI_EVIDENCE))
         masking = masking_status({"status": "clean", "findings": []}, texts)
@@ -437,6 +496,7 @@ def build(
         "commit": git_value(root, run, "rev-parse", "--short", "HEAD"),
         "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "axes": axes,
+        "matrix": matrix,
         "screenshots": shots,
         "close_ups": close_ups,
         "review": review or "",

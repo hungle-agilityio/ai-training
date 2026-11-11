@@ -37,6 +37,33 @@ The program cannot judge an issue's own criteria; you check each one (in the run
 
 `status` is `PASS`, `FAIL` or `NOT CONFIGURED` (when it cannot be checked, say why in `evidence`). `check_yourself` comes from the issue's "Steps to check the result" or "How to check it when built".
 
+### The test matrix (optional)
+
+When the issue has a "Test matrix rows" table, add a top-level list `"matrix"` next to `"criteria"` and `"check_yourself"`, one entry per row of that table:
+
+```
+ "matrix": [
+   {"row": "M1", "ac": "AC1", "test": "<path>::<test_name>", "status": "PASS", "evidence": "<what you ran>"}
+ ]
+```
+
+`"row"` and `"ac"` come from the issue's table. `"test"` is the `path::test_name` that checks the row, or the person's steps for a manual row. `"status"` is one of three:
+
+- `PASS`: the named test ran and passed;
+- `FAIL`: no test checks the row, or its test fails;
+- `MANUAL`: a person checks the row by the steps in `"test"`.
+
+The report gets an axis `Test matrix` right after `Issue`, and a table with one line per entry (Row, AC, Test, Status, Evidence) right after the axis table:
+
+| The criteria file has | Axis | Evidence |
+|---|---|---|
+| no `"matrix"` key (or there is no criteria file) | `NOT APPLICABLE` | `the issue has no test matrix rows` |
+| an entry with `FAIL`, with a status other than the three, or with `PASS` and a missing or blank `"test"` | `FAIL` | `<f> of <n> rows fail: M2, M5` (an entry with no `"row"` is named `?`) |
+| `"matrix": []`, or a value that is not a list | `FAIL` | `the matrix list is empty` |
+| only `PASS` and `MANUAL` entries | `PASS` | `<p> of <n> rows pass, <m> manual` |
+
+A `FAIL` on this axis makes the verdict `FAIL`; `NOT APPLICABLE` leaves the verdict as it was. Leave the key out when the issue has no matrix: never write an empty list.
+
 ## The review file (optional)
 
 When the review step ran, save its summary as a text file whose **first line** is `Status: PASS` or `Status: FAIL`; it is shown in the report.
