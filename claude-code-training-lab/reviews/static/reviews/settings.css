@@ -6,6 +6,15 @@
 .settings-field { display: flex; flex-direction: column; gap: 4px; }
 .settings-field label { font-weight: 600; font-size: 13.5px; }
 .settings-templates-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.settings-locations-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.settings-locations-row {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 9px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere;
+}
+.settings-locations-row a { font-weight: 600; }
+.settings-locations-form { flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: 12px; }
+.settings-locations-form .settings-field { flex: 1 1 160px; min-width: 0; }
+.settings-locations-form .button { margin-top: 24px; }
 .settings-field select, .settings-field textarea {
   width: 100%; box-sizing: border-box; padding: 7px 10px; font: inherit;
   border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text);
@@ -24,4 +33,7 @@
 @media (max-width: 760px) {
   .settings-panel { max-width: none; }
   .settings-form .button { align-self: stretch; }
+  .settings-locations-form { flex-direction: column; align-items: stretch; }
+  .settings-locations-form .settings-field { flex: none; }
+  .settings-locations-form .button { margin-top: 0; }
 }
