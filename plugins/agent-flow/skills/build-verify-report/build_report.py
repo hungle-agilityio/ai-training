@@ -139,9 +139,9 @@ def issue_axis(data: dict[str, Any] | None) -> dict[str, str]:
 
 
 def test_dirs(root: Path) -> list[Path]:
-    """The project's test folders: `checks.protected_test_dirs` of its ops/flow.toml, else all."""
+    """The project's test folders: `checks.protected_test_dirs` of its flow.toml, else all."""
     try:
-        data = tomllib.loads((root / "ops" / "flow.toml").read_text())
+        data = tomllib.loads(config_file(root).read_text())
         dirs = data["checks"]["protected_test_dirs"]
     except (OSError, ValueError, KeyError, TypeError):
         return [root]
@@ -453,9 +453,15 @@ def build(
     return report
 
 
+def config_file(root: Path) -> Path:
+    """.flow/flow.toml when it exists (the new layout), else ops/flow.toml."""
+    new = root / ".flow" / "flow.toml"
+    return new if new.is_file() else root / "ops" / "flow.toml"
+
+
 def project_root(start: Path) -> Path:
     for folder in (start, *start.parents):
-        if (folder / "ops" / "flow.toml").is_file():
+        if config_file(folder).is_file():
             return folder
     return start
 

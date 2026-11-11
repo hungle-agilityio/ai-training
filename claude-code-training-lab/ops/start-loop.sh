@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
-# Start the loop: a tmux session (name from ops/flow.toml, `rr-loop` for ReviewRadar) that runs
+# Start the loop: a tmux session (name from the flow config, `rr-loop` for ReviewRadar) that runs
 # one tick every 5 minutes under caffeinate.
 # Spec: specs/loop-concurrency/spec.md (AC13), specs/flow-bootstrap/spec.md (AC5).
 # How to run: ops/README.md.
 set -euo pipefail
 
-LAB="$(cd "$(dirname "$0")/.." && pwd)"
+# The loop folder is this script's own (ops/, or .flow/loop/ in a new project); the project is the
+# folder that holds it (spec: specs/project-layout/spec.md, AC12).
+LOOP="$(cd "$(dirname "$0")" && pwd)"
+if [ "$(basename "$LOOP")" = "loop" ] && [ "$(basename "$(dirname "$LOOP")")" = ".flow" ]; then
+  LAB="$(cd "$LOOP/../.." && pwd)"
+else
+  LAB="$(cd "$LOOP/.." && pwd)"
+fi
+REL="${LOOP#"$LAB"/}"
 # shellcheck source=flow-value.sh
-source "$LAB/ops/flow-value.sh"
+source "$LOOP/flow-value.sh"
 SESSION="$(flow_value loop.tmux_session)"
 STATE="$(flow_value loop.state_dir)"
 
@@ -23,13 +31,13 @@ fi
 
 echo "Stop the old '/loop 30m use the work-queue skill' session first, if it still runs."
 tmux new-session -d -s "$SESSION" -c "$LAB" \
-  "caffeinate -i bash -c 'while true; do date; uv run python ops/agent_tick.py; sleep 300; done'"
-uv run python ops/agent_tick.py started || echo "Could not send the 'loop started' message." >&2
+  "caffeinate -i bash -c 'while true; do date; uv run python $REL/agent_tick.py; sleep 300; done'"
+uv run python "$REL/agent_tick.py" started || echo "Could not send the 'loop started' message." >&2
 echo "Loop started in tmux session $SESSION (one tick every 5 minutes)."
-# Same rule as the tick: ops/agent.env when it exists, else agent.env in the state folder (#199).
-if [ -f "$LAB/ops/agent.env" ]; then
-  SETTINGS="$LAB/ops/agent.env"
-  SETTINGS_NAME="ops/agent.env"
+# Same rule as the tick: agent.env in the loop folder when it exists, else in the state folder (#199).
+if [ -f "$LAB/${REL:-ops}/agent.env" ]; then
+  SETTINGS="$LAB/${REL:-ops}/agent.env"
+  SETTINGS_NAME="${REL:-ops}/agent.env"
 else
   SETTINGS="$STATE/agent.env"
   SETTINGS_NAME="$SETTINGS"

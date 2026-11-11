@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
-# Start the loop at login: a user LaunchAgent that runs ops/start-loop.sh once. No sudo.
+# Start the loop at login: a user LaunchAgent that runs start-loop.sh (beside it) once. No sudo.
 # Spec: specs/notify-fix/spec.md (AC7). Run by hand on the Mac mini: ops/README.md, "Start at login".
 set -euo pipefail
 
-LAB="$(cd "$(dirname "$0")/.." && pwd)"
+# The loop folder is this script's own (ops/, or .flow/loop/ in a new project); the project is the
+# folder that holds it (spec: specs/project-layout/spec.md, AC12).
+LOOP="$(cd "$(dirname "$0")" && pwd)"
+if [ "$(basename "$LOOP")" = "loop" ] && [ "$(basename "$(dirname "$LOOP")")" = ".flow" ]; then
+  LAB="$(cd "$LOOP/../.." && pwd)"
+else
+  LAB="$(cd "$LOOP/.." && pwd)"
+fi
+REL="${LOOP#"$LAB"/}"
 # shellcheck source=flow-value.sh
-source "$LAB/ops/flow-value.sh"
+source "$LOOP/flow-value.sh"
 LABEL="$(flow_value loop.launchd_label)"
 STATE="$(flow_value loop.state_dir)"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
@@ -34,7 +42,7 @@ cat > "$PLIST" <<EOF
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>$LAB/ops/start-loop.sh</string>
+    <string>$LOOP/start-loop.sh</string>
   </array>
   <key>WorkingDirectory</key>
   <string>$LAB</string>
@@ -55,4 +63,4 @@ EOF
 
 launchctl bootout "$DOMAIN" "$PLIST" 2>/dev/null || true
 launchctl bootstrap "$DOMAIN" "$PLIST"
-echo "Installed $PLIST. The loop starts at each login; remove it with: ops/install-launchd.sh --remove"
+echo "Installed $PLIST. The loop starts at each login; remove it with: $REL/install-launchd.sh --remove"

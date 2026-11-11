@@ -40,6 +40,10 @@ SETUP_COMMAND: tuple[str, ...] = ()
 CI_WORKFLOW = ""
 STATE_DIR = Path()
 REPO_ENV = Path(__file__).resolve().parent / "agent.env"
+# As shown in messages: ops/agent.env, or .flow/loop/agent.env in a project with the new layout.
+REPO_ENV_NAME = (
+    (Path(__file__).resolve().parent / "agent.env").relative_to(flow_config.PROJECT_DIR).as_posix()
+)
 MARKER = "<!-- work-queue -->"
 STACKED_LINE = re.compile(r"^Stacked on\b", re.MULTILINE)
 DECISION_MARKER = "<!-- needs-decision -->"
@@ -335,7 +339,7 @@ def settings_file(home: Path) -> Path:
 def settings_line(home: Path) -> str:
     """#199 AC3: names the settings file in use, never its values."""
     path = settings_file(home)
-    return "settings: ops/agent.env" if path == REPO_ENV else f"settings: {path}"
+    return f"settings: {REPO_ENV_NAME}" if path == REPO_ENV else f"settings: {path}"
 
 
 def read_settings(path: Path) -> Settings:
@@ -1687,7 +1691,10 @@ def require_plugin_keys() -> None:
     """AC23: a missing [plugin] key stops the tick with the key's name."""
     for key, value in (("id", PLUGIN_ID), ("marketplace", PLUGIN_MARKETPLACE)):
         if not value:
-            raise flow_config.FlowConfigError(f"ops/flow.toml: missing plugin.{key}")
+            label = flow_config.find_config(flow_config.PROJECT_DIR).relative_to(
+                flow_config.PROJECT_DIR
+            )
+            raise flow_config.FlowConfigError(f"{label.as_posix()}: missing plugin.{key}")
 
 
 def plugin_failure(tick: Tick, kind: str, code: int, out: str) -> None:

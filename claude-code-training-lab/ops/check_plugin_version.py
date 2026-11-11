@@ -1,18 +1,33 @@
-"""A change under plugins/agent-flow/ needs a new version in its plugin.json.
+"""A change under the plugin folder needs a new version in its plugin.json.
 
-Spec: specs/flow-risks/spec.md (AC1 to AC3). CI runs it on pull requests:
-`python ops/check_plugin_version.py <base> <head>`. Standard library only.
+Spec: specs/flow-risks/spec.md (AC1 to AC3), specs/project-layout/spec.md (AC14). CI runs it on
+pull requests: `python <loop folder>/check_plugin_version.py <base> <head>`. The plugin folder is
+`paths.plugin_dir` of the flow config, read from the app folder (`plugins/agent-flow/` in
+ReviewRadar). Standard library only.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import posixpath
 import subprocess
 import sys
 from pathlib import Path
 
-PLUGIN_DIR = "plugins/agent-flow/"
+try:
+    from ops import flow_config
+except ImportError:  # started as a script: its own folder is the first path entry
+    import flow_config  # type: ignore[import-not-found,no-redef,unused-ignore]
+
+
+def plugin_dir(config: flow_config.FlowConfig) -> str:
+    """The plugin folder from the git root: paths.plugin_dir joined to project.app_dir."""
+    joined = posixpath.normpath(posixpath.join(config.project_app_dir, config.paths_plugin_dir))
+    return joined.removeprefix("./") + "/"
+
+
+PLUGIN_DIR = plugin_dir(flow_config.load())
 MANIFEST = PLUGIN_DIR + ".claude-plugin/plugin.json"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

@@ -13,11 +13,12 @@ Write **one** file: `docs/app/issues/<type>/<name>.md`, the complete issue, buil
 
 | Type | Use when | Template | Folder | Branch |
 |---|---|---|---|---|
-| `BUG` | Something that worked, or should work, is wrong: error, wrong value, slow, wrong text | `docs/app/templates/bug.md` | `bugs/<name>` | `bug/<id>-...` |
-| `FEAT` | Users get a new ability, or an existing page changes what users see | `docs/app/templates/feature.md` | `features/<name>` | `feat/<id>-...` |
-| `TASK` | Work with no new user-facing behaviour: cleanup, data update, configuration, document, investigation | `docs/app/templates/task.md` | `tasks/<name>` | `task/<id>-...` |
-| `EPIC` | A goal that needs between 3 and 10 issues | `docs/app/templates/epic.md` | `epics/<name>` | none (each child has its own) |
+| `BUG` | Something that worked, or should work, is wrong: error, wrong value, slow, wrong text | `<templates>/bug.md` | `bugs/<name>` | `bug/<id>-...` |
+| `FEAT` | Users get a new ability, or an existing page changes what users see | `<templates>/feature.md` | `features/<name>` | `feat/<id>-...` |
+| `TASK` | Work with no new user-facing behaviour: cleanup, data update, configuration, document, investigation | `<templates>/task.md` | `tasks/<name>` | `task/<id>-...` |
+| `EPIC` | A goal that needs between 3 and 10 issues | `<templates>/epic.md` | `epics/<name>` | none (each child has its own) |
 
+- `<templates>` is the templates folder, `paths.templates_dir` of the flow config (`.flow/flow.toml`, else `ops/flow.toml`).
 - Follow the template's sections, in order, with nothing added or removed.
 - If the type is unclear, decide from the table and say which you chose and why. If the user names a type, use it.
 - The issue number is the GitHub issue number, assigned when the issue is published with the `create-issue` skill. A draft has no ID yet, and the file name does not contain one. Never invent a number. The file is `docs/app/issues/<type>/<name>.md`, where `<type>` is `bugs`, `features` or `tasks` (matching the issue type) and `<name>` is a short lowercase description with dashes, the same words used in the branch name (`bug/1-dashboard-wrong-score` goes with `docs/app/issues/bugs/dashboard-wrong-score.md`). Read `docs/app/issues/README.md`: reuse the existing file if the issue is already listed (then update it). Add a row (type, file, title) to that index for every new issue, with the GitHub column set to `draft`; the `create-issue` skill fills in the IID when the issue is published.
