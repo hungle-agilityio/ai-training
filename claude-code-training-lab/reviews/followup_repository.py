@@ -2,8 +2,7 @@ from datetime import datetime
 
 from django.db.models import Q
 
-from reviews.models import ReviewFollowUp
-from reviews.repositories import BAD_RATINGS
+from reviews.repositories import BAD_RATINGS, upsert_followup
 
 # The stored value of the status that a bad review has when nothing is stored.
 OPEN = "open"
@@ -12,18 +11,8 @@ OPEN = "open"
 def save_followup(
     *, review_id: int, status: str, note: str, user_id: int | None, now: datetime
 ) -> None:
-    """One case per review: create it, or update its status, note, user and time."""
-    updated = ReviewFollowUp.objects.filter(review_id=review_id).update(
-        status=status, note=note, updated_by_id=user_id, updated_at=now
-    )
-    if not updated:
-        ReviewFollowUp.objects.create(
-            review_id=review_id,
-            status=status,
-            note=note,
-            updated_by_id=user_id,
-            updated_at=now,
-        )
+    """One case per review: create it, or update its status, note, user and time; last save wins."""
+    upsert_followup(review_id=review_id, status=status, note=note, user_id=user_id, now=now)
 
 
 def status_filter(status: str) -> Q:
