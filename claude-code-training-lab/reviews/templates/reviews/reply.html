@@ -51,4 +51,28 @@
     {% endif %}
   </form>
 </section>
+{% if followup %}
+<section class="panel followup" id="followup">
+  <div class="panel-head"><h2>Follow-up</h2></div>
+  {% if followup.saved %}<p class="notice" id="followup-saved" role="status">Follow-up saved.</p>{% endif %}
+  <form class="followup-form" method="post" action="{% url 'review-followup' target.review_id %}">
+    {% csrf_token %}
+    <label for="followup-status">Status</label>
+    <select id="followup-status" name="status"{% if followup.status_error %} aria-invalid="true" aria-describedby="status-error"{% endif %}>
+      {% for option in followup.options %}<option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>{% endfor %}
+    </select>
+    {% if followup.status_error %}<p class="field-error" id="status-error">{{ followup.status_error }}</p>{% endif %}
+    <label for="followup-note">Internal note</label>
+    <textarea id="followup-note" name="note" maxlength="500" data-sensitive="followup-note"{% if followup.note_error %} aria-invalid="true"{% endif %} aria-describedby="{% if followup.note_error %}note-error {% endif %}note-help">{{ followup.note }}</textarea>
+    {% if followup.note_error %}<p class="field-error" id="note-error">{{ followup.note_error }}</p>{% endif %}
+    <p class="field-hint" id="note-help">Only your team sees this note.</p>
+    <div class="followup-actions"><button type="submit" class="button">Save follow-up</button></div>
+  </form>
+  {% if target.followup.updated_at %}
+    <p class="last-changed">Last changed {{ target.followup.updated_at|full_review_date }}{% if target.followup.updated_by %} by <span data-sensitive>{{ target.followup.updated_by }}</span>{% endif %}</p>
+  {% else %}
+    <p class="last-changed">Not changed yet.</p>
+  {% endif %}
+</section>
+{% endif %}
 {% endblock %}

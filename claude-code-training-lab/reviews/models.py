@@ -47,6 +47,25 @@ class ReviewReply(models.Model):
         return f"reply to {self.review_id}"
 
 
+class ReviewFollowUp(models.Model):
+    STATUS_CHOICES = [("open", "open"), ("contacted", "contacted"), ("resolved", "resolved")]
+
+    review = models.OneToOneField(Review, on_delete=models.CASCADE, related_name="followup")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES)
+    note = models.TextField(blank=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    updated_at = models.DateTimeField()
+
+    def __str__(self) -> str:
+        return f"follow-up of {self.review_id}"
+
+
 class ReplyTemplate(models.Model):
     KIND_CHOICES = [("good", "good"), ("bad", "bad"), ("any", "any")]
 

@@ -5,8 +5,8 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator
 from django.utils import timezone
 
-from reviews import reply_repository, template_repository
-from reviews.models import Review
+from reviews import followup, followup_repository, reply_repository, template_repository
+from reviews.models import Review, ReviewFollowUp
 from reviews.reply_templates import fill_template, kinds_for_rating
 from reviews.repositories import BAD_RATINGS, REPLY_WINDOW
 from reviews.services import (
@@ -28,6 +28,14 @@ class ReplyInfo:
 
 
 @dataclass(frozen=True)
+class FollowUpInfo:
+    status: str
+    note: str
+    updated_at: datetime | None
+    updated_by: str | None
+
+
+@dataclass(frozen=True)
 class TemplateOption:
     id: int
     name: str
@@ -44,6 +52,7 @@ class ReplyTarget:
     text: str
     created_at: datetime
     reply: ReplyInfo | None
+    followup: FollowUpInfo | None = None
 
 
 @dataclass(frozen=True)
@@ -124,6 +133,26 @@ def clean_reply_text(text: str) -> str | None:
     return cleaned
 
 
+def followup_info(review: Review) -> FollowUpInfo | None:
+    """Only a bad review has a case; with nothing stored it is open and never changed."""
+    if not followup.has_case(review.rating):
+        return None
+    case: ReviewFollowUp | None
+    try:
+        case = review.followup
+    except ObjectDoesNotExist:
+        case = None
+    if case is None:
+        return FollowUpInfo(followup.status_of(None), "", None, None)
+    user = case.updated_by
+    return FollowUpInfo(
+        status=followup.status_of(case.status),
+        note=case.note,
+        updated_at=case.updated_at,
+        updated_by=user.get_username() if user is not None else None,
+    )
+
+
 def reply_target(review_id: int) -> ReplyTarget | None:
     review = reply_repository.review_with_reply(review_id)
     if review is None:
@@ -149,6 +178,7 @@ def reply_target(review_id: int) -> ReplyTarget | None:
         text=review.text,
         created_at=review.created_at,
         reply=info,
+        followup=followup_info(review),
     )
 
 
@@ -174,4 +204,16 @@ def save_reply(review_id: int, text: str, user_id: int | None, now: datetime) ->
     if cleaned is None or reply_repository.review_with_reply(review_id) is None:
         return False
     reply_repository.save_reply(review_id=review_id, text=cleaned, user_id=user_id, now=now)
+    return True
+
+
+def save_followup(
+    target: ReplyTarget, status: str, note: str, user_id: int | None, now: datetime
+) -> bool:
+    """Save the status and the stripped note; False and nothing saved for no case or bad input."""
+    if target.followup is None or followup.followup_errors(status, note):
+        return False
+    followup_repository.save_followup(
+        review_id=target.review_id, status=status, note=note.strip(), user_id=user_id, now=now
+    )
     return True

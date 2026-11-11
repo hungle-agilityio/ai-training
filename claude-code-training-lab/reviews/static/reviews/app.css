@@ -187,6 +187,9 @@ h1, h2, p { margin: 0; }
 .badge-watch { background: var(--warn-soft); color: var(--warn); }
 .badge-attention, .badge-negative { background: var(--bad-soft); color: var(--bad); }
 .badge-neutral { background: var(--neutral-soft); color: var(--muted); }
+.followup-open { background: var(--bad-soft); color: var(--bad); }
+.followup-contacted { background: var(--brand-soft); color: var(--brand); }
+.followup-resolved { background: var(--good-soft); color: var(--good); }
 
 /* Rating breakdown */
 .bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }

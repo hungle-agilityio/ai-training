@@ -56,6 +56,16 @@
         <p class="kpi-hint">{% if overview.reply_speed.average_label %}Average reply time {{ overview.reply_speed.average_label }}{% else %}No replies yet{% endif %}</p>
       {% endif %}
     </article>
+    <article class="kpi" id="kpi-open-cases">
+      <p class="kpi-label">Open cases</p>
+      <p class="kpi-value">{{ overview.open_cases_count }}</p>
+      {% if overview.open_cases_count %}
+        <p class="kpi-hint">Bad reviews not handled yet</p>
+        <p class="kpi-hint"><a class="row-link" href="/reviews/?followup=open">See open cases</a></p>
+      {% else %}
+        <p class="kpi-hint">No open cases</p>
+      {% endif %}
+    </article>
   </section>
 
   <div class="grid">

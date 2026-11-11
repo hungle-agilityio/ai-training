@@ -24,6 +24,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("reviews/import/", import_views.reviews_import, name="reviews-import"),
     path("reviews/export/", views.reviews_export, name="reviews-export"),
     path("reviews/<int:pk>/reply/", views.review_reply, name="review-reply"),
+    path("reviews/<int:pk>/follow-up/", views.review_followup, name="review-followup"),
     path("replies/", views.replies, name="replies"),
     path("settings/", views.settings_page, name="settings"),
     path("settings/goals/", goal_views.goals_save, name="settings-goals"),

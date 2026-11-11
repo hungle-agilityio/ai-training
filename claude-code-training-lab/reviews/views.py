@@ -27,6 +27,7 @@ from reviews import (
     topic_service,
     trend_service,
 )
+from reviews.followup_forms import FollowUpForm, FollowUpSavedForm, followup_box
 from reviews.forms import (
     AccountPasswordForm,
     OverdueForm,
@@ -131,6 +132,7 @@ def review_reply(request: HttpRequest, pk: int) -> HttpResponse:
         template_status = "invalid" if filled is None else "filled"
         if filled is not None:
             typed = filled
+    saved = request.method == "GET" and FollowUpSavedForm(request.GET).is_saved()
     return render(
         request,
         "reviews/reply.html",
@@ -142,6 +144,37 @@ def review_reply(request: HttpRequest, pk: int) -> HttpResponse:
             "suggest_status": suggestion.status if suggestion is not None else "",
             "templates": templates,
             "template_status": template_status,
+            "followup": followup_box(target.followup, saved=saved),
+        },
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def review_followup(request: HttpRequest, pk: int) -> HttpResponse:
+    reply_page = reverse("review-reply", args=[pk])
+    if request.method == "GET":
+        return redirect(reply_page)
+    target = reply_service.reply_target(pk)
+    if target is None or target.followup is None:
+        raise Http404("No such follow-up")
+    form = FollowUpForm(request.POST)
+    user_id = request.user.pk if request.user.is_authenticated else None
+    if form.is_valid() and reply_service.save_followup(
+        target, form.status, form.note, user_id, timezone.now()
+    ):
+        return redirect(f"{reply_page}?followup=saved#followup")
+    return render(
+        request,
+        "reviews/reply.html",
+        {
+            "target": target,
+            "typed": None,
+            "invalid": False,
+            "suggest_on": reply_suggestion.suggestion_mode() != "off",
+            "suggest_status": "",
+            "templates": reply_service.fitting_templates(target.rating),
+            "template_status": "",
+            "followup": followup_box(target.followup, form=form),
         },
     )
 
