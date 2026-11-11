@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandParser
 from django.utils import timezone
 
-from reviews import reply_service
+from reviews import followup_repository, reply_service
 from reviews.models import Branch, Business, ReplyTemplate, Review
 from reviews.repositories import create_review
 from reviews.template_repository import create_template
@@ -23,6 +23,17 @@ DEMO_BAD_REPLY_DELAY_HOURS: dict[tuple[str, str], int] = {
     ("Airport", "Front desk understaffed, queue out the door."): 30,
     ("Riverside", "Phone line always busy, could not book."): 3,
     ("Riverside", "Nhân viên lễ tân chưa nhiệt tình"): 20,
+}
+# Demo follow-up cases as (status, note), keyed by (branch, review text); the rest stay open.
+DEMO_FOLLOWUPS: dict[tuple[str, str], tuple[str, str]] = {
+    ("Riverside", "Phone line always busy, could not book."): (
+        "contacted",
+        "Called the customer back and booked a visit for the next morning.",
+    ),
+    ("Riverside", "Nhân viên lễ tân chưa nhiệt tình"): (
+        "resolved",
+        "Talked with the front desk team about greeting every customer.",
+    ),
 }
 
 # Demo goals; a location not listed has no goal.
@@ -135,6 +146,12 @@ class Command(BaseCommand):
                 text=text,
                 created_at=now - timedelta(days=offset * DAYS_BETWEEN_REVIEWS),
             )
+            case = DEMO_FOLLOWUPS.get((name, text))
+            if case is not None:
+                status, note = case
+                followup_repository.save_followup(
+                    review_id=review.id, status=status, note=note, user_id=None, now=now
+                )
             if rating >= MIN_REPLIED_RATING:
                 reply_service.save_reply(review.id, DEMO_REPLY_TEXT, None, now)
                 continue
