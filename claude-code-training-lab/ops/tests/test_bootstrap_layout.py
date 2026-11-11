@@ -328,3 +328,14 @@ def test_a_second_run_stops_before_writing(
     capsys.readouterr()
     assert run("--stack", "python") == 2
     assert "already exist" in capsys.readouterr().err
+
+
+def test_spec_rules_name_the_new_document_folders(run: Run, target: Path) -> None:
+    run("--stack", "python")
+    text = (target / ".claude" / "project-instructions.md").read_text()
+    assert "`docs/intent/<feature>.md`, `docs/specs/<feature>/spec.md` and `tasks.md`" in text
+    assert "changes only `docs/intent/` and `docs/specs/`" in text
+    assert "docs/specs/<feature>/design.md" in text
+    assert "`specs/`" not in text and "design/<feature>" not in text.replace("docs/specs/", "")
+    template = (target / "docs" / "templates" / "spec" / "spec.md").read_text()
+    assert "Copy to docs/specs/<feature>/spec.md" in template

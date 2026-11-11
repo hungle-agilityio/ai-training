@@ -8,6 +8,7 @@ scripts, plugin, flow.toml) in `.flow/`. Standard library only.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
@@ -97,7 +98,25 @@ def destination(rel: str) -> str | None:
     return rel
 
 
+# Spec documents: the intent in docs/intent/, the spec, tasks and design link in docs/specs/.
+SPEC_MOVES = (
+    (
+        "`specs/<feature>/intent.md`, `spec.md` and `tasks.md`",
+        "`docs/intent/<feature>.md`, `docs/specs/<feature>/spec.md` and `tasks.md`",
+    ),
+    ("`specs/`, `docs/learning/`", "`docs/intent/`, `docs/specs/`, `scripts/`"),
+    ("`specs/` and `design/`", "`docs/intent/` and `docs/specs/`"),
+    ("specs/<feature>/intent.md", "docs/intent/<feature>.md"),
+    ("design/<feature>/README.md", "docs/specs/<feature>/design.md"),
+    ("docs/app/issues", "docs/issues"),
+)
+BARE_SPECS = re.compile(r"(?<![\w/.-])specs/")
+
+
 def move_text(text: str) -> str:
+    for old, new in SPEC_MOVES:
+        text = text.replace(old, new)
+    text = BARE_SPECS.sub("docs/specs/", text)
     for old, new in TEXT_MOVES:
         text = text.replace(old, new)
     return text
