@@ -80,16 +80,26 @@ def branch_rating_totals(*, now: datetime | None = None) -> list[BranchTotals]:
 class RatingCounts:
     by_rating: dict[int, int]
     unreplied: int
+    # Bad reviews whose follow-up case is open
+    open_cases: int = 0
 
 
 def rating_counts() -> RatingCounts:
-    """Reviews per rating and the reviews with no reply, in one query."""
+    """Reviews per rating, those with no reply and the open follow-up cases, in one query.
+
+    The reply and the follow-up case are one-to-one, so joining them adds no rows.
+    """
+    from reviews.followup_repository import OPEN, status_filter  # late: it imports this module
+
     rows = Review.objects.values("rating").annotate(
-        total=Count("id"), unreplied=Count("id", filter=Q(reply__isnull=True))
+        total=Count("id"),
+        unreplied=Count("id", filter=Q(reply__isnull=True)),
+        open_cases=Count("id", filter=status_filter(OPEN)),
     )
     return RatingCounts(
         by_rating={int(row["rating"]): int(row["total"]) for row in rows},
         unreplied=sum(int(row["unreplied"]) for row in rows),
+        open_cases=sum(int(row["open_cases"]) for row in rows),
     )
 
 
@@ -133,13 +143,18 @@ def reviews_newest_first(
     words: Sequence[str] = (),
     replied: bool | None = None,
     topic: Topic | None = None,
+    followup: str | None = None,
 ) -> QuerySet[Review]:
     """Newest first. `ratings` is (lowest, highest) stars; `created_range` is [start, end).
 
     Every normalised word in `words` must be part of the stored search text.
     `replied` True keeps reviews with a reply, False those without, None all.
+    `followup` keeps the bad reviews in that follow-up status. The follow-up case is
+    one-to-one, so it comes with the same query and adds no rows.
     """
-    reviews = Review.objects.select_related("branch", "reply").order_by("-created_at", "-id")
+    reviews = Review.objects.select_related("branch", "reply", "followup").order_by(
+        "-created_at", "-id"
+    )
     if replied is not None:
         reviews = reviews.filter(reply__isnull=not replied)
     if branch_id is not None:
@@ -154,6 +169,10 @@ def reviews_newest_first(
         from reviews.topic_repository import topic_condition  # late: it imports services
 
         reviews = reviews.filter(topic_condition(topic))
+    if followup is not None:
+        from reviews.followup_repository import status_filter  # late: it imports this module
+
+        reviews = reviews.filter(status_filter(followup))
     return reviews
 
 

@@ -42,3 +42,16 @@
 .reply-template-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .reply-template select { min-width: 220px; padding: 8px; font: inherit; border: 1px solid var(--muted); border-radius: 10px; background: transparent; color: inherit; }
 .reply-template button.button { cursor: pointer; background: transparent; border-color: var(--good); color: var(--good); }
+
+/* Follow-up box of a bad review, below the reply form. */
+.followup .notice { margin: 0 0 12px; }
+.followup-form { display: flex; flex-direction: column; gap: 8px; }
+.followup-form label { font-weight: 600; font-size: 13.5px; }
+.followup-form select, .followup-form textarea { width: 100%; padding: 8px 10px; font: inherit; border: 1px solid var(--muted); border-radius: 10px; background: transparent; color: inherit; }
+.followup-form textarea { min-height: 90px; }
+.followup-form [aria-invalid="true"] { border-color: var(--bad); }
+.followup .field-error { margin: 0; color: var(--bad); font-size: 14px; font-weight: 600; }
+.followup .field-hint, .followup .last-changed { margin: 0; color: var(--muted); font-size: 13px; }
+.followup .last-changed { margin-top: 12px; }
+.followup-actions { margin-top: 8px; }
+.followup-actions button.button { cursor: pointer; background: var(--good); border-color: var(--good); color: var(--bg); }
