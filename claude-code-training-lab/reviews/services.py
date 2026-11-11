@@ -190,6 +190,9 @@ class ReviewRow:
     created_at: datetime
     sentiment: str
     sentiment_label: str
+    # Follow-up status and its label; empty when the row shows no follow-up badge
+    followup: str = ""
+    followup_label: str = ""
 
 
 @dataclass(frozen=True)
@@ -229,8 +232,20 @@ def shorten_text(text: str) -> tuple[str, bool]:
     return text[:TEXT_PREVIEW_LENGTH].rstrip() + "…", True
 
 
-def to_review_row(review: Review) -> ReviewRow:
+def followup_of(review: Review) -> tuple[str, str]:
+    """Status and label of a bad review's case; a review that is not bad has neither."""
+    from reviews import followup  # late: it imports this module
+
+    if not followup.has_case(review.rating):
+        return "", ""
+    status = followup.status_of(review.followup.status if hasattr(review, "followup") else None)
+    return status, followup.STATUS_LABELS[status]
+
+
+def to_review_row(review: Review, *, with_followup: bool = False) -> ReviewRow:
+    """`with_followup` only for reviews read together with their follow-up case."""
     sentiment, sentiment_label = review_sentiment(review.rating)
+    followup, followup_label = followup_of(review) if with_followup else ("", "")
     text_short, is_truncated = shorten_text(review.text)
     return ReviewRow(
         review_id=review.id,
@@ -245,6 +260,8 @@ def to_review_row(review: Review) -> ReviewRow:
         created_at=review.created_at,
         sentiment=sentiment,
         sentiment_label=sentiment_label,
+        followup=followup,
+        followup_label=followup_label,
     )
 
 
@@ -388,6 +405,7 @@ class ReviewFilters:
     search: str = ""
     reply: str | None = None
     topic: str | None = None
+    followup: str | None = None
 
 
 @dataclass(frozen=True)
@@ -433,6 +451,8 @@ class ReviewsPage:
     query_params: list[tuple[str, str]]
     export_query: str
     topic_options: tuple[tuple[str, str], ...] = ()
+    followup: str = ""
+    followup_options: tuple[tuple[str, str], ...] = ()
 
 
 def week_label(monday: date) -> str:
@@ -472,6 +492,7 @@ class ReviewSelection:
     search_too_short: bool
     reply: str | None
     topic: str | None = None
+    followup: str | None = None
 
 
 def search_words(term: str) -> tuple[str, ...]:
@@ -483,6 +504,8 @@ def search_words(term: str) -> tuple[str, ...]:
 
 
 def resolve_selection(filters: ReviewFilters, branch_ids: set[int]) -> ReviewSelection:
+    from reviews.followup import STATUS_LABELS  # late: it imports this module
+
     branch_id = filters.branch_id if filters.branch_id in branch_ids else None
     rating = filters.rating if filters.rating in RATING_RANGES else None
     week = week_containing(filters.day) if filters.day else None
@@ -506,6 +529,9 @@ def resolve_selection(filters: ReviewFilters, branch_ids: set[int]) -> ReviewSel
     topic = filters.topic if topic_by_slug(filters.topic or "") else None
     if topic is not None:
         params.append(("topic", topic))
+    followup = filters.followup if filters.followup in STATUS_LABELS else None
+    if followup is not None:
+        params.append(("followup", followup))
     return ReviewSelection(
         branch_id,
         rating,
@@ -517,6 +543,7 @@ def resolve_selection(filters: ReviewFilters, branch_ids: set[int]) -> ReviewSel
         search_too_short,
         reply,
         topic,
+        followup,
     )
 
 
@@ -528,6 +555,7 @@ def matching_reviews(selection: ReviewSelection) -> QuerySet[Review]:
         words=selection.search_words,
         replied=REPLY_CHOICES[selection.reply] if selection.reply else None,
         topic=topic_by_slug(selection.topic or ""),
+        followup=selection.followup,
     )
 
 
@@ -591,6 +619,8 @@ def reviews_page(
     per_page: int = REVIEWS_PER_PAGE,
     filters: ReviewFilters | None = None,
 ) -> ReviewsPage:
+    from reviews.followup import STATUS_LABELS  # late: it imports this module
+
     filters = filters or ReviewFilters()
     choices = repositories.branch_choices()
     selection = resolve_selection(filters, {pk for pk, _ in choices})
@@ -599,7 +629,7 @@ def reviews_page(
     reviews = matching_reviews(selection)
     paginator = Paginator(reviews, per_page)
     current = paginator.get_page(page or 1)
-    rows = [to_review_row(review) for review in current.object_list]
+    rows = [to_review_row(review, with_followup=True) for review in current.object_list]
 
     links = [
         PageLink(
@@ -640,4 +670,6 @@ def reviews_page(
         query_params=params,
         export_query=urlencode(params),
         topic_options=tuple((topic.slug, topic.label) for topic in TOPICS),
+        followup=selection.followup or "",
+        followup_options=tuple(STATUS_LABELS.items()),
     )

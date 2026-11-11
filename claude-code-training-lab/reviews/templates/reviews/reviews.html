@@ -60,6 +60,15 @@
       </select>
     </div>
     <div class="field">
+      <label for="filter-followup">Follow-up</label>
+      <select id="filter-followup" name="followup">
+        <option value=""{% if not page.followup %} selected{% endif %}>All</option>
+        {% for status, label in page.followup_options %}
+        <option value="{{ status }}"{% if page.followup == status %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
       <label for="filter-week">Week of</label>
       <input id="filter-week" type="date" name="week" value="{{ page.week_value }}" placeholder="YYYY-MM-DD">
     </div>
@@ -93,6 +102,7 @@
             <th scope="col">Sentiment</th>
             <th scope="col">Date</th>
             <th scope="col">Reply</th>
+            <th scope="col">Follow-up</th>
           </tr>
         </thead>
         <tbody>
@@ -114,6 +124,7 @@
               <td class="nowrap">
                 {% if row.has_reply %}<span class="reply-status reply-done">Replied</span> <a class="row-link" href="{% url 'review-reply' row.review_id %}">Edit reply</a>{% else %}<span class="reply-status reply-open">Not replied</span> <a class="row-link" href="{% url 'review-reply' row.review_id %}">Reply</a>{% endif %}
               </td>
+              <td class="nowrap">{% if row.followup %}<span class="badge followup-badge followup-{{ row.followup }}">{{ row.followup_label }}</span>{% endif %}</td>
             </tr>
           {% endfor %}
         </tbody>
