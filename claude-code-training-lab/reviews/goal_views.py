@@ -15,7 +15,7 @@ from reviews.location_forms import LocationForm
 from reviews.reply_templates import KIND_LABELS
 from reviews.template_forms import KIND_ORDER, TemplateForm
 
-LOCATION_NOTICES = {"added": "Location added."}
+LOCATION_NOTICES = {"added": "Location added.", "renamed": "Location renamed."}
 TEMPLATE_NOTICES = {
     "added": "Template added.",
     "saved": "Template saved.",
