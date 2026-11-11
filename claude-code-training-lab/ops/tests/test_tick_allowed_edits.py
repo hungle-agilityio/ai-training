@@ -110,7 +110,12 @@ def test_without_the_file_a_leaked_value_is_dropped(
 
 
 def test_manual_is_not_a_skip_label() -> None:
-    assert agent_tick.SKIP_LABELS == {"agent:running", "agent:review", "agent:failed"}
+    assert agent_tick.SKIP_LABELS == {
+        "agent:running",
+        "agent:review",
+        "agent:failed",
+        "agent:plan-review",
+    }
 
 
 @pytest.mark.parametrize("label", ["agent:manual", "agent:needs-permission", "agent:other"])
