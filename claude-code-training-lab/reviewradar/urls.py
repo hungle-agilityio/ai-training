@@ -28,6 +28,11 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("settings/", views.settings_page, name="settings"),
     path("settings/goals/", goal_views.goals_save, name="settings-goals"),
     path("settings/locations/", location_views.locations_add, name="settings-locations"),
+    path(
+        "settings/locations/<int:location_id>/",
+        location_views.location_rename,
+        name="settings-location-rename",
+    ),
     path("settings/templates/", template_views.templates_add, name="settings-templates"),
     path(
         "settings/templates/<int:template_id>/",

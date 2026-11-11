@@ -1,0 +1,26 @@
+{% extends "reviews/base.html" %}
+{% load static %}
+
+{% block title %}Rename location · ReviewRadar{% endblock %}
+{% block heading %}Rename location{% endblock %}
+{% block subtitle %}Reviews, goal and score stay with the location.{% endblock %}
+{% block actions %}{% endblock %}
+
+{% block head %}<link rel="stylesheet" href="{% static 'reviews/settings.css' %}">{% endblock %}
+
+{% block content %}
+<section class="panel settings-panel">
+  <form class="settings-form" method="post" action="{% url 'settings-location-rename' location.location_id %}">
+    {% csrf_token %}
+    <div class="settings-field">
+      <label for="location-name">Name</label>
+      <input type="text" id="location-name" name="name" maxlength="120" value="{{ location_typed }}"{% if location_errors %} aria-describedby="location-name-error" aria-invalid="true"{% endif %}>
+      {% if location_errors %}<div id="location-name-error">{% for error in location_errors %}<p class="settings-error">{{ error }}</p>{% endfor %}</div>{% endif %}
+    </div>
+    <div class="settings-row">
+      <button type="submit" class="button">Save name</button>
+      <a href="/settings/#settings-locations">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
