@@ -1,7 +1,57 @@
 # Bootstrap a new repository
 
 `ops/bootstrap.py` sets up the flow (loop, hooks, skills, specs, CI) in a clone of a new, empty
-repository. Spec: `specs/flow-bootstrap/spec.md` (AC21 to AC31).
+repository. Spec: `specs/flow-bootstrap/spec.md` (AC21 to AC31), `specs/project-layout/spec.md`.
+
+## The layout of a new project (`--stack`)
+
+```
+uv run python ops/bootstrap.py --target <folder> --repo <owner/name> --owner <login> \
+    --name <display name> --slug <slug> --ntfy-topic <topic> --stack python|node|other \
+    [--dry-run] [--no-labels]
+```
+
+With `--stack` the project gets the same small root for every stack; `--app-dir` is `.` and may be
+left out (any other value stops before writing anything).
+
+```
+CLAUDE.md  README.md  .env.example  .gitignore  [pyproject.toml for python]
+.claude/           settings.json, rules/, knowledge/ (KNOWN_PITFALLS.md, BUSINESS_RULES.md),
+                   project-instructions.md
+.claude-plugin/    marketplace.json (plugin source ./.flow/plugin)
+.flow/             flow.toml, loop/ (the loop scripts), plugin/ (agent-flow)
+.github/           workflows/checks.yml, PULL_REQUEST_TEMPLATE.md, ISSUE_TEMPLATE/
+docs/              intent/, specs/, plans/, decisions/, templates/, architecture.md
+src/<feature>/     code of one feature, with tests/ beside it
+scripts/           check.sh, setup.sh
+```
+
+- **Product code** goes in `src/<feature>/`, its tests in `src/<feature>/tests/`; a `tests` folder
+  at any depth is a protected test folder for the loop.
+- **The flow** is all in `.flow/`: the loop scripts (what `ops/` holds here, without `bootstrap*`,
+  `flow.toml` and `tests/`) in `.flow/loop/`, the plugin in `.flow/plugin/` (version `1.0.0`,
+  without its own tests), listed by `.claude-plugin/marketplace.json` as `agent-flow@<slug>`, which
+  `.claude/settings.json` turns on. The loop and the hooks read `.flow/flow.toml`, whose `[paths]`
+  table names every folder (spec AC2).
+- **One check command:** `scripts/check.sh` (`set -euo pipefail`, prints each command): python
+  `uv run ruff check .`, `uv run mypy .` (skipped while `src/` has no Python code) and
+  `uv run pytest -q` (no tests collected counts as a pass with a warning); node `npm run lint`,
+  `npm run typecheck`, `npm test`; other a TODO that fails. The loop (`checks.commands`) and CI
+  (`.github/workflows/checks.yml`) both run it; CI also runs `.flow/loop/check_plugin_version.py`.
+- **`.gitignore`** holds a common part (`.env`, `.env.*` but `.env.example`, `in/`, `out/`,
+  `.DS_Store`, `.playwright-mcp/`, `*.log`, `.claude/settings.local.json`) and the stack's part.
+- Nothing else at the root: no `ops/`, `plugins/`, `specs/`, `design/`, `tests/`, `in/`, `out/` or
+  `docs/app/`. Each empty folder of `docs/` and `src/` holds a one-line `README.md`, and no file
+  names this repository's project.
+- `--dry-run` prints the tree it would write, one path per line, and writes nothing.
+- The steps it prints start with `claude plugin marketplace add <owner/name>` and
+  `claude plugin install agent-flow@<slug> --scope project`, and say to run
+  `bash .flow/loop/install-launchd.sh` once.
+
+## Without `--stack`
+
+The first projects were made without `--stack`; that layout is kept as it was and is described
+below.
 
 ```
 uv run python ops/bootstrap.py --target <folder> --repo <owner/name> --owner <login> \

@@ -1,0 +1,31 @@
+name: Checks
+
+on:
+  push:
+    branches: [main, deploy]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+{setup}
+      - name: Lint, types and tests
+        run: bash scripts/check.sh
+      - name: Plugin version is bumped when the plugin changes
+        if: github.event_name == 'pull_request'
+        run: python .flow/loop/check_plugin_version.py "${{ github.event.pull_request.base.sha }}" HEAD
