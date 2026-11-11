@@ -30,6 +30,7 @@ MOVES: dict[str, str | None] = {
 }
 # Paths in the copied texts that name the old layout.
 TEXT_MOVES = (
+    ("ops/flow.toml", ".flow/flow.toml"),
     (".claude/knowledge/decisions", "docs/decisions"),
     ("docs/app/templates", "docs/templates"),
     ("../plugins/agent-flow", PLUGIN_DIR),
@@ -111,6 +112,36 @@ SPEC_MOVES = (
     ("docs/app/issues", "docs/issues"),
 )
 BARE_SPECS = re.compile(r"(?<![\w/.-])specs/")
+
+
+# A new project has one loop variable, FLOW_LOOP, and one home variable, FLOW_HOME; the source
+# also accepts its own older names, which a copy has no use for.
+LOOP_VARIABLE_MOVES = (
+    ("FLOW_LOOP=1 or REVIEWRADAR_LOOP=1", "FLOW_LOOP=1"),
+    ("`FLOW_LOOP=1` or `REVIEWRADAR_LOOP=1`", "`FLOW_LOOP=1`"),
+    ("`FLOW_LOOP=1` and `REVIEWRADAR_LOOP=1`", "`FLOW_LOOP=1`"),
+    ('("FLOW_LOOP", "REVIEWRADAR_LOOP")', '("FLOW_LOOP",)'),
+    ('"FLOW_LOOP": "1", "REVIEWRADAR_LOOP": "1"', '"FLOW_LOOP": "1"'),
+    ('"-u", "FLOW_LOOP", "-u", "REVIEWRADAR_LOOP"', '"-u", "FLOW_LOOP"'),
+    (
+        'os.environ.get("FLOW_HOME") or os.environ.get("REVIEWRADAR_HOME") or ',
+        'os.environ.get("FLOW_HOME") or ',
+    ),
+    ("`FLOW_HOME` or `REVIEWRADAR_HOME` override it", "`FLOW_HOME` overrides it"),
+    (
+        "`FLOW_LOOP=1`, with `REVIEWRADAR_LOOP=1` still set and accepted | Rename only | "
+        "Today's hooks, tests and docs keep working",
+        "`FLOW_LOOP=1` | A project-specific name | One name for every project",
+    ),
+    ("REVIEWRADAR_LOOP", "FLOW_LOOP"),
+    ("REVIEWRADAR_HOME", "FLOW_HOME"),
+)
+
+
+def one_loop_variable(text: str) -> str:
+    for old, new in LOOP_VARIABLE_MOVES:
+        text = text.replace(old, new)
+    return text
 
 
 def move_text(text: str) -> str:
