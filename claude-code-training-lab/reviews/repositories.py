@@ -80,16 +80,26 @@ def branch_rating_totals(*, now: datetime | None = None) -> list[BranchTotals]:
 class RatingCounts:
     by_rating: dict[int, int]
     unreplied: int
+    # Bad reviews whose follow-up case is open
+    open_cases: int = 0
 
 
 def rating_counts() -> RatingCounts:
-    """Reviews per rating and the reviews with no reply, in one query."""
+    """Reviews per rating, those with no reply and the open follow-up cases, in one query.
+
+    The reply and the follow-up case are one-to-one, so joining them adds no rows.
+    """
+    from reviews.followup_repository import OPEN, status_filter  # late: it imports this module
+
     rows = Review.objects.values("rating").annotate(
-        total=Count("id"), unreplied=Count("id", filter=Q(reply__isnull=True))
+        total=Count("id"),
+        unreplied=Count("id", filter=Q(reply__isnull=True)),
+        open_cases=Count("id", filter=status_filter(OPEN)),
     )
     return RatingCounts(
         by_rating={int(row["rating"]): int(row["total"]) for row in rows},
         unreplied=sum(int(row["unreplied"]) for row in rows),
+        open_cases=sum(int(row["open_cases"]) for row in rows),
     )
 
 

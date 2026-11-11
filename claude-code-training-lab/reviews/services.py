@@ -208,6 +208,7 @@ class DashboardOverview:
     recent_reviews: list[ReviewRow]
     reply_speed: ReplySpeed = ReplySpeed()
     overdue_count: int = 0
+    open_cases_count: int = 0
 
 
 def branch_status(average: float) -> tuple[str, str]:
@@ -387,6 +388,7 @@ def dashboard_overview(recent_limit: int = 6, now: datetime | None = None) -> Da
         recent_reviews=recent,
         reply_speed=total_reply_speed(totals_list),
         overdue_count=overdue_total(totals_list),
+        open_cases_count=rating_totals.open_cases,
     )
 
 
