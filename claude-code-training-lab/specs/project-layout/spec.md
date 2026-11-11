@@ -42,7 +42,7 @@ scripts/           check.sh, setup.sh
   | `intent_file` | `docs/intent/{feature}.md` | `specs/{feature}/intent.md` |
   | `specs_dir` | `docs/specs` | `specs` |
   | `spec_pr_dirs` | `["docs/intent", "docs/specs"]` | `["specs", "design"]` |
-  | `plans_dir` | `docs/plans` | `out/plans` |
+  | `plans_dir` | `docs/plans` | `""` (plans are not saved, as today) |
   | `decisions_dir` | `docs/decisions` | `.claude/knowledge/decisions` |
   | `templates_dir` | `docs/templates` | `docs/app/templates` |
   | `code_dirs` | `["src"]` | `["reviews", "reviewradar"]` |
@@ -73,6 +73,9 @@ scripts/           check.sh, setup.sh
   `docs/app/templates` or `specs/<feature>` as a fixed path. Each says the folder by its key (for
   example "the decisions folder, `paths.decisions_dir` of the flow config") and, once, ReviewRadar's
   value as the example. `.claude/knowledge/KNOWN_PITFALLS.md` and `BUSINESS_RULES.md` stay fixed paths.
+- **AC10a.** When `paths.plans_dir` is not empty, `/agent-flow:plan` and the planner sub-agent also
+  save the approved plan as `<plans_dir>/<issue number>-<short-description>.md`; when it is empty
+  nothing is saved, as today.
 - **AC10.** The spec rule in the plugin texts reads: a spec pull request changes only `paths.spec_pr_dirs`.
 - **AC11.** A test fails when a plugin text contains one of the three fixed paths of AC9. The plugin
   version goes up again.

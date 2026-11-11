@@ -35,7 +35,7 @@ Epic. T2 and T4 can run in parallel after T1; they share no file. T3 follows T2 
 
 ## T3: Plugin texts name folders by their config key
 
-- **ACs:** AC9, AC10, AC11
+- **ACs:** AC9, AC10, AC10a, AC11
 - **Files likely touched:** `../plugins/agent-flow/agents/*.md` (analyst, planner, implementer,
   reviewer), `../plugins/agent-flow/commands/` (plan, understand, review, learn),
   `../plugins/agent-flow/skills/` SKILL.md of grill-me, review-pull-request, write-issue, work-queue,
