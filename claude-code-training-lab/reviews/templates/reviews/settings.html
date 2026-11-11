@@ -32,6 +32,31 @@
   </form>
 </section>
 
+<section class="panel settings-panel" id="settings-locations">
+  <h2>Locations</h2>
+  {% if locations_notice %}<p class="notice" id="locations-saved" role="status">{{ locations_notice }}</p>{% endif %}
+  {% if location_rows %}
+  <ul class="settings-locations-list">
+    {% for row in location_rows %}
+    <li class="settings-locations-row"><span>{{ row.name }}</span> <a href="/settings/locations/{{ row.id }}/" aria-label="Rename {{ row.name }}">Rename</a></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No locations yet. Add your first one below.</p>
+  {% endif %}
+
+  <h3>Add a location</h3>
+  <form class="settings-form settings-locations-form" method="post" action="{% url 'settings-locations' %}">
+    {% csrf_token %}
+    <div class="settings-field">
+      <label for="location-name">Name</label>
+      <input type="text" id="location-name" name="name" maxlength="120" value="{{ location_typed }}"{% if location_errors %} aria-describedby="location-name-error" aria-invalid="true"{% endif %}>
+      {% if location_errors %}<div id="location-name-error">{% for error in location_errors %}<p class="settings-error">{{ error }}</p>{% endfor %}</div>{% endif %}
+    </div>
+    <button type="submit" class="button">Add location</button>
+  </form>
+</section>
+
 <section class="panel settings-panel" id="settings-goals">
   <h2>Location goals</h2>
   <p class="muted">Target score from 1.0 to 5.0. Leave empty for no goal.</p>
