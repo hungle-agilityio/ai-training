@@ -30,7 +30,7 @@ Go through the checklist in this order, and stop adding findings once the three 
 4. **Security basics:** input validated with forms, output escaped, no secrets or personal data in logs, no raw SQL.
 5. **Scope:** only what the issue asks; unrelated changes; overlap and expected conflicts with other open branches.
 
-Project rules to check: everything the project's `.claude/CLAUDE.md`, `.claude/rules/` and `.claude/knowledge/KNOWN_PITFALLS.md` say, and the global standards. Typical points: the layer rules of `rules/architecture.md` (logic in the service layer, a thin view); type hints and `mypy`; N+1 is a blocker and the query count is asserted; the number and rounding rules of `rules/python.md` and `rules/domain.md` (test the type); ordering has a unique tiebreaker; the time zone of `release.timezone` in `ops/flow.toml`; the coverage gate; the commit format and `Part of #<id>`.
+Project rules to check: everything the project's `.claude/CLAUDE.md`, `.claude/rules/` and `.claude/knowledge/KNOWN_PITFALLS.md` say, and the global standards. Typical points: the layer rules of `rules/architecture.md` (logic in the service layer, a thin view); type hints and `mypy`; N+1 is a blocker and the query count is asserted; the number and rounding rules of `rules/python.md` and `rules/domain.md` (test the type); ordering has a unique tiebreaker; the time zone of `release.timezone` in the flow config (`.flow/flow.toml`, else `ops/flow.toml`); the coverage gate; the commit format and `Part of #<id>`.
 
 Run `uv run ruff check .`, `uv run mypy .` and `uv run pytest -q` on the branch (in a worktree if it is not checked out) and report the real result. Failing tests that belong to other open issues are named, not hidden.
 

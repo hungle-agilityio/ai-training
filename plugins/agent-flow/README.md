@@ -4,7 +4,26 @@ The issue-to-pull-request flow as a Claude Code plugin: the guard hooks, the flo
 
 It holds the guard hooks (`hooks/`, see `hooks/README.md`). The skills, commands and sub-agents move in with #223 (spec: `claude-code-training-lab/specs/flow-plugin/spec.md`).
 
-A project turns the plugin on in its `.claude/settings.json` (`extraKnownMarketplaces` and `enabledPlugins`), and the hooks read that project's `ops/flow.toml` through `$CLAUDE_PROJECT_DIR`. The installed plugin only changes when its version does, so every change here raises the version in `.claude-plugin/plugin.json`.
+A project turns the plugin on in its `.claude/settings.json` (`extraKnownMarketplaces` and `enabledPlugins`), and the hooks read that project's flow config through `$CLAUDE_PROJECT_DIR`: `.flow/flow.toml` when it exists (the new layout), else `ops/flow.toml`, or the file named by `FLOW_CONFIG`. The installed plugin only changes when its version does, so every change here raises the version in `.claude-plugin/plugin.json`.
+
+## Project layout
+
+The skills, commands and sub-agents name a project's folders by the keys of the optional `[paths]` table of its flow config, never by a fixed path. A missing key takes the default below, which is the layout of the project this plugin grew in; a project made by bootstrap writes the new layout.
+
+| Key | What it holds | Default | New layout |
+|---|---|---|---|
+| `loop_dir` | the loop scripts and `flow_config.py` | `ops` | `.flow/loop` |
+| `plugin_dir` | this plugin | `../plugins/agent-flow` | `.flow/plugin` |
+| `intent_file` | the intent of one feature | `specs/{feature}/intent.md` | `docs/intent/{feature}.md` |
+| `specs_dir` | the specs, one folder per feature | `specs` | `docs/specs` |
+| `spec_pr_dirs` | the only folders a spec pull request changes | `specs`, `design` | `docs/intent`, `docs/specs` |
+| `plans_dir` | approved plans (empty: not saved) | empty | `docs/plans` |
+| `decisions_dir` | the decision records (ADRs) | `.claude/knowledge/decisions` | `docs/decisions` |
+| `templates_dir` | the issue and spec templates | `docs/app/templates` | `docs/templates` |
+| `code_dirs` | the product's code | the app folders | `src` |
+| `flow_dirs` | the flow's own folders (`area:flow`) | `ops/`, `.claude/`, `.github/`, `specs/`, `docs/learning/` | `.flow/`, `.claude/`, `.github/`, `docs/intent/`, `docs/specs/`, `scripts/` |
+
+The spec rule: a spec pull request changes only the folders of `paths.spec_pr_dirs`.
 
 ## Install
 
