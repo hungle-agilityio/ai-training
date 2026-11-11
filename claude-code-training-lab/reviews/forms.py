@@ -6,6 +6,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 
 from reviews import reply_service
+from reviews.followup import STATUS_LABELS
 from reviews.search_text import tidy_search_input
 from reviews.services import RATING_RANGES, REPLY_CHOICES, ReviewFilters
 from reviews.topics import TOPICS
@@ -109,6 +110,7 @@ class ReviewFilterForm(forms.Form):
         choices=[("", "All topics"), *[(topic.slug, topic.label) for topic in TOPICS]],
         required=False,
     )
+    followup = forms.ChoiceField(choices=[("", "All"), *STATUS_LABELS.items()], required=False)
 
     def clean_search(self) -> str:
         return tidy_search_input(self.cleaned_data["search"])
@@ -129,4 +131,5 @@ class ReviewFilterForm(forms.Form):
             search=data.get("search") or "",
             reply=data.get("reply") or None,
             topic=data.get("topic") or None,
+            followup=data.get("followup") or None,
         )

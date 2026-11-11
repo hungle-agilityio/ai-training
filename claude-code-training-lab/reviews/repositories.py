@@ -133,13 +133,18 @@ def reviews_newest_first(
     words: Sequence[str] = (),
     replied: bool | None = None,
     topic: Topic | None = None,
+    followup: str | None = None,
 ) -> QuerySet[Review]:
     """Newest first. `ratings` is (lowest, highest) stars; `created_range` is [start, end).
 
     Every normalised word in `words` must be part of the stored search text.
     `replied` True keeps reviews with a reply, False those without, None all.
+    `followup` keeps the bad reviews in that follow-up status. The follow-up case is
+    one-to-one, so it comes with the same query and adds no rows.
     """
-    reviews = Review.objects.select_related("branch", "reply").order_by("-created_at", "-id")
+    reviews = Review.objects.select_related("branch", "reply", "followup").order_by(
+        "-created_at", "-id"
+    )
     if replied is not None:
         reviews = reviews.filter(reply__isnull=not replied)
     if branch_id is not None:
@@ -154,6 +159,10 @@ def reviews_newest_first(
         from reviews.topic_repository import topic_condition  # late: it imports services
 
         reviews = reviews.filter(topic_condition(topic))
+    if followup is not None:
+        from reviews.followup_repository import status_filter  # late: it imports this module
+
+        reviews = reviews.filter(status_filter(followup))
     return reviews
 
 
