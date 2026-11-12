@@ -10,9 +10,9 @@
   --sidebar-text: #c4cce2;
   --star: #f5a524;
   --star-empty: #d5dbea;
-  --good: #1a7f4b;
+  --good: #17753f;
   --good-soft: #e0f5ea;
-  --warn: #9a6700;
+  --warn: #8a5c00;
   --warn-soft: #fff3d1;
   --bad: #c0332b;
   --bad-soft: #fde7e5;
@@ -46,6 +46,7 @@
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
+a { color: var(--brand); }
 body {
   margin: 0;
   background: var(--bg);
@@ -90,7 +91,7 @@ h1, h2, p { margin: 0; }
 }
 .nav-item.is-active { background: rgba(123, 147, 255, .18); color: #fff; }
 .nav-item.is-disabled { opacity: .55; cursor: default; }
-.sidebar-note { margin-top: auto; font-size: 13px; padding: 0 8px; opacity: .7; }
+.sidebar-note { margin-top: auto; font-size: 13px; padding: 0 8px; }
 .account {
   display: flex; flex-direction: column; gap: 8px;
   padding: 12px 10px 0; border-top: 1px solid rgba(196, 204, 226, .2); font-size: 13px;

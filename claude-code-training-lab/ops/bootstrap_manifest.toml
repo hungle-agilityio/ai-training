@@ -2,7 +2,7 @@
 # scope "app": path inside the app folder. scope "root": path at the git root.
 # A directory is copied whole. An entry that does not exist is reported and skipped.
 
-exclude = ["__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", "ops/flow.toml", "ops/tests", "ops/regression_screens.json"]
+exclude = ["__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", "ops/flow.toml", "ops/tests", "ops/regression_screens.json", "ops/vendor", "ops/a11y_check.py"]
 
 [[copy]]
 scope = "app"
