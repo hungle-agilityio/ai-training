@@ -150,13 +150,14 @@ An assignee other than the owner (`hungle-agilityio`), on the issue or on its ep
 - Claim: `gh issue edit <n> --add-assignee @me`. An epic is claimed the same way on the epic issue.
 - Give back: `gh issue edit <n> --remove-assignee @me`. The loop takes the issue at the next tick when it still has `agent:ready`.
 - Hand off: `gh issue edit <n> --remove-assignee @me --add-assignee <login>`.
+- A claimed issue holds the files of its `## Files likely touched` until it is closed or the member is removed, so list them before claiming: a ready loop issue that lists one of them waits (`## Guards`).
 - Claiming an issue labelled `agent:running` or `agent:review` does not stop the loop's build: the tick only logs it and sends one message per issue and member (`~/.reviewradar/member-claims`). Check the label first.
 - Your branch is `<kind>/<n>-<short-description>`. The pull request for a task of an epic goes into `epic/<N>-<slug>` with `Closes #<n>` in its body, otherwise into `main`.
 - When `epic/<N>-<slug>` does not exist yet (no loop task of the epic has started), create it from main with exactly the name the tick uses (`branch_name()` in `ops/epic_branch.py`): `epic/<N>-` and the epic title without `Epic:`, lowercase, every run of other characters turned into one `-`, cut at 40 characters, no `-` at either end. For example `git push origin origin/main:refs/heads/epic/<N>-<slug>`. From then on the tick keeps it up to date and opens the epic pull request as usual.
 - A pull request merged by hand into an epic branch marks its task `agent:in-epic` at the next tick, so the epic's next tasks start. The tick never merges or comments on it.
 - The owner clicks Merge. Only the owner's `agent:ready` hands an issue to the loop.
 
-Tests: `ops/tests/test_tick_member_assignment.py`.
+Tests: `ops/tests/test_tick_member_assignment.py`, `ops/tests/test_tick_member_files.py`.
 
 ## The Artifact tool check
 
@@ -189,7 +190,7 @@ Review a loop pull request on GitHub like any other (ADR-016):
 The tick does not start a ready issue (ADR-015):
 
 - while any issue named on a `Depends on` line is still open (every `#number` on the line counts);
-- while one of its files (the backticked paths in the bullets of `## Files likely touched`) is also a file of an open `agent:running` or `agent:review` issue, or of an issue chosen earlier in the same tick: the log says `issue-<n>: waits for #<m>, which also touches <path>`;
+- while one of its files (the backticked paths in the bullets of `## Files likely touched`) is also a file of an open `agent:running` or `agent:review` issue, or of an issue chosen earlier in the same tick: the log says `issue-<n>: waits for #<m>, which also touches <path>`; or a file of an open issue that has a member (on the issue or its epic), with any label: the log says `issue-<n>: waits for #<m> (member <login>), which also touches <path>`, or `(member <login>, epic #<N>)` when the epic gave the member. A running or review issue keeps the first line;
 - with other builds, when its body lists no file: it runs alone, like `risk:high`;
 - in a tick where the latest completed `Checks` run on `main` is not green: pull request runs still start, and ntfy says `main is red at <sha>: <run url>` once per commit. An unreadable run counts as green, with a log line.
 
