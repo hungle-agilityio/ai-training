@@ -46,3 +46,4 @@ One file per decision: `ADR-001-short-title.md`, numbered in order. Write one fo
 - [ADR-029: Every build and every epic gets /code-review; the main screens are checked in a browser in CI; one living release notes page](ADR-029-test-and-harden.md)
 - [ADR-030: One clickable prototype of the whole app is the design; the work is split only after "Prototype ổn"](ADR-030-app-prototype.md)
 - [ADR-031: Every release passes three automatic security checks and a Claude security review before it reaches end users](ADR-031-security-check-before-release.md)
+- [ADR-033: A card tap in a cloud thread approves the GitHub writes the thread hands to the Mac mini](ADR-033-card-tap-approves-mac-mini-writes.md)
