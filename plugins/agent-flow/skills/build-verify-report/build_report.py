@@ -2,7 +2,8 @@
 """Run every verify axis and write one report that a person can open and read.
 
 Usage: uv run python <this skill's folder>/build_report.py --title "<issue>"
-       [--criteria FILE] [--review FILE] [--browser --spec FILE | --no-ui] [--no-open] [--out DIR]
+       [--criteria FILE] [--review FILE] [--browser --spec FILE | --no-ui] [--design FILE]
+       [--no-open] [--out DIR]
 
 The numbers in the report are read from the real output of each command by this program;
 nothing is retyped. It writes report.html (one self-contained page, screenshots embedded) and
@@ -50,6 +51,9 @@ MATRIX_STATUSES = ("PASS", "FAIL", "MANUAL")
 NO_MATRIX = "the issue has no test matrix rows"
 EMPTY_MATRIX = "the matrix list is empty"
 NO_SCREENS = 'no screens given: pass --spec from the issue\'s "Screens to capture"'
+DEFAULT_VIEWPORT = {"width": 1280, "height": 800}
+VIEWPORT_SIZE = re.compile(r"\s*(\d+)x(\d+)\s*", re.I)
+PROTOTYPE = Path("design") / "app" / "prototype.html"
 
 
 def real_run(args: list[str], cwd: Path) -> tuple[int, str]:
@@ -279,6 +283,61 @@ def browser_axis(result_dir: Path | None, code: int | None, output: str) -> dict
     return axis("Browser", "PASS" if data["status"] == "clean" and not leaked else "FAIL", detail)
 
 
+def capture_designs(
+    prototype: Path, steps: list[dict[str, Any]], viewport: dict[str, int], out_dir: Path
+) -> list[dict[str, Any]]:
+    """The design pictures come from design_capture.py, the file next to this one."""
+    path = Path(__file__).resolve().with_name("design_capture.py")
+    spec = importlib.util.spec_from_file_location("design_capture", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    entries: list[dict[str, Any]] = module.capture_designs(prototype, steps, viewport, out_dir)
+    return entries
+
+
+def spec_steps(spec: Path) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """The steps of a "Screens to capture" file and its viewport, 1280 by 800 when not set."""
+    try:
+        data = json.loads(spec.read_text())
+    except (OSError, ValueError):
+        return [], dict(DEFAULT_VIEWPORT)
+    steps = data.get("steps") if isinstance(data, dict) else data
+    size = (
+        VIEWPORT_SIZE.fullmatch(str(data.get("viewport", ""))) if isinstance(data, dict) else None
+    )
+    viewport = (
+        {"width": int(size.group(1)), "height": int(size.group(2))}
+        if size
+        else dict(DEFAULT_VIEWPORT)
+    )
+    return (steps if isinstance(steps, list) else []), viewport
+
+
+def design_pairs(
+    prototype: Path, spec: Path, folder: Path, result_steps: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Each step that names a prototype state: its design picture and its built screen.
+
+    Shown only; no axis, verdict or masking result reads it.
+    """
+    steps, viewport = spec_steps(spec)
+    if not any(isinstance(step, dict) and "design" in step for step in steps):
+        return []
+    built = {str(s.get("name")): str(s["screenshot"]) for s in result_steps if s.get("screenshot")}
+    pairs: list[dict[str, Any]] = []
+    for entry in capture_designs(prototype, steps, viewport, folder):
+        design, step = entry.get("design_screenshot"), str(entry.get("step", ""))
+        pairs.append(
+            {
+                **entry,
+                "design_screenshot": str(folder / design) if design else None,
+                "build_screenshot": str(folder / built[step]) if step in built else None,
+            }
+        )
+    return pairs
+
+
 def review_axis(text: str | None) -> dict[str, str] | None:
     if not text:
         return None
@@ -379,6 +438,21 @@ def render_body(report: dict[str, Any]) -> str:
             )
         else:
             shots += figure(path, name)
+    designs = ""
+    for entry in report.get("design_pairs") or []:
+        state, step = str(entry.get("state", "")), str(entry.get("step", ""))
+        design, built = entry.get("design_screenshot"), entry.get("build_screenshot")
+        note = entry.get("note") or f"Design not found: {state}"
+        designs += (
+            '<div class="pair">'
+            + (figure(design, f"Design: {state}") if design else f"<p>{esc(note)}</p>")
+            + (
+                figure(built, f"Build: {step}")
+                if built
+                else f"<p>Build screenshot missing: {esc(step)}</p>"
+            )
+            + "</div>"
+        )
     check = "".join(f"<li>{esc(item)}</li>" for item in report.get("check_yourself", []))
     review = f"<h2>Review</h2><pre>{esc(report['review'])}</pre>" if report.get("review") else ""
     return (
@@ -397,7 +471,9 @@ def render_body(report: dict[str, Any]) -> str:
             if matrix
             else ""
         )
-        + (f'<h2>Screenshots</h2><div class="shots">{shots}</div>{LIGHTBOX}' if shots else "")
+        + (f'<h2>Screenshots</h2><div class="shots">{shots}</div>' if shots else "")
+        + (f'<h2>Design vs build</h2><div class="shots">{designs}</div>' if designs else "")
+        + (LIGHTBOX if shots or designs else "")
         + review
         + (f"<h2>What to check yourself</h2><ol>{check}</ol>" if check else "")
         + "</main>"
@@ -447,6 +523,7 @@ def build(
     plant: str | None = None,
     spec: Path | None = None,
     no_ui: bool = False,
+    design: Path | None = None,
 ) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
     axes = run_checks(root, run)
@@ -458,6 +535,7 @@ def build(
     axes.append(security_axis(diff))
     shots: list[str] = []
     close_ups: dict[str, str] = {}
+    pairs: list[dict[str, Any]] = []
     masking: dict[str, Any] = {"status": "not run"}
     texts = [title, json.dumps(criteria or {}), json.dumps(matrix), review or ""]
     if no_ui:
@@ -484,6 +562,8 @@ def build(
                 if s.get("screenshot") and s.get("element_screenshot")
             }
             masking = masking_status(result["masking"], texts)
+            if spec is not None:
+                pairs = design_pairs(design or root / PROTOTYPE, spec, folder, result["steps"])
     else:
         axes.append(browser_axis(None, None, ""))
     extra = review_axis(review)
@@ -499,6 +579,7 @@ def build(
         "matrix": matrix,
         "screenshots": shots,
         "close_ups": close_ups,
+        "design_pairs": pairs,
         "review": review or "",
         "masking": masking,
         "share": None,
@@ -541,6 +622,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--spec", type=Path, help='JSON steps from the issue\'s "Screens to capture"'
     )
+    parser.add_argument(
+        "--design", type=Path, help="the app prototype file (default: design/app/prototype.html)"
+    )
     parser.add_argument("--no-open", action="store_true", help="do not open the report")
     parser.add_argument("--plant", help="add a review with this text, to test the scan only")
     parser.add_argument("--out", type=Path, help="folder (default: out/verify/<time>)")
@@ -561,6 +645,7 @@ def main(argv: list[str]) -> int:
         args.plant,
         args.spec,
         no_ui=args.no_ui,
+        design=args.design,
     )
     for item in report["axes"]:
         print(f"{item['status']:<15} {item['name']:<22} {item['evidence']}")
