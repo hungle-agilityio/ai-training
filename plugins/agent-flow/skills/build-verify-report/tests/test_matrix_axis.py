@@ -368,7 +368,7 @@ def test_the_skill_documents_the_matrix_list_and_the_axis() -> None:
     assert "rows fail" in section and "rows pass" in section and "manual" in section
 
 
-def test_the_plugin_version_is_1_0_20() -> None:
+def test_the_plugin_version_is_1_0_21() -> None:
     data = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text())
 
-    assert data["version"] == "1.0.20"
+    assert data["version"] == "1.0.21"
