@@ -77,6 +77,7 @@ SCHEMA: dict[str, dict[str, str]] = {
         "templates_dir": STRING,
         "code_dirs": WORDS,
         "flow_dirs": WORDS,
+        "review_sensitive": WORDS,
     },
 }
 # A file written before the plugin existed has no [plugin] table; the tick stops on the empty key.
@@ -93,6 +94,7 @@ PATH_DEFAULTS: dict[str, str | list[str]] = {
     "templates_dir": "docs/app/templates",
     "code_dirs": ["reviews", "reviewradar"],
     "flow_dirs": ["ops/", ".claude/", ".github/", "specs/", "docs/learning/"],
+    "review_sensitive": [],
 }
 
 
@@ -129,6 +131,7 @@ class FlowConfig:
     paths_templates_dir: str = "docs/app/templates"
     paths_code_dirs: tuple[str, ...] = ("reviews", "reviewradar")
     paths_flow_dirs: tuple[str, ...] = ("ops/", ".claude/", ".github/", "specs/", "docs/learning/")
+    paths_review_sensitive: tuple[str, ...] = ()
 
 
 def _is_words(value: object) -> bool:
@@ -228,6 +231,7 @@ def load(path: Path | None = None) -> FlowConfig:
         paths_templates_dir=_text(paths["templates_dir"]),
         paths_code_dirs=tuple(paths["code_dirs"]),
         paths_flow_dirs=tuple(paths["flow_dirs"]),
+        paths_review_sensitive=tuple(paths["review_sensitive"]),
     )
 
 
