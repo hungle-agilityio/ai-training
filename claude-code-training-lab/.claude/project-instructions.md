@@ -17,13 +17,13 @@ For every new request:
    Say which lane you take. I can ask for the full lane instead. No code is changed.
 2. **Grill-me.** Settle the open decisions with me here, in rounds, until nothing is ambiguous: users, scope, empty states, permissions, data volumes, migrations. The build agent may not ask me later, so ask now. Number the questions Q1, Q2, ...; each has the options, your recommended answer and why. Never ask what the code or the rules already decide. Never widen the scope or change the requirement.
 3. **Spec.**
+   - **Prototype** (either lane, when users will see a change; after Grill-me and before any spec file is written): a thread updates the one prototype of the whole app, `design/app/prototype.html`: new screens and states as `SCENARIOS` ids, the demo data of `seed_demo_data`, real actions and animations. It republishes the same Artifact so the link stays, and posts a choice card "Prototype ổn (đề xuất) / Sửa". Epics and tasks are split only after "Prototype ổn". It replaces the per-feature design link in `design/<feature>/README.md` (ADR-030).
    - **Full lane:** a thread writes `specs/<feature>/intent.md`, `spec.md` and `tasks.md` from the templates in `docs/app/templates/spec/`.
      - `spec.md`: a `## User story` (`As a <user>, I want <ability>, so that <goal>.`), numbered ACs that can be checked (an AC users can see is written Given/When/Then with real names and numbers; a technical AC keeps the plain form), and an empty "Open questions" section.
      - It also writes `specs/<feature>/test-matrix.md` from `docs/app/templates/spec/test-matrix.md`, before any build: one row per check with its AC, case, check, level, test file and task; every AC has a row, and every AC users can see has a "normal" and an "empty" row or says `n/a: <why>` (ADR-026).
      - `tasks.md`: per task, its matrix rows, the files likely touched, `Depends on`, `risk:low|medium|high`, and `needs-ui`. For an epic it also has a `## Query budget` table: each page the epic changes, its queries on `main`, and its queries after each task; a later task lists the query-cap tests an earlier task of the epic adds (ADR-024). Tasks meant to run in parallel never share a file. Keep each task under about 400 lines of diff.
-     - If users will see a change, it also builds a design card (normal, empty, error and narrow-screen states, demo data) and puts its link in `design/<feature>/README.md`.
-     - It opens one pull request, titled `spec: <feature>`, that changes only `specs/` and `design/`.
-   - **Fast lane:** no spec pull request. The short spec (Summary with the user story, ACs, a small test matrix, files likely touched, `Depends on`) is written for the issue body, and I confirm the design card here if there is one.
+     - It opens one pull request, titled `spec: <feature>`, that changes only `specs/` and `design/`; it carries the prototype change.
+   - **Fast lane:** no spec pull request. The short spec (Summary with the user story, ACs, a small test matrix, files likely touched, `Depends on`) is written for the issue body, and when users see a change, "Prototype ổn" is also my OK of Gate 1: the thread opens a pull request `design: <feature>` that changes only `design/app/prototype.html` and merges it on that same press.
 4. **Gate 1.**
    - **Full lane:** wait until I say "Merge PR spec". Then check that the pull request changes nothing outside `specs/` and `design/`, and merge it.
    - **Fast lane:** wait for my "OK".
@@ -38,6 +38,7 @@ For every new request:
    - "Part of the epic #N" when the task belongs to an epic;
    - a link to the spec on `main` (full lane);
    - the labels `risk:low`, `risk:medium` or `risk:high`, plus `needs-ui` when users see a change;
+   - with `needs-ui`, a `## Screens to capture` block whose every step names the prototype state it should match with `"design": "<state id>"`;
    - the labels printed by `python3 -I ../plugins/agent-flow/skills/create-issue/route_issue.py <body file>` (from the app folder), run on each issue body before it is posted. They come from its Files likely touched section:
      - `area:flow` for the workflow (`ops/`, `.claude/`, `.github/`, `specs/`, `docs/learning/`), `area:app` for the app and its hosting;
      - `agent:ready` always (ADR-023): the tick passes the listed files to the build and `before-edit-check` lets it edit exactly those, guarded ones included (`.claude/`, `.github/`, `.mcp.json`, the plugin, the gate files, an existing test under `reviews/tests/`). A path outside the repository is not routed: fix the issue;
@@ -50,12 +51,12 @@ For every new request:
    - before an issue gets `agent:ready`, run `uv run python ops/pinned_tests.py --unlisted <body file>` (from the app folder) on its body and settle every hit: list the test under `## Existing tests that change` with old → new, or reword the AC so the test stays unchanged and say so in the AC. Run it again until it exits 0 (ADR-024).
    - before an issue gets `agent:ready`, run the zero-questions test: a new sub-agent with no conversation context reads only the issue body and the repository and lists every question it would have to ask before it could build and test the issue. Fix each question in the issue (a decision comes to me first) and run a new sub-agent, until a round returns 0. The `Decisions` comment records `Zero-questions test: 0 questions after <n> rounds (<k> in round 1).` (ADR-026)
 
-   It also adds a comment titled `Decisions` with the table question / chosen / rejected / why, and a comment titled `Design` with the link, if any. No Requester, Type or Labels lines in the body, and no Claude attribution anywhere. At the end, print a table: task → issue → depends on. Your work ends at the issues.
+   It also adds a comment titled `Decisions` with the table question / chosen / rejected / why, and a comment titled `Design` with the prototype link and the states the task changes, if any. No Requester, Type or Labels lines in the body, and no Claude attribution anywhere. At the end, print a table: task → issue → depends on. Your work ends at the issues.
 
 Definition of Ready, checked before `agent:ready`:
 - [ ] ACs numbered and checkable
 - [ ] "Open questions" empty
-- [ ] a design card when users see a change
+- [ ] the prototype shows every screen and state the task changes, approved with Prototype ổn, and its Screens to capture steps name those states with design
 - [ ] real content (texts, images, numbers), never invented
 - [ ] `Depends on #M` when needed
 - [ ] the `risk:*` label, and `needs-ui` when users see a change
