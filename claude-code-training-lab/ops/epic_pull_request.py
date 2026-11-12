@@ -32,6 +32,15 @@ SELF_FIXES = "## Self-decided fixes"
 SELF_FIX_SECTION = re.compile(
     rf"\n*^{SELF_FIXES}\n.*?(?=^##\s|^Closes #|\Z)", re.MULTILINE | re.DOTALL
 )
+REVIEW_CHECKLIST = (
+    "## Review checklist\n"
+    "\n"
+    "- [ ] Every task meets its ACs (open each verify report in the table above)\n"
+    "- [ ] Guard files changed: each listed file is expected\n"
+    "- [ ] Query budget: each page of the epic stays within the `## Query budget` of its"
+    " `tasks.md`\n"
+    "- [ ] Self-decided fixes: each fix is acceptable"
+)
 QUEUE_MARKER = "<!-- work-queue -->"
 SELF_FIX_MARKER = "<!-- self-fix -->"
 
@@ -198,6 +207,7 @@ def body_for(
     rows = [row_for(task, branch, prs) for task in tasks]
     closing = [f"Closes #{task}" for task in tasks] + [f"Closes #{epic}"]
     lines = [marker, "", "| Task | Pull request | Verify report |", "|---|---|---|", *rows]
+    lines += ["", REVIEW_CHECKLIST]
     if changes:
         lines += ["", CHANGED_TESTS, "", *changes]
     if fixes is not None:
