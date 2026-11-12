@@ -4,11 +4,12 @@
 Usage: uv run python <this skill's folder>/draft_pr.py --title "[FEAT] ..."
        --what "..." --why "..." [--issue N] --report <report folder>
        (--compare <before-after folder> | --no-visual) [--out DIR]
-       [--plan FILE] [--tests-changed FILE]
+       [--plan FILE] [--tests-changed FILE] [--code-review FILE]
 
 It writes pr-body.md (What, Why, How tested with the real numbers of the verify report, Evidence,
-One concern, Closes; with --plan a Plan section between What and Why, with --tests-changed a
-"Tests changed after the test author" section after How tested), copies the changed before and
+One concern, Closes; with --plan a Plan section between What and Why, with --code-review a
+"Code review" section right after How tested, with --tests-changed a "Tests changed after the
+test author" section after those), copies the changed before and
 after images into images/ to drag into the pull request, and writes draft.json. Nothing is created
 on GitHub: that waits for the user's approval (create-pull-request).
 
@@ -126,6 +127,7 @@ def build_draft(
     out: Path,
     plan: Path | None = None,
     tests_changed: Path | None = None,
+    code_review: Path | None = None,
 ) -> dict[str, Any]:
     out.mkdir(parents=True, exist_ok=True)
     problems: list[str] = []
@@ -153,9 +155,11 @@ def build_draft(
         if tests_changed
         else ""
     )
+    review_block = f"## Code review\n\n{code_review.read_text().strip()}\n\n" if code_review else ""
     body = (
         f"## What\n\n{what.strip()}\n\n{plan_block}## Why\n\n{why.strip()}\n\n"
-        f"## How tested\n\n{tested}\n\n{changed_block}## Evidence\n\n{link_block}{evidence}\n\n"
+        f"## How tested\n\n{tested}\n\n{review_block}{changed_block}"
+        f"## Evidence\n\n{link_block}{evidence}\n\n"
         f"## One concern\n\n- [ ] This pull request does one thing only\n\n{ending}\n"
     )
     complete = not problems
@@ -195,6 +199,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--tests-changed", type=Path, help="a file with the tests changed after the test author"
     )
+    parser.add_argument(
+        "--code-review", type=Path, help="a file with the code review result: a Code review section"
+    )
     args = parser.parse_args(argv)
     out = args.out or Path("out") / "pr-draft" / branch_slug()
     result = build_draft(
@@ -208,6 +215,7 @@ def main(argv: list[str]) -> int:
         out,
         args.plan,
         args.tests_changed,
+        args.code_review,
     )
     for problem in result["problems"]:
         print(f"- {problem}")
