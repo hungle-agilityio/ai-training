@@ -37,7 +37,7 @@ See [decisions/](decisions/): one file per task, written by its build.
 
 ## Design
 
-<link to the design card in design/<feature>/README.md, or "nothing visible to users">
+<the prototype states this feature adds or changes, as #<state> ids of design/app/prototype.html, approved with "Prototype ổn"; or "nothing visible to users">
 
 ## Open questions
 
