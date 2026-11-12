@@ -82,6 +82,7 @@ def test_second_config_uses_its_zone_workflow_and_prints_no_deploy_line(
         return real_run(args, *rest, **kwargs)  # type: ignore[call-overload, no-any-return]
 
     monkeypatch.setattr(subprocess, "run", spy)
+    monkeypatch.setattr(release, "run_security", lambda sha, since, cwd: ())
     assert release.main([], cwd=clone, now=CLOSING_NOW) == 0
     out = capsys.readouterr().out
     assert seen and seen[0][seen[0].index("--workflow") + 1] == "CI"
