@@ -45,7 +45,8 @@ These hold in every mode.
 
 ## Modes
 
-- **Loop mode** (`agent-flow:work-queue`, ADR-008, ADR-009): the label `agent:ready` is Gate 1; the report is Gate 2, read after the work; the loop has already pushed and opened the pull request. A `risk:high` issue stops after the plan with the label `agent:plan-review`; the owner's approval of that plan, given in the Project, is Gate 1 of the build (ADR-027). Open points are decided and reported once, never asked mid-run. Claude builds never merge; the tick merges on the owner's approval comment (ADR-016), or the owner clicks Merge on GitHub.
+- **Loop mode** (`agent-flow:work-queue`, ADR-008, ADR-009): the label `agent:ready` is Gate 1; the report is Gate 2, read after the work; the loop has already pushed and opened the pull request. A `risk:high` issue stops after the plan with the label `agent:plan-review`; the owner's approval of that plan, given in the Project, is Gate 1 of the build (ADR-027). The loop skips an issue assigned to a team member (any login other than the owner), directly or through its epic (ADR-028). Open points are decided and reported once, never asked mid-run. Claude builds never merge; the tick merges on the owner's approval comment (ADR-016), or the owner clicks Merge on GitHub.
+- **Member work** (ADR-028): a member builds the issue by hand with the same branch, test-first and pull request rules; for a task of an epic the pull request goes into the epic branch with `Closes #<n>`; the owner clicks Merge.
 - Whatever the mode, the guardrails above hold. Gate 3 holds too, except in loop mode for the loop's own issue branch and pull request (ADR-009).
 
 ## Rules of the flow
