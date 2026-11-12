@@ -1,8 +1,9 @@
 """Cut a sprint release: branch `release/sprint-N`, a date tag, and `deploy` moved to the commit.
 
-Run by hand on the Mac mini: `uv run python ops/release.py [--dry-run]`.
+Run by hand on the Mac mini: `uv run python ops/release.py [--dry-run] [--notes-url <url>]`.
 Spec: specs/release-deploy/spec.md (AC4 to AC9). It never forces a push, never pushes `main`
-and never changes an existing release ref.
+and never changes an existing release ref. After the push it creates the GitHub Release page
+of the new tag (specs/release-page/spec.md); a page that fails is a warning, not a failure.
 """
 
 from __future__ import annotations
@@ -36,16 +37,25 @@ PR_NUMBER = re.compile(r"#(\d+)")
 PROJECT_ROOT = flow_config.PROJECT_DIR
 CODE_DIRS: tuple[str, ...] = ()
 APP_DIR = "."
+STATE_DIR = Path(".")
+GITHUB_HOST = "github.com"
+PAGE_TIMEOUT_SECONDS = 60
+SETTINGS_FILE = ".claude/project-instructions.md"
+SETTINGS_LINE = (
+    "Project settings: " + SETTINGS_FILE + " changed since the last release; "
+    "paste it into Project settings."
+)
 
 
 def configure(config: flow_config.FlowConfig) -> None:
     """Set the time zone, CI workflow, deploy line and code folders from the flow config."""
-    global ZONE, CI_WORKFLOW, DEPLOY_LINE, CODE_DIRS, APP_DIR
+    global ZONE, CI_WORKFLOW, DEPLOY_LINE, CODE_DIRS, APP_DIR, STATE_DIR
     ZONE = ZoneInfo(config.release_timezone)
     CI_WORKFLOW = config.checks_ci_workflow
     DEPLOY_LINE = config.release_deploy_line
     CODE_DIRS = config.paths_code_dirs
     APP_DIR = config.project_app_dir
+    STATE_DIR = config.loop_state_dir
 
 
 configure(flow_config.load())
@@ -64,6 +74,7 @@ class Plan:
     client_facing: tuple[str, ...]
     internal: tuple[str, ...]
     security: tuple[str, ...] = ()
+    settings_changed: bool = False
 
 
 def git(args: Sequence[str], cwd: Path, check: bool = True) -> str:
@@ -183,6 +194,17 @@ def merged_pull_requests(
     return tuple(client_facing), tuple(internal)
 
 
+def settings_changed(cwd: Path, since: str | None, sha: str) -> bool:
+    """The Project settings text on the release commit differs from the last release."""
+    path = ("" if APP_DIR == "." else APP_DIR + "/") + SETTINGS_FILE
+    try:
+        new = git(["ls-tree", sha, "--", path], cwd)
+        old = git(["ls-tree", since, "--", path], cwd) if since else ""
+    except (subprocess.CalledProcessError, OSError):
+        return False
+    return bool(new) and new != old
+
+
 def make_plan(cwd: Path, now: datetime) -> Plan:
     git(["fetch", "origin"], cwd)
     sha = git(["rev-parse", "origin/main"], cwd)
@@ -217,6 +239,7 @@ def make_plan(cwd: Path, now: datetime) -> Plan:
         client_facing=client_facing,
         internal=internal,
         security=security,
+        settings_changed=settings_changed(cwd, deploy or None, sha),
     )
 
 
@@ -231,6 +254,8 @@ def describe(plan: Plan) -> list[str]:
         "Internal pull requests:",
         *(["  " + pr for pr in plan.internal] or ["  (none)"]),
     ]
+    if plan.settings_changed:
+        lines.append(SETTINGS_LINE)
     return lines
 
 
@@ -253,11 +278,64 @@ def push(plan: Plan, cwd: Path) -> None:
         raise
 
 
+def notes_text(plan: Plan, notes_url: str | None) -> str:
+    """The notes of the Release page: the two pull request groups, then the notes link if any."""
+    lines = [
+        "Release " + plan.tag + " (" + plan.branch + ", commit " + plan.sha[:7] + ")",
+        "",
+        "Client-facing pull requests:",
+        *(["- " + pr for pr in plan.client_facing] or ["- (none)"]),
+        "",
+        "Internal pull requests:",
+        *(["- " + pr for pr in plan.internal] or ["- (none)"]),
+    ]
+    if notes_url:
+        lines += ["", "Release notes: " + notes_url]
+    return "\n".join(lines) + "\n"
+
+
+def last_line(text: str | None) -> str:
+    lines = [line.strip() for line in (text or "").splitlines() if line.strip()]
+    return lines[-1] if lines else ""
+
+
+def release_page(plan: Plan, cwd: Path, notes_url: str | None) -> str | None:
+    """The first stdout line for the new Release page; a failure is one warning on stderr."""
+    if GITHUB_HOST not in git(["remote", "get-url", "origin"], cwd, check=False):
+        return None
+    notes = (STATE_DIR / ("release-" + plan.tag + ".md")).absolute()
+    command = ["gh", "release", "create", plan.tag, "--title", plan.tag]
+    command += ["--notes-file", str(notes), "--verify-tag"]
+    try:
+        notes.parent.mkdir(parents=True, exist_ok=True)
+        notes.write_text(notes_text(plan, notes_url))
+        done = subprocess.run(
+            command,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=PAGE_TIMEOUT_SECONDS,
+        )
+    except subprocess.CalledProcessError as failure:
+        reason = last_line(failure.stderr) or last_line(failure.stdout)
+        reason = reason or "exit " + str(failure.returncode)
+    except (subprocess.TimeoutExpired, OSError) as failure:
+        reason = type(failure).__name__
+    else:
+        url = last_line(done.stdout)
+        return "Release page: " + url if url else None
+    retry = " ".join(command)
+    print("warning: GitHub Release not created (" + reason + "); run: " + retry, file=sys.stderr)
+    return None
+
+
 def main(
     argv: Sequence[str] | None = None, cwd: Path = PROJECT_ROOT, now: datetime | None = None
 ) -> int:
     parser = argparse.ArgumentParser(description="Cut a sprint release.")
     parser.add_argument("--dry-run", action="store_true", help="print the plan, push nothing")
+    parser.add_argument("--notes-url", help="link to the release notes page, for the Release page")
     args = parser.parse_args(argv)
     try:
         plan = make_plan(cwd, now or datetime.now(ZONE))
@@ -275,6 +353,9 @@ def main(
     except (subprocess.TimeoutExpired, OSError) as failure:
         print("git or gh failed: " + type(failure).__name__, file=sys.stderr)
         return 1
+    page = release_page(plan, cwd, args.notes_url)
+    if page:
+        print(page)
     print("\n".join(describe(plan)))
     if DEPLOY_LINE:
         print(DEPLOY_LINE)
