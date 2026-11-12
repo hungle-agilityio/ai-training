@@ -1,0 +1,1295 @@
+<title>ReviewRadar Prototype</title>
+<meta name="robots" content="noindex, nofollow">
+<!--
+  ReviewRadar prototype: every screen of the app, clickable, on demo data, in one file.
+  Source of truth for the UI (ADR-030). Open a screen directly with #<scenario>, for example
+  #dashboard, #dashboard-empty, #settings-goal-error. Add ?bare to hide the prototype bar.
+  Demo data comes from `manage.py seed_demo_data`; nothing here is customer data.
+-->
+<style>
+:root {
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --border: #e3e8f2;
+  --text: #16203a;
+  --muted: #5d6985;
+  --brand: #3b5bdb;
+  --brand-soft: #e8edff;
+  --sidebar: #101a36;
+  --sidebar-text: #c4cce2;
+  --star: #f5a524;
+  --star-empty: #d5dbea;
+  --good: #1a7f4b;
+  --good-soft: #e0f5ea;
+  --warn: #9a6700;
+  --warn-soft: #fff3d1;
+  --bad: #c0332b;
+  --bad-soft: #fde7e5;
+  --neutral-soft: #eceff6;
+  --shadow: 0 1px 2px rgba(16, 26, 54, .06), 0 4px 16px rgba(16, 26, 54, .04);
+  --radius: 14px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {--bg: #0c1122;
+    --surface: #151c33;
+    --border: #252e4d;
+    --text: #e8ecf8;
+    --muted: #9aa5c4;
+    --brand: #7b93ff;
+    --brand-soft: #1f2a52;
+    --sidebar: #090d1a;
+    --star-empty: #34406a;
+    --good: #5fd39a;
+    --good-soft: #12362a;
+    --warn: #f1c55a;
+    --warn-soft: #3b3010;
+    --bad: #ff8f87;
+    --bad-soft: #43191a;
+    --neutral-soft: #222b49;
+    --shadow: none;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {--bg: #0c1122;
+    --surface: #151c33;
+    --border: #252e4d;
+    --text: #e8ecf8;
+    --muted: #9aa5c4;
+    --brand: #7b93ff;
+    --brand-soft: #1f2a52;
+    --sidebar: #090d1a;
+    --star-empty: #34406a;
+    --good: #5fd39a;
+    --good-soft: #12362a;
+    --warn: #f1c55a;
+    --warn-soft: #3b3010;
+    --bad: #ff8f87;
+    --bad-soft: #43191a;
+    --neutral-soft: #222b49;
+    --shadow: none;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+}
+h1, h2, p { margin: 0; }
+
+.shell { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  background: var(--sidebar);
+  color: var(--sidebar-text);
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  color: #fff; text-decoration: none;
+  font-size: 19px; font-weight: 700; letter-spacing: -.01em;
+  padding: 0 8px;
+}
+.brand-mark { color: #7b93ff; }
+.nav { display: flex; flex-direction: column; gap: 4px; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 10px;
+  color: var(--sidebar-text); text-decoration: none; font-weight: 500;
+}
+.nav-item em {
+  margin-left: auto; font-style: normal; font-size: 11px;
+  padding: 2px 8px; border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+}
+.nav-item.is-active { background: rgba(123, 147, 255, .18); color: #fff; }
+.nav-item.is-disabled { opacity: .55; cursor: default; }
+.sidebar-note { margin-top: auto; font-size: 13px; padding: 0 8px; opacity: .7; }
+.account {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 10px 0; border-top: 1px solid rgba(196, 204, 226, .2); font-size: 13px;
+}
+.account strong { color: #fff; overflow-wrap: anywhere; }
+.account-button {
+  border: 1px solid rgba(196, 204, 226, .35); background: transparent; color: #fff;
+  border-radius: 8px; padding: 5px 12px; font: inherit; font-weight: 600; cursor: pointer;
+}
+.account-button:hover { border-color: #7b93ff; }
+.account-button:focus-visible { outline: 2px solid #7b93ff; outline-offset: 2px; }
+
+/* Main */
+.main { display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 28px 32px 8px;
+}
+.topbar h1 { font-size: 26px; letter-spacing: -.02em; }
+.subtitle { color: var(--muted); margin-top: 2px; }
+.button {
+  display: inline-block; padding: 9px 16px; border-radius: 10px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); text-decoration: none; font-weight: 600; font-size: 14px;
+  white-space: nowrap;
+}
+.button:hover { border-color: var(--brand); color: var(--brand); }
+.export-action { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.export-note { margin: 0; color: var(--muted); font-size: 12.5px; }
+.content { padding: 16px 32px 32px; display: flex; flex-direction: column; gap: 20px; flex: 1; }
+.footer { padding: 16px 32px 28px; color: var(--muted); font-size: 13px; }
+
+/* KPI cards */
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.kpi {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px;
+}
+.kpi-label { color: var(--muted); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.kpi-value { font-size: 32px; font-weight: 700; letter-spacing: -.02em; margin-top: 4px; }
+.kpi-unit { font-size: 15px; color: var(--muted); font-weight: 500; }
+.kpi-hint { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.kpi-hint .kpi-overdue { color: var(--bad); font-weight: 600; }
+.kpi-alert { border-color: var(--bad); }
+.kpi-alert .kpi-value { color: var(--bad); }
+
+/* Panels */
+.grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; }
+.panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px;
+}
+.panel-head { margin-bottom: 14px; }
+.panel-head h2 { font-size: 17px; letter-spacing: -.01em; }
+.panel-head p, .muted { color: var(--muted); font-size: 13.5px; }
+.empty { text-align: center; padding: 56px 24px; }
+.empty h2 { font-size: 20px; margin-bottom: 6px; }
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--border); }
+.table thead th {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); font-weight: 600;
+}
+.table tbody th { font-weight: 600; }
+.table .row-link { color: inherit; text-decoration: none; display: inline-block; padding: 8px 0; }
+.table .row-link:hover, .table .row-link:focus-visible { text-decoration: underline; }
+.table .row-link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.table tbody tr:last-child th, .table tbody tr:last-child td { border-bottom: 0; }
+.table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.rating-cell { display: flex; align-items: center; gap: 10px; }
+.rating-cell strong { min-width: 28px; font-variant-numeric: tabular-nums; }
+
+/* Stars */
+.stars {
+  position: relative; display: inline-block; white-space: nowrap;
+  font-size: 16px; letter-spacing: 2px; line-height: 1; color: var(--star-empty);
+}
+.stars::before { content: "★★★★★"; }
+.stars > span {
+  position: absolute; inset: 0 auto 0 0; width: var(--pct, 0%);
+  overflow: hidden; color: var(--star);
+}
+.stars > span::before { content: "★★★★★"; }
+
+/* Badges */
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; background: var(--neutral-soft); color: var(--muted);
+}
+.badge-excellent, .badge-positive { background: var(--good-soft); color: var(--good); }
+.badge-watch { background: var(--warn-soft); color: var(--warn); }
+.badge-attention, .badge-negative { background: var(--bad-soft); color: var(--bad); }
+.badge-neutral { background: var(--neutral-soft); color: var(--muted); }
+.followup-open { background: var(--bad-soft); color: var(--bad); }
+.followup-contacted { background: var(--brand-soft); color: var(--brand); }
+.followup-resolved { background: var(--good-soft); color: var(--good); }
+
+/* Rating breakdown */
+.bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.bar-link {
+  display: grid; grid-template-columns: 38px 1fr 32px; align-items: center; gap: 10px;
+  padding: 8px 6px; margin: -8px -6px; border-radius: 8px; color: inherit; text-decoration: none;
+}
+.bar-link:hover, .bar-link:focus-visible { background: var(--neutral-soft); }
+.bar-link:hover .bar-label, .bar-link:focus-visible .bar-label { text-decoration: underline; }
+.bar-link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.bar-label { font-weight: 600; font-variant-numeric: tabular-nums; }
+.bar-label span { color: var(--star); }
+.bar-track { height: 10px; border-radius: 999px; background: var(--neutral-soft); overflow: hidden; }
+.bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--brand); }
+.bar-5, .bar-4 { background: var(--good); }
+.bar-3 { background: var(--star); }
+.bar-2, .bar-1 { background: var(--bad); }
+.bar-count { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Reviews */
+.reviews { list-style: none; margin: 0; padding: 0; }
+.review { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.review:last-child { border-bottom: 0; padding-bottom: 0; }
+.review:first-child { padding-top: 0; }
+.review-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 4px; }
+.review-top time { margin-left: auto; color: var(--muted); font-size: 13px; }
+.review p { color: var(--text); }
+
+/* Reviews table and pagination */
+.reviews-table th, .reviews-table td { vertical-align: top; }
+.reviews-table .review-text { min-width: 260px; max-width: 520px; }
+.nowrap { white-space: nowrap; }
+.reviews-table .review-text { overflow-wrap: anywhere; }
+.expandable { cursor: help; border-bottom: 1px dotted var(--muted); }
+.expandable .text-full {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+.expandable:hover .text-short, .expandable:focus .text-short { display: none; }
+.expandable:hover .text-full, .expandable:focus .text-full {
+  position: static; width: auto; height: auto; overflow: visible;
+  clip: auto; white-space: normal;
+}
+.expandable:focus-visible, .pager-link:focus-visible, .nav-item:focus-visible, .button:focus-visible {
+  outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px;
+}
+.pager {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);
+}
+.pager-summary { color: var(--muted); font-size: 14px; }
+.pager-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pager-link {
+  display: inline-block; min-width: 36px; padding: 6px 12px; text-align: center;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+  color: var(--text); text-decoration: none; font-size: 14px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+a.pager-link:hover { border-color: var(--brand); color: var(--brand); }
+.pager-link.is-current { background: var(--brand); border-color: var(--brand); color: #fff; }
+.pager-link.is-disabled { opacity: .45; cursor: not-allowed; }
+.pager-gap { padding: 0 4px; color: var(--muted); }
+
+/* Responsive */
+@container app (max-width: 1000px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .grid { grid-template-columns: 1fr; }
+}
+@container app (max-width: 760px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 14px 16px; gap: 12px; }
+  .nav { flex-direction: row; flex-wrap: wrap; }
+  .nav-item.is-disabled, .sidebar-note { display: none; }
+  .account {
+    width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center;
+    justify-content: space-between; padding: 8px 4px 0;
+  }
+  .topbar { flex-direction: column; align-items: flex-start; padding: 20px 16px 4px; }
+  .content { padding: 12px 16px 24px; }
+  .footer { padding: 12px 16px 24px; }
+  .kpis { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .kpi-value { font-size: 26px; }
+}
+
+.filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.filters .field { display: flex; flex-direction: column; gap: 4px; }
+.filters label { color: var(--muted); font-size: 13px; font-weight: 600; }
+.filters select, .filters input { font: inherit; height: 40px; box-sizing: border-box; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+.filters .field-hint { color: var(--muted); font-size: 12.5px; }
+.filter-actions { display: flex; gap: 8px; margin-top: 21px; }
+.filter-actions .button {
+  box-sizing: border-box; width: 96px; height: 40px; padding: 0; border-radius: 8px; text-align: center;
+  font: inherit; font-weight: 600; line-height: 38px; cursor: pointer;
+}
+.filter-actions .button-apply, .filter-actions .button-apply:hover { background: var(--good); border-color: var(--good); color: var(--bg); }
+.filter-actions .button-clear, .filter-actions .button-clear:hover { background: var(--bad); border-color: var(--bad); color: var(--bg); }
+.filter-actions .button:hover { filter: brightness(.92); }
+.alert { margin: 12px 20px 0; padding: 10px 14px; border: 1px solid var(--bad); border-radius: 10px; background: var(--bad-soft); color: var(--bad); font-weight: 600; }
+.filter-week-label { margin: 0; padding: 10px 20px 0; color: var(--muted); font-size: 13.5px; }
+.review-count { margin: 0; padding: 12px 20px 8px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+@container app (max-width: 760px) {
+  .filters .field, .filters select, .filters input { width: 100%; }
+  .filter-actions { width: 100%; margin-top: 0; }
+  .filter-actions .button { flex: 1; width: auto; }
+}
+
+/* Sign-in */
+.signin-page { display: grid; place-items: center; min-height: 100vh; padding: 16px; }
+.signin-card { width: 100%; max-width: 400px; padding: 32px; }
+.signin-brand {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+  color: var(--text); font-size: 19px; font-weight: 700; letter-spacing: -.01em;
+}
+.signin-brand .brand-mark { color: var(--brand); }
+.signin-card h1 { font-size: 24px; letter-spacing: -.01em; margin-bottom: 4px; }
+.signin-form { display: flex; flex-direction: column; gap: 6px; margin-top: 20px; }
+.signin-form label { font-weight: 600; font-size: 13.5px; margin-top: 8px; }
+.signin-form input[type="text"], .signin-form input[type="password"] {
+  width: 100%; padding: 10px 12px; font: inherit; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+}
+.signin-form input:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.signin-submit { margin-top: 16px; background: var(--brand); border-color: var(--brand); color: var(--bg); }
+.signin-submit:hover { background: var(--brand); color: var(--bg); opacity: .9; }
+.signin-error, .signin-field-error { color: var(--bad); font-size: 13.5px; }
+.signin-error { background: var(--bad-soft); border-radius: 10px; padding: 10px 12px; margin-top: 16px; }
+.signin-help { margin-top: 20px; }
+@container app (max-width: 400px) {
+  .signin-card { padding: 24px 16px; }
+}
+
+.location-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); margin-bottom: 20px; }
+.location-side { display: grid; gap: 20px; align-content: start; min-width: 0; }
+.score-value { font-size: 36px; letter-spacing: -.02em; }
+.see-all { margin: 14px 0 0; }
+.bars .bar-link { cursor: default; }
+.bars .bar-link:hover { background: none; }
+.bars .bar-link:hover .bar-label { text-decoration: none; }
+@container app (max-width: 900px) { .location-grid { grid-template-columns: 1fr; } }
+
+/* Weekly trend: HTML and CSS only */
+.trend-panel { margin-bottom: 20px; }
+.trend-chart { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+.trend-col { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; text-align: center; font-size: 12px; }
+.trend-value { font-weight: 700; font-variant-numeric: tabular-nums; }
+.trend-plot { display: flex; align-items: flex-end; justify-content: center; width: 100%; height: 120px; border-bottom: 1px solid var(--border); }
+.trend-bar { display: block; width: 70%; max-width: 40px; background: var(--brand); border-radius: 4px 4px 0 0; }
+.trend-week { color: var(--muted); white-space: nowrap; }
+.trend-count { color: var(--muted); font-size: 11px; }
+.trend-table th[scope="row"] { font-weight: 500; }
+@container app (max-width: 480px) {
+  .trend-chart { gap: 2px; }
+  .trend-col { font-size: 10.5px; }
+  .trend-count { font-size: 9.5px; white-space: normal; }
+}
+
+.report-table td, .report-table th[scope="col"]:not(:first-child) { text-align: right; }
+.change-up { color: var(--good); font-weight: 600; }
+.change-down { color: var(--bad); font-weight: 600; }
+.change-same, .change-none { color: var(--muted); }
+.report-note { padding: 12px 20px 16px; margin: 0; }
+
+/* Compare */
+.compare-verdict { margin: 0; padding: 12px 20px 0; font-weight: 600; }
+.compare-message { margin: 0; padding: 16px 20px; color: var(--muted); }
+.compare-message.is-bad { color: var(--bad); font-weight: 600; }
+.compare-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.compare-table th, .compare-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+.compare-table thead th { color: var(--muted); font-size: 13px; }
+.compare-table tbody th { font-weight: 600; }
+.compare-bar { display: block; height: 6px; margin-top: 4px; border-radius: 999px; background: var(--neutral-soft); overflow: hidden; }
+.compare-bar > span { display: block; height: 100%; background: var(--brand); }
+@container app (max-width: 760px) {
+  .compare-table th, .compare-table td { padding: 8px 10px; }
+}
+/* Reply column of the Reviews page. */
+.reply-status { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid currentColor; }
+.reply-done { color: var(--good); }
+.reply-open { color: var(--muted); }
+
+/* Reply drafts page. */
+#reply-queue .review-count {
+  margin-bottom: 12px;
+}
+
+.reply-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.reply-tabs a { padding: 6px 14px; border-radius: 999px; color: var(--muted); font-weight: 600; text-decoration: none; }
+.reply-tabs a[aria-current="page"] { background: var(--brand-soft); color: var(--brand); }
+.badge-overdue { margin-left: 8px; background: var(--bad-soft); color: var(--bad); }
+
+.notice {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--good);
+  border-radius: 10px;
+  color: var(--good);
+  font-weight: 600;
+}
+
+.reply-review { margin-bottom: 16px; padding: 20px; }
+.reply-review .review-meta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px; }
+.reply-review .review-body { margin: 0; white-space: pre-wrap; }
+.reply-form { display: flex; flex-direction: column; gap: 8px; padding: 20px; }
+.reply-form label { font-weight: 600; }
+.reply-form textarea { width: 100%; min-height: 160px; padding: 10px; font: inherit; border: 1px solid var(--muted); border-radius: 10px; background: transparent; color: inherit; }
+.reply-form .field-hint, .reply-form .last-saved { margin: 0; color: var(--muted); font-size: 13px; }
+.reply-form .alert { margin: 0; }
+.reply-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 8px; }
+.reply-actions button.button { cursor: pointer; background: var(--good); border-color: var(--good); color: var(--bg); }
+
+/* Suggest a reply: a secondary (outline) button and the note above the box. */
+.reply-actions button#suggest-reply { background: transparent; border-color: var(--good); color: var(--good); }
+.reply-form .suggest-note { margin: 0; color: var(--good); font-size: 13px; font-weight: 600; }
+
+/* Template picker above the reply box. */
+.reply-template { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.reply-template-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.reply-template select { min-width: 220px; padding: 8px; font: inherit; border: 1px solid var(--muted); border-radius: 10px; background: transparent; color: inherit; }
+.reply-template button.button { cursor: pointer; background: transparent; border-color: var(--good); color: var(--good); }
+
+/* Follow-up box of a bad review, below the reply form. */
+.followup .notice { margin: 0 0 12px; }
+.followup-form { display: flex; flex-direction: column; gap: 8px; }
+.followup-form label { font-weight: 600; font-size: 13.5px; }
+.followup-form select, .followup-form textarea { width: 100%; padding: 8px 10px; font: inherit; border: 1px solid var(--muted); border-radius: 10px; background: transparent; color: inherit; }
+.followup-form textarea { min-height: 90px; }
+.followup-form [aria-invalid="true"] { border-color: var(--bad); }
+.followup .field-error { margin: 0; color: var(--bad); font-size: 14px; font-weight: 600; }
+.followup .field-hint, .followup .last-changed { margin: 0; color: var(--muted); font-size: 13px; }
+.followup .last-changed { margin-top: 12px; }
+.followup-actions { margin-top: 8px; }
+.followup-actions button.button { cursor: pointer; background: var(--good); border-color: var(--good); color: var(--bg); }
+/* Settings page. */
+.settings-panel { max-width: 560px; }
+.settings-panel h3 { margin: 24px 0 12px; font-size: 15px; }
+.settings-row { display: flex; gap: 12px; margin: 12px 0 4px; }
+.settings-form { display: flex; flex-direction: column; gap: 14px; }
+.settings-field { display: flex; flex-direction: column; gap: 4px; }
+.settings-field label { font-weight: 600; font-size: 13.5px; }
+.settings-templates-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.settings-locations-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.settings-locations-row {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 9px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere;
+}
+.settings-locations-row a { font-weight: 600; }
+.settings-locations-form { flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: 12px; }
+.settings-locations-form .settings-field { flex: 1 1 160px; min-width: 0; }
+.settings-locations-form .button { margin-top: 24px; }
+.settings-field select, .settings-field textarea {
+  width: 100%; box-sizing: border-box; padding: 7px 10px; font: inherit;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text);
+}
+.settings-field select { height: 40px; }
+.settings-field [aria-invalid="true"] { border-color: var(--bad); }
+.settings-field input {
+  width: 100%; box-sizing: border-box; height: 40px; padding: 7px 10px; font: inherit;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text);
+}
+.settings-field input[aria-invalid="true"] { border-color: var(--bad); }
+.settings-error { margin: 0; color: var(--bad); font-size: 13px; }
+.settings-hint { margin: 0; font-size: 12.5px; }
+.settings-form .button { align-self: flex-start; }
+
+@container app (max-width: 760px) {
+  .settings-panel { max-width: none; }
+  .settings-form .button { align-self: stretch; }
+  .settings-locations-form { flex-direction: column; align-items: stretch; }
+  .settings-locations-form .settings-field { flex: none; }
+  .settings-locations-form .button { margin-top: 0; }
+}
+
+
+/* ---------- Prototype only: container, motion, toast, modal, bar ---------- */
+:root {
+  --proto-ink: #ffffff;
+  --proto-bar: #101a36;
+  --overlay: rgba(9, 13, 26, .55);
+}
+html, body { background: var(--bg); }
+#app { container: app / inline-size; min-height: 100vh; background: var(--bg); transition: max-width .35s ease; margin: 0 auto; }
+#app.is-phone { max-width: 390px; box-shadow: 0 0 0 1px var(--border), 0 12px 40px rgba(16, 26, 54, .18); }
+@container app (max-width: 760px) { .shell { min-height: auto; } }
+/* Differs from the app on purpose (design target): panels in .grid may shrink, so the dashboard table scrolls inside its panel at phone width instead of widening the page. */
+.grid > * { min-width: 0; }
+
+.view-enter { animation: view-in .28s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes view-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.fade-swap { animation: fade-swap .25s ease both; }
+@keyframes fade-swap { from { opacity: .25; } to { opacity: 1; } }
+.bar-fill, .trend-bar, .compare-bar > span { transition: width .6s cubic-bezier(.2, .7, .2, 1), height .6s cubic-bezier(.2, .7, .2, 1); }
+.flash { animation: flash 1.4s ease; }
+@keyframes flash { 0% { background: var(--brand-soft); } 100% { background: transparent; } }
+.notice { animation: view-in .3s ease both; }
+.alert, .settings-error, .field-error, .signin-error { animation: shake .32s ease; }
+@keyframes shake { 0%, 100% { transform: none; } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+button.button { cursor: pointer; font: inherit; font-weight: 600; }
+.button:active { transform: translateY(1px); }
+.button[aria-busy="true"] { position: relative; color: transparent !important; pointer-events: none; }
+.button[aria-busy="true"]::after {
+  content: ""; position: absolute; inset: 0; margin: auto; width: 16px; height: 16px;
+  border: 2px solid var(--good); border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.skeleton { display: block; height: 12px; border-radius: 6px; margin: 8px 0; background: linear-gradient(90deg, var(--neutral-soft), var(--border), var(--neutral-soft)); background-size: 200% 100%; animation: shimmer 1s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+.toasts { position: fixed; z-index: 40; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); }
+.toast { pointer-events: auto; background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; font-size: 14px; box-shadow: var(--shadow); animation: toast-in .3s cubic-bezier(.2, .7, .2, 1) both; }
+.toast.is-bad { background: var(--bad); }
+.toast.is-leaving { animation: toast-out .25s ease forwards; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(12px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(8px); } }
+
+.modal-back { position: fixed; inset: 0; z-index: 30; background: var(--overlay); display: grid; place-items: center; padding: 16px; animation: back-in .2s ease both; }
+.modal-back.is-leaving { animation: back-out .18s ease forwards; }
+.modal { width: 100%; max-width: 480px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; display: flex; flex-direction: column; gap: 14px; animation: modal-in .26s cubic-bezier(.2, .7, .2, 1) both; }
+.modal h2 { font-size: 18px; }
+.modal pre { margin: 0; padding: 12px; background: var(--neutral-soft); border-radius: 10px; font-size: 12.5px; overflow-x: auto; max-height: 220px; }
+.modal-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.button-danger { background: var(--bad); border-color: var(--bad); color: var(--bg); }
+.button-danger:hover { color: var(--bg); border-color: var(--bad); filter: brightness(.95); }
+@keyframes back-in { from { opacity: 0; } }
+@keyframes back-out { to { opacity: 0; } }
+@keyframes modal-in { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+
+.drop { border: 2px dashed var(--border); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 10px; transition: border-color .2s, background .2s; }
+.drop.is-over { border-color: var(--brand); background: var(--brand-soft); }
+.link-button { background: none; border: 0; padding: 0; color: var(--brand); font: inherit; cursor: pointer; text-decoration: underline; }
+
+/* Prototype bar: not part of the app. */
+.proto-fab { position: fixed; z-index: 50; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--proto-bar); color: var(--proto-ink); border: 0; border-radius: 999px; padding: 10px 16px; font: 600 13px var(--font); cursor: pointer; box-shadow: 0 6px 24px rgba(16, 26, 54, .3); }
+.proto-panel { position: fixed; z-index: 50; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(64px + env(safe-area-inset-bottom, 0px)); width: min(340px, calc(100vw - 32px)); max-height: min(70vh, 620px); overflow: auto; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 12px 40px rgba(16, 26, 54, .25); padding: 16px; display: flex; flex-direction: column; gap: 14px; font-size: 13.5px; transform-origin: bottom right; animation: modal-in .22s ease both; }
+.proto-panel h2 { font-size: 15px; }
+.proto-panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 6px; }
+.proto-seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.proto-seg button { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 5px 12px; font: 600 12.5px var(--font); cursor: pointer; }
+.proto-seg button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: var(--bg); }
+.proto-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.proto-list a { display: flex; justify-content: space-between; gap: 8px; padding: 5px 8px; border-radius: 8px; color: var(--text); text-decoration: none; }
+.proto-list a:hover, .proto-list a:focus-visible { background: var(--neutral-soft); }
+.proto-list a[aria-current="true"] { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+.proto-list code { color: var(--muted); font-size: 11.5px; }
+.proto-note { color: var(--muted); font-size: 12.5px; margin: 0; }
+.is-bare .proto-fab, .is-bare .proto-panel { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+</style>
+
+<div id="app"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="modal-root"></div>
+<button class="proto-fab" id="proto-fab" type="button" aria-expanded="false" aria-controls="proto-panel">Prototype</button>
+<div id="proto-root"></div>
+
+<script>
+"use strict";
+/* ======================= Demo data (seed_demo_data) ======================= */
+const NOW = new Date("2026-11-12T11:00:00+07:00");
+const ago = (days, hours = 0) => new Date(NOW.getTime() - (days * 24 + hours) * 3600e3);
+const SORRY = "We are sorry about your visit. Our manager will call you to make it right.";
+const THANKS = "Thank you for your kind words. We hope to see you again soon.";
+const FAKE_REPLY_TEXT = "Thank you for taking the time to share your experience. We are sorry it fell short of what you expected, and we would like to make it right. Please contact us so we can help.";
+const SAMPLE_CSV = "Location,Rating,Review text,Date\nDowntown,5,Friendly staff and a short wait.,2026-11-01 09:30\nRiverside,2,Could not get through on the phone.,2026-11-02 14:05\nAirport,4,Clean rooms and kind nurses.,2026-11-03\n";
+const TOPICS = [
+  { slug: "wait", label: "Wait time", keywords: ["wait", "queue", "slow", "delay", "chờ", "cho doi", "đợi"] },
+  { slug: "staff", label: "Staff", keywords: ["staff", "front desk", "reception", "nurse", "nhân viên", "lễ tân"] },
+  { slug: "care", label: "Doctor & treatment", keywords: ["doctor", "care", "treatment", "bác sĩ", "điều trị", "đau"] },
+  { slug: "price", label: "Price & billing", keywords: ["price", "expensive", "bill", "charge", "cost", "giá", "đắt"] },
+  { slug: "booking", label: "Booking & phone", keywords: ["book", "appointment", "phone", "call", "đặt lịch", "điện thoại", "gọi"] },
+  { slug: "parking", label: "Parking", keywords: ["parking", "car park", "gửi xe", "đỗ xe"] },
+  { slug: "cleanliness", label: "Cleanliness", keywords: ["clean", "dirty", "hygiene", "smell", "sạch", "bẩn"] },
+];
+const KIND_LABELS = { any: "Any review", good: "Good review (4–5 ★)", bad: "Bad review (1–2 ★)" };
+const FOLLOWUP_LABELS = { open: "Open", contacted: "Contacted", resolved: "Resolved" };
+
+function demoData() {
+  const r = (id, b, rating, text, at, reply, fu) => ({ id, b, rating, text, at, reply, fu });
+  const rep = (text, at) => ({ text, at });
+  return {
+    user: "demo",
+    branches: [{ id: 1, name: "Airport", goal: null }, { id: 2, name: "Downtown", goal: 4.5 }, { id: 3, name: "Riverside", goal: 3.0 }],
+    reviews: [
+      r(1, 1, 2, "Waited 50 minutes, nobody apologized.", ago(0), null, null),
+      r(2, 1, 2, "Front desk understaffed, queue out the door.", ago(20), rep(SORRY, ago(18, 18)), null),
+      r(3, 1, 3, "Doctor was great but check-in was slow.", ago(40), null, null),
+      r(4, 1, 1, "Billing mistake and nobody called back.", ago(60), null, null),
+      r(5, 2, 5, "Friendly staff, quick visit.", ago(0), rep(THANKS, ago(0)), null),
+      r(6, 2, 4, "Clean and efficient.", ago(20), rep(THANKS, ago(0)), null),
+      r(7, 2, 3, "Parking is expensive.", ago(40), null, null),
+      r(8, 2, 5, "Đau chân đỡ hẳn, nhân viên thân thiện", ago(60), rep(THANKS, ago(0)), null),
+      r(9, 2, 3, "Dau dau khi cho doi", ago(80), null, null),
+      r(10, 3, 4, "Good care, parking is hard.", ago(0), rep(THANKS, ago(0)), null),
+      r(11, 3, 5, "Best clinic experience I've had.", ago(20), rep(THANKS, ago(0)), null),
+      r(12, 3, 2, "Phone line always busy, could not book.", ago(40), rep(SORRY, ago(39, 21)), { status: "contacted", note: "Called the customer back and booked a visit for the next morning.", at: ago(39, 20) }),
+      r(13, 3, 4, "Bác sĩ tận tâm, ĐAU LƯNG đã đỡ nhiều", ago(60), rep(THANKS, ago(0)), null),
+      r(14, 3, 2, "Nhân viên lễ tân chưa nhiệt tình", ago(80), rep(SORRY, ago(79, 4)), { status: "resolved", note: "Talked with the front desk team about greeting every customer.", at: ago(79) }),
+    ],
+    templates: [
+      { id: 1, name: "Thank you", kind: "good", text: "Thank you for your kind words! The team at {location} is glad you had a good visit, and we hope to see you again soon." },
+      { id: 2, name: "We are sorry", kind: "bad", text: "We are sorry your visit to {location} did not go well. Please contact us so we can make it right." },
+      { id: 3, name: "Thanks for the feedback", kind: "any", text: "Thank you for taking the time to share your feedback about {location}. It helps us improve." },
+    ],
+  };
+}
+function emptyData() { return { user: "demo", branches: [], reviews: [], templates: [] }; }
+
+/* ======================= Prototype state ======================= */
+const P = { data: "demo", failures: false, phone: false, signedIn: true };
+let db = demoData();
+let ui = {};           // per-screen state: filters, typed values, errors, notices
+const nextId = (list) => list.reduce((m, x) => Math.max(m, x.id), 0) + 1;
+
+/* ======================= Rules (same as reviews/services.py) ======================= */
+const fold = (s) => s.normalize("NFC").toLocaleLowerCase();
+function avg(total, count) { return count ? Math.floor((total * 20 / count + 1) / 2) / 10 : null; }   // half up, one decimal
+const f1 = (n) => n.toFixed(1);
+const pct = (part, whole) => whole ? Math.floor((part * 200 / whole + 1) / 2) : null;
+function status(a) { return a >= 4 ? ["excellent", "Excellent"] : a >= 3 ? ["watch", "Watch"] : ["attention", "Needs attention"]; }
+function sentiment(r) { return r >= 4 ? ["positive", "Positive"] : r === 3 ? ["neutral", "Neutral"] : ["negative", "Negative"]; }
+const isBad = (rv) => rv.rating <= 2, isGood = (rv) => rv.rating >= 4;
+function topicsOf(text) { const t = fold(text); return TOPICS.filter((tp) => tp.keywords.some((k) => t.includes(fold(k)))); }
+const branch = (id) => db.branches.find((b) => b.id === id);
+const H24 = 24 * 3600e3;
+function counted(rv) { return isBad(rv) && (rv.reply || NOW - rv.at > H24); }
+function inTime(rv) { return rv.reply && rv.reply.at - rv.at <= H24; }
+function speedOf(list) {
+  const c = list.filter(counted), t = c.filter(inTime), replied = c.filter((x) => x.reply);
+  const hours = replied.length ? replied.reduce((s, x) => s + (x.reply.at - x.at), 0) / replied.length / 3600e3 : null;
+  return { counted: c.length, inTime: t.length, percent: pct(t.length, c.length), hours };
+}
+const followupStatus = (rv) => isBad(rv) ? (rv.fu ? rv.fu.status : "open") : "";
+const overdue = (rv) => isBad(rv) && !rv.reply && NOW - rv.at > H24;
+const byNewest = (a, b) => b.at - a.at || b.id - a.id;
+const reviewsOf = (bid) => db.reviews.filter((r) => r.b === bid);
+function monday(d) { const v = new Date(d.getTime() + 7 * 3600e3); const day = (v.getUTCDay() + 6) % 7; return new Date(Date.UTC(v.getUTCFullYear(), v.getUTCMonth(), v.getUTCDate() - day) - 7 * 3600e3); }
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function vn(d) { const v = new Date(d.getTime() + 7 * 3600e3); return { y: v.getUTCFullYear(), m: v.getUTCMonth(), d: v.getUTCDate(), h: v.getUTCHours(), min: v.getUTCMinutes() }; }
+const dateLabel = (d) => { const x = vn(d); return `${MONTHS[x.m].slice(0, 3)} ${x.d}, ${x.y}`; };
+const fullDate = (d) => { const x = vn(d); return `${dateLabel(d)}, ${String(x.h).padStart(2, "0")}:${String(x.min).padStart(2, "0")}`; };
+const weekLabel = (d) => { const x = vn(d); return `${MONTHS[x.m].slice(0, 3)} ${x.d}`; };
+function relDate(d) {
+  const s = Math.floor((NOW - d) / 1000);
+  const n = (c, u) => `${c} ${u}${c === 1 ? "" : "s"} ago`;
+  if (s < 60) return "just now";
+  if (s < 3600) return n(Math.floor(s / 60), "minute");
+  if (s < 86400) return n(Math.floor(s / 3600), "hour");
+  if (s < 7 * 86400) return n(Math.floor(s / 86400), "day");
+  return dateLabel(d);
+}
+const plural = (n, word, many = word + "s") => `${n.toLocaleString("en-US")} ${n === 1 ? word : many}`;
+
+/* ======================= HTML helpers ======================= */
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const stars = (v) => `<span class="stars" role="img" aria-label="${v} out of 5" title="${v} out of 5"><span style="--pct: ${Math.round(v * 20)}%"></span></span>`;
+const badge = (cls, label) => `<span class="badge badge-${cls}">${esc(label)}</span>`;
+const link = (to, text, cls = "row-link", extra = "") => `<a class="${cls}" href="#${to}" ${extra}>${text}</a>`;
+const opt = (v, label, sel) => `<option value="${esc(v)}"${String(sel) === String(v) ? " selected" : ""}>${esc(label)}</option>`;
+const timeCell = (d) => `<td class="nowrap"><time datetime="${d.toISOString()}" title="${fullDate(d)}">${relDate(d)}</time></td>`;
+const notice = (text, id = "") => text ? `<p class="notice" role="status"${id ? ` id="${id}"` : ""}>${esc(text)}</p>` : "";
+function pager(total, page, per, go) {
+  const pages = Math.max(1, Math.ceil(total / per)), from = total ? (page - 1) * per + 1 : 0, to = Math.min(total, page * per);
+  let items = `<li>${page > 1 ? `<a class="pager-link" href="#" data-page="${page - 1}">Previous</a>` : `<span class="pager-link is-disabled" aria-disabled="true">Previous</span>`}</li>`;
+  for (let i = 1; i <= pages; i++) items += `<li>${i === page ? `<span class="pager-link is-current" aria-current="page">${i}</span>` : `<a class="pager-link" href="#" data-page="${i}">${i}</a>`}</li>`;
+  items += `<li>${page < pages ? `<a class="pager-link" href="#" data-page="${page + 1}">Next</a>` : `<span class="pager-link is-disabled" aria-disabled="true">Next</span>`}</li>`;
+  return `<nav class="pager" aria-label="Pagination" data-pager="${go}"><p class="pager-summary">Showing ${from}-${to} of ${plural(total, "review")}</p><ul class="pager-list">${items}</ul></nav>`;
+}
+const ICONS = {
+  dashboard: '<path d="M4 13h6V4H4zm0 7h6v-5H4zm10 0h6V11h-6zm0-16v5h6V4z" fill="currentColor"/>',
+  reviews: '<path d="M4 4h16v12H7l-3 3z" fill="currentColor"/>',
+  reports: '<path d="M5 20V10h3v10zm5.5 0V4h3v16zM16 20v-7h3v7z" fill="currentColor"/>',
+  topics: '<path d="M3 5h8v8H3zm10 0h8v4h-8zm0 6h8v8h-8zM3 15h8v4H3z" fill="currentColor"/>',
+  compare: '<path d="M4 5h7v14H4zm9 0h7v14h-7z" fill="currentColor"/>',
+  replies: '<path d="M3 20l18-8L3 4v6l12 2-12 2z" fill="currentColor"/>',
+  settings: '<path d="M12 8a4 4 0 100 8 4 4 0 000-8zm8 4l-2-.6a6 6 0 00-.6-1.4l1-1.8-1.4-1.4-1.8 1a6 6 0 00-1.4-.6L12 4h-2l-.6 2.2a6 6 0 00-1.4.6l-1.8-1L4.8 7.2l1 1.8a6 6 0 00-.6 1.4L3 11v2l2.2.6c.1.5.3 1 .6 1.4l-1 1.8 1.4 1.4 1.8-1c.4.3.9.5 1.4.6L10 20h2l.6-2.2c.5-.1 1-.3 1.4-.6l1.8 1 1.4-1.4-1-1.8c.3-.4.5-.9.6-1.4L20 13z" fill="currentColor"/>',
+};
+const BRAND = '<svg class="brand-mark" viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="2" opacity=".35"/><circle cx="16" cy="16" r="8" fill="none" stroke="currentColor" stroke-width="2" opacity=".65"/><path d="M16 16 L26 8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="16" cy="16" r="2.5" fill="currentColor"/></svg>';
+const NAV = [["dashboard", "Dashboard"], ["reviews", "Reviews"], ["reports", "Reports"], ["topics", "Topics"], ["compare", "Compare"], ["replies", "Reply drafts"], ["settings-page", "Settings"]];
+
+function shell(active, heading, subtitle, actions, content) {
+  const nav = NAV.map(([k, label]) => `<a class="nav-item${k === active ? " is-active" : ""}" href="#${k}"${k === active ? ' aria-current="page"' : ""}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">${ICONS[k.replace("-page", "")]}</svg>${label}</a>`).join("");
+  return `<div class="shell">
+  <aside class="sidebar" aria-label="Main navigation">
+    <a class="brand" href="#dashboard">${BRAND}<span>ReviewRadar</span></a>
+    <nav class="nav">${nav}</nav>
+    <p class="sidebar-note">Online reputation management for multi-location businesses.</p>
+    <div class="account"><span>Signed in as <strong data-sensitive>${esc(db.user)}</strong></span>
+      <form class="account-signout" data-action="signout"><button type="submit" class="account-button">Sign out</button></form></div>
+  </aside>
+  <div class="main">
+    <header class="topbar"><div><h1>${heading}</h1><p class="subtitle">${subtitle}</p></div>${actions}</header>
+    <main class="content view-enter">${content}</main>
+    <footer class="footer">ReviewRadar &middot; Know what your customers say, branch by branch.</footer>
+  </div></div>`;
+}
+
+/* ======================= Screens ======================= */
+const S = {};
+
+S.login = () => {
+  const u = ui.login || {};
+  return `<div class="signin-page"><main class="signin-card panel view-enter">
+    <div class="signin-brand">${BRAND}<span>ReviewRadar</span></div>
+    <h1>Sign in</h1><p class="muted">Use the account your ReviewRadar admin gave you.</p>
+    ${u.error ? `<div class="signin-error" role="alert"><p>Please enter a correct username and password. Note that both fields may be case-sensitive.</p></div>` : ""}
+    <form class="signin-form" data-action="signin" novalidate>
+      <label for="id_username">Username</label><input type="text" id="id_username" name="username" value="${esc(u.username ?? "demo")}" autocomplete="username" required>
+      <label for="id_password">Password</label><input type="password" id="id_password" name="password" autocomplete="current-password" required>
+      <button type="submit" class="button signin-submit">Sign in</button>
+    </form>
+    <p class="muted signin-help">Forgot your password? Ask your ReviewRadar admin to reset it.</p>
+  </main></div>`;
+};
+
+S.dashboard = () => {
+  const actions = `<button class="button" type="button" data-action="export-json">Export JSON</button>`;
+  if (!db.branches.length) return shell("dashboard", "Reputation dashboard", "How customers rate each of your locations.", actions,
+    `<section class="panel empty"><h2>No locations yet</h2><p>Add your first location and import its reviews to see scores here.</p><p>${link("settings-locations", "Add a location", "")}</p></section>`);
+  const all = db.reviews, tot = all.reduce((s, r) => s + r.rating, 0), a = avg(tot, all.length);
+  const rows = db.branches.map((b) => { const rs = reviewsOf(b.id); return { b, rs, a: avg(rs.reduce((s, r) => s + r.rating, 0), rs.length), sp: speedOf(rs) }; }).sort((x, y) => x.b.name.localeCompare(y.b.name));
+  const attention = rows.filter((x) => x.a !== null && x.a < 3).length;
+  const needReply = all.filter((r) => !r.reply).length, od = all.filter(overdue).length, sp = speedOf(all);
+  const open = all.filter((r) => followupStatus(r) === "open").length;
+  const kpi = (label, value, extra = "", cls = "") => `<article class="kpi ${cls}"><p class="kpi-label">${label}</p><p class="kpi-value" data-count="${esc(value)}">${value}</p>${extra}</article>`;
+  const goalCell = (x) => {
+    if (x.b.goal === null) return `<span class="muted">&ndash;</span>`;
+    if (x.a === null) return `${f1(x.b.goal)} &middot; <span class="muted">No score yet</span>`;
+    const gap = Math.round((x.b.goal - x.a) * 10) / 10;
+    return `${f1(x.b.goal)} &middot; ${gap > 0 ? badge("watch", `${f1(gap)} short`) : badge("positive", "Met")}`;
+  };
+  const table = rows.map((x) => `<tr>
+      <th scope="row">${link(`reviews-location-${x.b.id}`, esc(x.b.name))}</th>
+      <td class="num">${x.rs.length}</td>
+      <td>${x.a === null ? `<span class="muted">No reviews yet</span>` : `<div class="rating-cell"><strong>${f1(x.a)}</strong>${stars(f1(x.a))}</div>`}</td>
+      <td>${goalCell(x)}</td>
+      <td>${x.a === null ? `<span class="muted">&ndash;</span>` : badge(...status(x.a))}</td>
+      <td class="num">${x.sp.percent === null ? `<span class="muted">&ndash;</span>` : x.sp.percent + "%"}</td>
+      <td>${link(`location-${x.b.id}`, "Details", "row-link", `aria-label="Details for ${esc(x.b.name)}"`)}</td></tr>`).join("");
+  const bars = [5, 4, 3, 2, 1].map((n) => { const c = all.filter((r) => r.rating === n).length, w = all.length ? Math.round(c * 100 / all.length) : 0;
+    return `<li><a class="bar-link" href="#reviews-rating-${n}" aria-label="Show ${n}-star reviews (${c})"><span class="bar-label">${n} <span aria-hidden="true">★</span></span><span class="bar-track" role="presentation"><span class="bar-fill bar-${n}" data-w="${w}%" style="width: 0%"></span></span><span class="bar-count">${c}</span></a></li>`; }).join("");
+  const latest = [...all].sort(byNewest).slice(0, 6).map((r) => `<li class="review"><div class="review-top"><strong>${esc(branch(r.b).name)}</strong>${stars(r.rating)}${badge(...sentiment(r.rating))}<time datetime="${r.at.toISOString()}">${dateLabel(r.at)}</time></div><p data-sensitive="review-text">${esc(r.text)}</p></li>`).join("");
+  return shell("dashboard", "Reputation dashboard", "How customers rate each of your locations.", actions, `
+  <section class="kpis" aria-label="Key numbers">
+    ${kpi("Locations", db.branches.length)}
+    ${kpi("Total reviews", all.length)}
+    <article class="kpi"><p class="kpi-label">Average rating</p><p class="kpi-value">${a === null ? "&ndash;" : f1(a)} <span class="kpi-unit">/ 5</span></p>${a === null ? "" : stars(f1(a))}</article>
+    ${kpi("Need attention", attention, `<p class="kpi-hint">Rated below 3.0</p>`, attention ? "kpi-alert" : "")}
+    ${kpi("Need a reply", needReply, `<p class="kpi-hint">Reviews with no reply yet</p>${od ? `<p class="kpi-hint">${link("replies-overdue", `${od} overdue (bad, over 24 h)`, "row-link kpi-overdue")}</p>` : ""}<p class="kpi-hint">${link("replies", "Open reply drafts")}</p>`)}
+    <article class="kpi" id="kpi-reply-speed"><p class="kpi-label">Replied in 24h</p><p class="kpi-value">${sp.percent === null ? "&ndash;" : sp.percent + "%"}</p>${sp.counted ? `<p class="kpi-hint">${sp.inTime} of ${plural(sp.counted, "bad review")}</p>` : `<p class="kpi-hint">No bad reviews yet</p>`}${sp.hours === null ? "" : `<p class="kpi-hint">Average reply time ${f1(Math.round(sp.hours * 10) / 10)} h</p>`}</article>
+    ${kpi("Open cases", open, `<p class="kpi-hint">Bad reviews not handled yet</p><p class="kpi-hint">${link("reviews-followup-open", "See open cases")}</p>`)}
+  </section>
+  <div class="grid">
+    <section class="panel" id="location-scores"><header class="panel-head"><h2>Location scores</h2><p>Average rating and review volume per location</p></header>
+      <div class="table-wrap"><table class="table"><thead><tr><th scope="col">Location</th><th scope="col" class="num">Reviews</th><th scope="col">Rating</th><th scope="col">Goal</th><th scope="col">Status</th><th scope="col" class="num">Replied in 24h</th><th scope="col">Details</th></tr></thead><tbody>${table}</tbody></table></div></section>
+    <section class="panel"><header class="panel-head"><h2>Rating breakdown</h2><p>Share of reviews by star rating</p></header><ul class="bars">${bars}</ul></section>
+  </div>
+  <section class="panel"><header class="panel-head"><h2>Latest reviews</h2><p>The most recent feedback across all locations</p></header>${latest ? `<ul class="reviews">${latest}</ul>` : `<p class="muted">No reviews yet.</p>`}</section>`);
+};
+
+/* ---- Reviews list ---- */
+const PER_PAGE = 20;
+function reviewFilters() { return ui.reviews ||= { search: "", location: "", rating: "", topic: "", reply: "", followup: "", week: "", page: 1 }; }
+function filteredReviews(f) {
+  const words = f.search.trim() ? fold(f.search.trim()).split(/\s+/) : [];
+  return db.reviews.filter((r) => {
+    if (words.length && !words.every((w) => fold(r.text).includes(w))) return false;
+    if (f.location && r.b !== +f.location) return false;
+    if (f.rating === "good" && !isGood(r)) return false;
+    if (f.rating === "bad" && !isBad(r)) return false;
+    if (/^[1-5]$/.test(f.rating) && r.rating !== +f.rating) return false;
+    if (f.topic && !topicsOf(r.text).some((t) => t.slug === f.topic)) return false;
+    if (f.reply === "yes" && !r.reply) return false;
+    if (f.reply === "no" && r.reply) return false;
+    if (f.followup && followupStatus(r) !== f.followup) return false;
+    if (f.week) { const m = monday(new Date(f.week + "T12:00:00+07:00")); if (r.at < m || r.at >= new Date(m.getTime() + 7 * 86400e3)) return false; }
+    return true;
+  }).sort(byNewest);
+}
+S.reviews = () => {
+  const f = reviewFilters(), tooShort = f.search.trim() && f.search.trim().length < 3;
+  const filtered = tooShort ? [] : filteredReviews(f), isFiltered = Object.entries(f).some(([k, v]) => k !== "page" && v);
+  const pageRows = filtered.slice((f.page - 1) * PER_PAGE, f.page * PER_PAGE);
+  const rows = pageRows.map((r) => { const fs = followupStatus(r); return `<tr class="review-row${ui.flash === r.id ? " flash" : ""}">
+    <th scope="row">${link(`location-${r.b}`, esc(branch(r.b).name))}</th><td>${stars(r.rating)}</td>
+    <td class="review-text" data-sensitive="review-text">${esc(r.text)}</td>
+    <td>${badge(...sentiment(r.rating))} ${topicsOf(r.text).map((t) => `<span class="badge badge-neutral topic-label">${esc(t.label)}</span>`).join(" ")}</td>
+    ${timeCell(r.at)}
+    <td class="nowrap">${r.reply ? `<span class="reply-status reply-done">Replied</span> ${link(`reply-${r.id}`, "Edit reply")}` : `<span class="reply-status reply-open">No reply</span> ${link(`reply-${r.id}`, "Reply")}`}</td>
+    <td class="nowrap">${fs ? `<span class="badge followup-${fs}">${FOLLOWUP_LABELS[fs]}</span>` : ""}</td></tr>`; }).join("");
+  const locOpts = db.branches.map((b) => opt(b.id, b.name, f.location)).join("");
+  const body = tooShort ? "" : filtered.length === 0 ? (isFiltered
+      ? `<div class="empty"><h2>No reviews found</h2><p>No review matches these filters. Try other words, another location, rating or week.</p></div>`
+      : `<div class="empty"><h2>No reviews yet</h2><p>Reviews will appear here as soon as they are imported.</p></div>`)
+    : `<p class="review-count">${plural(filtered.length, "review")}</p><div class="table-wrap"><table class="table reviews-table"><thead><tr><th scope="col">Location</th><th scope="col">Rating</th><th scope="col">Review text</th><th scope="col">Sentiment</th><th scope="col">Date</th><th scope="col">Reply</th><th scope="col">Follow-up</th></tr></thead><tbody>${rows}</tbody></table></div>${pager(filtered.length, f.page, PER_PAGE, "reviews")}`;
+  let weekNote = "";
+  if (f.week) { const m = monday(new Date(f.week + "T12:00:00+07:00")); weekNote = `<p class="filter-week-label">Week of ${dateLabel(m)} to ${dateLabel(new Date(m.getTime() + 6 * 86400e3))}</p>`; }
+  return shell("reviews", "Reviews", "Every customer review across all locations, newest first.",
+    `<div class="export-action"><a class="button" id="import-csv" href="#import">Import CSV</a><button class="button" type="button" data-action="export-reviews">Export CSV</button><p class="export-note">The file can contain customers' personal details.</p></div>`,
+    `<section class="panel">
+    <form class="filters" data-action="filter-reviews" aria-label="Filter reviews">
+      <div class="field field-search"><label for="filter-search">Search</label><input type="search" id="filter-search" name="search" value="${esc(f.search)}" data-sensitive="search-term" aria-describedby="filter-search-hint"><span class="field-hint" id="filter-search-hint">Words in the review</span></div>
+      <div class="field"><label for="filter-location">Location</label><select id="filter-location" name="location">${opt("", "All locations", f.location)}${locOpts}</select></div>
+      <div class="field"><label for="filter-rating">Rating</label><select id="filter-rating" name="rating">${opt("", "All ratings", f.rating)}${opt("good", "Good (4-5 stars)", f.rating)}${opt("bad", "Bad (1-2 stars)", f.rating)}${[5, 4, 3, 2, 1].map((n) => opt(n, `${n} star${n > 1 ? "s" : ""}`, f.rating)).join("")}</select></div>
+      <div class="field"><label for="filter-topic">Topic</label><select id="filter-topic" name="topic">${opt("", "All topics", f.topic)}${TOPICS.map((t) => opt(t.slug, t.label, f.topic)).join("")}</select></div>
+      <div class="field"><label for="filter-reply">Reply</label><select id="filter-reply" name="reply">${opt("", "All", f.reply)}${opt("yes", "Replied", f.reply)}${opt("no", "Not replied", f.reply)}</select></div>
+      <div class="field"><label for="filter-followup">Follow-up</label><select id="filter-followup" name="followup">${opt("", "All", f.followup)}${opt("open", "Open", f.followup)}${opt("contacted", "Contacted", f.followup)}${opt("resolved", "Resolved", f.followup)}</select></div>
+      <div class="field"><label for="filter-week">Week of</label><input id="filter-week" type="date" name="week" value="${esc(f.week)}"></div>
+      <div class="filter-actions" role="group" aria-label="Filter actions"><button class="button button-apply" type="submit">Apply</button>${isFiltered ? `<button class="button button-clear" type="button" data-action="clear-reviews">Clear</button>` : ""}</div>
+    </form>
+    ${tooShort ? `<p class="alert" id="filter-search-short" role="alert">Type at least 3 characters to search.</p>` : ""}${weekNote}
+    <div id="reviews-results" class="${ui.swap ? "fade-swap" : ""}">${body}</div></section>`);
+};
+
+/* ---- Import ---- */
+function parseCsv(text) {
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; } else if (c === '"') q = false; else cell += c; }
+    else if (c === '"') q = true; else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter((r) => r.some((x) => x.trim()));
+}
+function importCsv(name, text) {
+  if (P.failures) return { refusal: "The file could not be read. Save it again as CSV (UTF-8) and try once more." };
+  if (!/\.csv$/i.test(name)) return { refusal: "Choose a .csv file." };
+  const rows = parseCsv(text.replace(/^﻿/, ""));
+  const head = (rows[0] || []).map((h) => h.trim().toLowerCase());
+  if (["location", "rating", "review text", "date"].some((h, i) => head[i] !== h)) return { refusal: "The first row must be: Location, Rating, Review text, Date." };
+  const result = { imported: 0, duplicates: 0, errors: [] };
+  rows.slice(1).forEach((r, i) => {
+    const n = i + 2, [loc, rating, text, date] = r.map((x) => (x ?? "").trim());
+    const b = db.branches.find((x) => fold(x.name) === fold(loc || ""));
+    if (!b) return result.errors.push([n, `Unknown location "${loc}"`]);
+    if (!/^[1-5]$/.test(rating)) return result.errors.push([n, "Rating must be a whole number from 1 to 5"]);
+    if (!text) return result.errors.push([n, "Review text is empty"]);
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2}))?$/.exec(date || "");
+    if (!m) return result.errors.push([n, "Date must look like 2026-11-01 or 2026-11-01 09:30"]);
+    const at = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4] || "00"}:${m[5] || "00"}:00+07:00`);
+    if (db.reviews.some((x) => x.b === b.id && x.rating === +rating && x.text === text && +x.at === +at)) { result.duplicates++; return; }
+    db.reviews.push({ id: nextId(db.reviews), b: b.id, rating: +rating, text, at, reply: null, fu: null }); result.imported++;
+  });
+  return { result };
+}
+S.import = () => {
+  const s = ui.import || {};
+  const res = s.result ? `<section class="panel" id="import-result" role="status"><div class="panel-head"><h2>Import finished</h2></div>
+      <p>${plural(s.result.imported, "review")} imported</p><p>${plural(s.result.duplicates, "duplicate")} skipped</p><p>${plural(s.result.errors.length, "row")} with errors</p>
+      <p>${link("reviews", "See the reviews", "")}</p>
+      ${s.result.errors.length ? `<div class="table-wrap"><table class="table" id="import-errors"><thead><tr><th>Row</th><th>Problem</th></tr></thead><tbody>${s.result.errors.slice(0, 20).map(([n, p]) => `<tr><td>${n}</td><td>${esc(p)}</td></tr>`).join("")}</tbody></table></div>` : ""}</section>` : "";
+  const ref = s.refusal ? `<section class="panel" id="import-error" role="alert"><p class="alert">${esc(s.refusal)}</p></section>` : "";
+  return shell("reviews", "Import reviews", "Add reviews from a CSV file with the columns Location, Rating, Review text and Date.", `<a class="button" href="#reviews">Back to reviews</a>`,
+    `${res}${ref}<section class="panel"><div class="panel-head"><h2>Choose a file</h2></div>
+    <form data-action="import" class="drop" id="import-drop">
+      <p><label for="id_file">CSV file</label><br><input type="file" name="file" id="id_file" accept=".csv,text/csv"></p>
+      <p class="muted">Or drop a CSV file here.</p>
+      <div><button type="submit" class="button" id="import-submit">Import</button></div>
+    </form>
+    <p><button type="button" class="link-button" data-action="import-sample">Import the sample file</button> <span class="muted">(Downtown, Riverside and Airport, 3 rows)</span></p></section>`);
+};
+
+/* ---- Reply drafts ---- */
+S.replies = (overdueOnly = false) => {
+  const s = ui.replies || { page: 1 };
+  const list = db.reviews.filter((r) => !r.reply && (!overdueOnly || overdue(r))).sort((a, b) => a.rating - b.rating || a.at - b.at || a.id - b.id);
+  const rows = list.slice((s.page - 1) * PER_PAGE, s.page * PER_PAGE).map((r) => `<tr class="review-row"><th scope="row">${link(`location-${r.b}`, esc(branch(r.b).name))}</th>
+    <td>${stars(r.rating)}${overdue(r) ? ` <span class="badge badge-overdue" title="No reply for more than 24 hours">Overdue</span>` : ""}</td>
+    <td class="review-text" data-sensitive="review-text">${esc(r.text)}</td>${timeCell(r.at)}<td><a class="button" href="#reply-${r.id}">Reply</a></td></tr>`).join("");
+  const empty = overdueOnly ? `<div class="empty"><h2>No overdue reviews</h2><p>Every bad review older than 24 hours has a reply.</p><p>${link("replies", "Show all reviews", "")}</p></div>`
+    : `<div class="empty"><h2>All caught up</h2><p>Every review has a reply.</p></div>`;
+  const out = shell("replies", "Reply drafts", "Reviews that still need a reply, worst first.", "", `${notice(ui.notice)}
+    <section class="panel" id="reply-queue"><nav class="reply-tabs" aria-label="Reply drafts view"><a href="#replies"${overdueOnly ? "" : ' aria-current="page"'}>All</a><a href="#replies-overdue"${overdueOnly ? ' aria-current="page"' : ""}>Overdue only</a></nav>
+    ${list.length ? `<p class="review-count">${list.length.toLocaleString("en-US")}${overdueOnly ? " overdue" : ""} review${list.length === 1 ? " needs" : "s need"} a reply</p><div class="table-wrap"><table class="table replies-table"><thead><tr><th scope="col">Location</th><th scope="col">Rating</th><th scope="col">Review text</th><th scope="col">Date</th><th scope="col">Reply</th></tr></thead><tbody>${rows}</tbody></table></div>${pager(list.length, s.page, PER_PAGE, "replies")}` : empty}</section>`);
+  return out;
+};
+
+/* ---- Reply to one review ---- */
+S.reply = (id) => {
+  const r = db.reviews.find((x) => x.id === id);
+  if (!r) return S.notfound();
+  const s = ui.reply && ui.reply.id === id ? ui.reply : (ui.reply = { id, text: r.reply ? r.reply.text : "", fuStatus: followupStatus(r) || "open", fuNote: r.fu ? r.fu.note : "" });
+  const kinds = isGood(r) ? ["any", "good"] : isBad(r) ? ["any", "bad"] : ["any"];
+  const tpls = db.templates.filter((t) => kinds.includes(t.kind)).sort((a, b) => a.name.localeCompare(b.name));
+  const loc = branch(r.b).name;
+  const fu = isBad(r) ? `<section class="panel followup" id="followup"><div class="panel-head"><h2>Follow-up</h2></div>${notice(s.fuSaved && "Follow-up saved.", "followup-saved")}
+    <form class="followup-form" data-action="followup">
+      <label for="followup-status">Status</label><select id="followup-status" name="status">${Object.entries(FOLLOWUP_LABELS).map(([k, v]) => opt(k, v, s.fuStatus)).join("")}</select>
+      <label for="followup-note">Internal note</label><textarea id="followup-note" name="note" maxlength="500" data-sensitive="followup-note" aria-describedby="${s.fuError ? "note-error " : ""}note-help"${s.fuError ? ' aria-invalid="true"' : ""}>${esc(s.fuNote)}</textarea>
+      ${s.fuError ? `<p class="field-error" id="note-error">${s.fuError}</p>` : ""}<p class="field-hint" id="note-help">Only your team sees this note.</p>
+      <div class="followup-actions"><button type="submit" class="button">Save follow-up</button></div></form>
+    <p class="last-changed">${r.fu ? `Last changed ${fullDate(r.fu.at)} by ${esc(db.user)}` : "Not changed yet."}</p></section>` : "";
+  return shell("replies", "Reply to a review", "Write the reply your team will post.", "", `
+    <section class="panel reply-review"><div class="review-meta">${link(`location-${r.b}`, esc(loc))}${stars(r.rating)}<time datetime="${r.at.toISOString()}">${fullDate(r.at)}</time></div><p class="review-body" data-sensitive="review-text">${esc(r.text)}</p></section>
+    <section class="panel"><form id="reply-form" class="reply-form" data-action="reply" novalidate>
+      ${tpls.length ? `<div class="reply-template" id="reply-template"><label for="reply-template-select">Template</label><div class="reply-template-row"><select id="reply-template-select" name="template">${tpls.map((t) => opt(t.id, t.name, s.template)).join("")}</select><button type="button" class="button secondary" data-action="use-template">Use template</button></div></div>` : ""}
+      ${s.suggestNote ? `<p class="suggest-note">Claude wrote this draft. Read and change it before you save.</p>` : ""}
+      ${s.suggestFailed ? `<p class="alert">Could not get a suggestion right now. Try again or write your own.</p>` : ""}
+      ${s.invalid ? `<p class="alert">Write a reply of 1 to 1,000 characters.</p>` : ""}
+      <label for="reply-text">Your reply</label>
+      <div id="reply-box">${s.loading ? `<div class="panel" aria-busy="true"><span class="skeleton" style="width: 92%"></span><span class="skeleton" style="width: 80%"></span><span class="skeleton" style="width: 60%"></span></div>` : `<textarea id="reply-text" name="text" maxlength="1000" data-sensitive="reply-text"${s.invalid ? ' aria-invalid="true"' : ""}>${esc(s.text)}</textarea>`}</div>
+      <p class="field-hint"><span id="reply-count">${s.text.length}</span> / 1,000 characters.</p>
+      ${r.reply ? `<p class="last-saved">Last saved ${fullDate(r.reply.at)}</p>` : ""}
+      <div class="reply-actions"><button type="submit" class="button">Save reply</button><button type="button" id="suggest-reply" class="button secondary" data-action="suggest"${s.loading ? ' aria-busy="true"' : ""}>Suggest a reply</button><a href="#replies">Back to reply drafts</a></div>
+      <p id="suggest-hint" class="field-hint">Claude writes a draft in the box. Nothing is saved until you press Save reply.</p>
+    </form></section>${fu}`);
+};
+
+/* ---- Location page ---- */
+S.location = (id) => {
+  const b = branch(id);
+  if (!b) return S.notfound();
+  const rs = reviewsOf(id), a = avg(rs.reduce((s, r) => s + r.rating, 0), rs.length);
+  const bars = [5, 4, 3, 2, 1].map((n) => { const c = rs.filter((r) => r.rating === n).length, w = rs.length ? Math.round(c * 100 / rs.length) : 0;
+    return `<li><div class="bar-link"><span class="bar-label">${n} <span aria-hidden="true">★</span></span><span class="bar-track" role="presentation"><span class="bar-fill bar-${n}" data-w="${w}%" style="width: 0%"></span></span><span class="bar-count">${c}</span></div></li>`; }).join("");
+  const weeks = []; const m0 = monday(NOW);
+  for (let i = 7; i >= 0; i--) { const start = new Date(m0.getTime() - i * 7 * 86400e3), end = new Date(start.getTime() + 7 * 86400e3);
+    const w = rs.filter((r) => r.at >= start && r.at < end); weeks.push({ start, n: w.length, a: avg(w.reduce((s, r) => s + r.rating, 0), w.length) }); }
+  const goal = b.goal === null ? `<p class="muted">No goal set.</p><p class="see-all">${link("settings-goals", "Set a goal", "")}</p>`
+    : `<p>${f1(b.goal)} ${a === null ? `<span class="muted">No score yet</span>` : (b.goal - a > 0.04 ? badge("watch", `${f1(Math.round((b.goal - a) * 10) / 10)} short`) : badge("positive", "Met"))}</p><p class="see-all">${link("settings-goals", "Change goal", "")}</p>`;
+  const topicRows = TOPICS.map((t) => { const w = rs.filter((r) => topicsOf(r.text).includes(t)); return { t, n: w.length, bad: w.filter(isBad).length }; }).filter((x) => x.n).sort((x, y) => y.n - x.n || y.bad - x.bad).slice(0, 3);
+  const latest = [...rs].sort(byNewest).slice(0, 5).map((r) => `<tr class="review-row"><td>${stars(r.rating)}</td><td class="review-text" data-sensitive="review-text">${esc(r.text)}</td><td>${badge(...sentiment(r.rating))}</td>${timeCell(r.at)}</tr>`).join("");
+  return shell("", esc(b.name), "Score, weekly trend and latest reviews for this location.", `<a class="button" href="#compare-${id}">Compare with another location</a>`, `
+  <div class="grid location-grid"><div class="location-side">
+    <section class="panel"><header class="panel-head"><h2>Score</h2></header>${a === null ? `<p class="muted">No reviews yet</p>` : `<div class="rating-cell"><strong class="score-value">${f1(a)}</strong>${stars(f1(a))}${badge(...status(a))}</div>`}<p class="review-count">${plural(rs.length, "review")}</p></section>
+    <section class="panel" id="location-goal"><header class="panel-head"><h2>Goal</h2></header>${goal}</section></div>
+    <section class="panel"><header class="panel-head"><h2>Rating breakdown</h2><p>Share of this location's reviews by star rating</p></header><ul class="bars">${bars}</ul></section></div>
+  <section class="panel trend-panel"><header class="panel-head"><h2>Weekly trend</h2><p>Average rating per week, last 8 weeks (Monday to Sunday)</p></header>
+    <ol class="trend-chart" aria-hidden="true">${weeks.map((w) => `<li class="trend-col"><span class="trend-value">${w.n ? f1(w.a) : "–"}</span><span class="trend-plot">${w.n ? `<span class="trend-bar" data-h="${w.a * 20}%" style="height: 0%"></span>` : ""}</span><span class="trend-week">${weekLabel(w.start)}</span><span class="trend-count">${plural(w.n, "review")}</span></li>`).join("")}</ol>
+    <div class="table-wrap"><table class="table trend-table"><thead><tr><th scope="col">Week of</th><th scope="col">Average</th><th scope="col">Reviews</th></tr></thead><tbody>${weeks.map((w) => `<tr><th scope="row">${weekLabel(w.start)}</th><td>${w.n ? f1(w.a) : "No reviews"}</td><td>${w.n}</td></tr>`).join("")}</tbody></table></div></section>
+  <section class="panel" id="location-topics"><header class="panel-head"><h2>What customers talk about</h2><p>Top topics of all reviews</p></header>
+    ${topicRows.length ? `<ul class="reviews">${topicRows.map((x) => `<li><a href="#reviews-location-${id}-topic-${x.t.slug}">${esc(x.t.label)}</a> <span class="muted">${plural(x.n, "review")}${x.bad ? ` · ${x.bad} bad` : ""}</span></li>`).join("")}</ul>` : `<p class="muted">No topics yet.</p>`}</section>
+  <section class="panel"><header class="panel-head"><h2>Latest reviews</h2><p>The 5 newest reviews of this location</p></header>
+    ${latest ? `<div class="table-wrap"><table class="table reviews-table"><thead><tr><th scope="col">Rating</th><th scope="col">Review text</th><th scope="col">Sentiment</th><th scope="col">Date</th></tr></thead><tbody>${latest}</tbody></table></div>` : `<p class="muted">No reviews yet.</p>`}
+    <p class="see-all">${link(`reviews-location-${id}`, "See all reviews", "")}</p></section>`);
+};
+
+/* ---- Monthly report ---- */
+S.reports = () => {
+  const s = ui.reports ||= { month: "2026-11" };
+  const [y, m] = s.month.split("-").map(Number);
+  const inMonth = (r, yy, mm) => { const x = vn(r.at); return x.y === yy && x.m === mm - 1; };
+  const prevY = m === 1 ? y - 1 : y, prevM = m === 1 ? 12 : m - 1, prevName = MONTHS[prevM - 1], name = `${MONTHS[m - 1]} ${y}`;
+  const options = []; for (let i = 0; i < 12; i++) { const d = new Date(Date.UTC(2026, 10 - i, 1)); const v = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`; options.push(opt(v, `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`, s.month)); }
+  const change = (now, before) => {
+    if (now === null || before === null) return `<span class="change-none">&ndash;</span>`;
+    const d = Math.round((now - before) * 10) / 10;
+    return d > 0 ? `<span class="change-up" aria-label="Up ${f1(d)} from ${prevName}">▲ ${f1(d)}</span>` : d < 0 ? `<span class="change-down" aria-label="Down ${f1(-d)} from ${prevName}">▼ ${f1(-d)}</span>` : `<span class="change-same" aria-label="Same as ${prevName}">0</span>`;
+  };
+  const locRows = db.branches.map((b) => { const now = reviewsOf(b.id).filter((r) => inMonth(r, y, m)), before = reviewsOf(b.id).filter((r) => inMonth(r, prevY, prevM));
+    const a = avg(now.reduce((t, r) => t + r.rating, 0), now.length), pa = avg(before.reduce((t, r) => t + r.rating, 0), before.length);
+    return `<tr><th scope="row">${link(`location-${b.id}`, esc(b.name), "")}</th><td>${now.length}</td><td>${a === null ? "&ndash;" : f1(a)}</td><td>${now.filter(isGood).length}</td><td>${now.filter(isBad).length}</td><td>${change(a, pa)}</td></tr>`; }).join("");
+  const tRows = TOPICS.map((t) => { const now = db.reviews.filter((r) => inMonth(r, y, m) && topicsOf(r.text).includes(t)), before = db.reviews.filter((r) => inMonth(r, prevY, prevM) && topicsOf(r.text).includes(t)); return { t, now, d: now.length - before.length }; })
+    .filter((x) => x.now.length).map((x) => `<tr><th scope="row">${esc(x.t.label)}</th><td>${x.now.length}</td><td>${x.now.filter(isBad).length}</td><td>${x.d > 0 ? `<span class="change-up">+${x.d}</span>` : x.d < 0 ? `<span class="change-down">${x.d}</span>` : `<span class="change-same" aria-label="Same as ${prevName}">0</span>`}</td></tr>`).join("");
+  return shell("reports", "Monthly report", "Reviews and average score per location for one month (Vietnam time).", `<div class="export-action"><button class="button" type="button" data-action="export-report">Export CSV</button></div>`, `
+  <section class="panel"><header class="panel-head"><h2>Locations</h2><p>${name}</p></header>
+    <form class="filters" data-action="report-month" aria-label="Choose a month"><div class="field"><label for="report-month">Month</label><select id="report-month" name="month">${options.join("")}</select></div><div class="filter-actions"><button class="button button-apply" type="submit">Show</button></div></form>
+    <div class="fade-swap">${db.branches.length ? `<div class="table-wrap"><table class="table report-table"><thead><tr><th scope="col">Location</th><th scope="col">Reviews</th><th scope="col">Average</th><th scope="col">Good (4–5)</th><th scope="col">Bad (1–2)</th><th scope="col">vs ${prevName}</th></tr></thead><tbody>${locRows}</tbody></table></div>` : `<p class="report-note muted">No locations yet.</p>`}</div></section>
+  <section class="panel" id="report-topics"><header class="panel-head"><h2>Topics</h2><p>Reviews per topic in ${name}</p></header>
+    ${tRows ? `<div class="table-wrap"><table class="table report-table"><thead><tr><th scope="col">Topic</th><th scope="col">Reviews</th><th scope="col">Bad</th><th scope="col">Change vs ${prevName}</th></tr></thead><tbody>${tRows}</tbody></table></div>` : `<p class="muted">No reviews mention a topic in ${name}.</p>`}</section>`);
+};
+
+/* ---- Topics ---- */
+S.topics = () => {
+  const s = ui.topics ||= { location: "", period: "" };
+  const list = db.reviews.filter((r) => (!s.location || r.b === +s.location) && (!s.period || NOW - r.at <= +s.period * 86400e3));
+  const rows = TOPICS.map((t) => { const w = list.filter((r) => topicsOf(r.text).includes(t)); return { t, w, bad: w.filter(isBad).length }; }).filter((x) => x.w.length).sort((a, b) => b.w.length - a.w.length || b.bad - a.bad || a.t.label.localeCompare(b.t.label));
+  const none = list.filter((r) => !topicsOf(r.text).length).length;
+  return shell("topics", "Topics", "What customers talk about, by topic.", "", `<section class="panel"><header class="panel-head"><h2>Topics</h2><p id="topics-summary">${plural(list.length, "review")} · ${none} mention${none === 1 ? "s" : ""} no topic</p></header>
+    <form class="filters" data-action="topics" aria-label="Filter topics">
+      <div class="field"><label for="topics-location">Location</label><select id="topics-location" name="location">${opt("", "All locations", s.location)}${db.branches.map((b) => opt(b.id, b.name, s.location)).join("")}</select></div>
+      <div class="field"><label for="topics-period">Period</label><select id="topics-period" name="period">${opt("", "All time", s.period)}${opt("30", "Last 30 days", s.period)}${opt("90", "Last 90 days", s.period)}</select></div>
+      <div class="filter-actions"><button class="button button-apply" type="submit">Apply</button></div></form>
+    <div class="fade-swap">${rows.length ? `<div class="table-wrap"><table class="table" id="topics-table"><thead><tr><th scope="col">Topic</th><th scope="col">Reviews</th><th scope="col">Share</th><th scope="col">Bad</th><th scope="col">Average rating</th><th scope="col">Details</th></tr></thead><tbody>${rows.map((x) => `<tr><th scope="row">${esc(x.t.label)}</th><td>${x.w.length}</td><td>${pct(x.w.length, list.length)}%</td><td>${x.bad ? `${x.bad} (${pct(x.bad, x.w.length)}%)` : 0}</td><td>${f1(avg(x.w.reduce((t, r) => t + r.rating, 0), x.w.length))}</td><td><a href="#reviews-topic-${x.t.slug}">See reviews</a></td></tr>`).join("")}</tbody></table></div>` : `<div class="empty"><h2>No topics yet</h2><p>No review in this selection mentions a topic.</p></div>`}</div></section>`);
+};
+
+/* ---- Compare ---- */
+function sideOf(id, period) {
+  const b = branch(id), rs = reviewsOf(id).filter((r) => !period || NOW - r.at <= +period * 86400e3);
+  return { b, rs, a: avg(rs.reduce((t, r) => t + r.rating, 0), rs.length), good: pct(rs.filter(isGood).length, rs.length), bad: pct(rs.filter(isBad).length, rs.length), sp: speedOf(rs).percent };
+}
+S.compare = () => {
+  const s = ui.compare ||= { a: "", b: "", period: "" };
+  const locs = (v) => opt("", "Choose a location", v) + db.branches.map((b) => opt(b.id, b.name, v)).join("");
+  let result = `<p class="compare-message">Pick two locations to compare.</p>`;
+  if (s.a && s.b && s.a === s.b) result = `<p class="compare-message is-bad" role="alert">Pick two different locations.</p>`;
+  else if (s.a && s.b) {
+    const A = sideOf(+s.a, s.period), B = sideOf(+s.b, s.period);
+    let verdict = "";
+    if (A.a !== null && B.a !== null) { const d = Math.round((A.a - B.a) * 10) / 10; verdict = d === 0 ? "Same score" : `${A.b.name} scores ${f1(Math.abs(d))} ${d > 0 ? "higher" : "lower"} than ${B.b.name}`; }
+    const cell = (v, suffix = "%") => v === null ? "—" : v + suffix;
+    const starRows = [5, 4, 3, 2, 1].map((n) => { const ca = A.rs.filter((r) => r.rating === n).length, cb = B.rs.filter((r) => r.rating === n).length, pa = pct(ca, A.rs.length) ?? 0, pb = pct(cb, B.rs.length) ?? 0;
+      return `<tr><th scope="row">${n} ★</th><td>${ca} (${pa}%)<span class="compare-bar"><span data-w="${pa}%" style="width: 0%"></span></span></td><td>${cb} (${pb}%)<span class="compare-bar"><span data-w="${pb}%" style="width: 0%"></span></span></td></tr>`; }).join("");
+    const topicRows = TOPICS.map((t) => { const wa = A.rs.filter((r) => topicsOf(r.text).includes(t)), wb = B.rs.filter((r) => topicsOf(r.text).includes(t)); return { t, wa, wb }; }).filter((x) => x.wa.length || x.wb.length)
+      .map((x) => `<tr><th scope="row">${esc(x.t.label)}</th><td>${x.wa.length}${x.wa.filter(isBad).length ? ` · ${x.wa.filter(isBad).length} bad` : ""}</td><td>${x.wb.length}${x.wb.filter(isBad).length ? ` · ${x.wb.filter(isBad).length} bad` : ""}</td></tr>`).join("");
+    result = `<div class="fade-swap">${verdict ? `<p class="compare-verdict" id="compare-verdict">${esc(verdict)}</p>` : ""}<div class="table-wrap"><table class="compare-table" id="compare-table"><thead><tr><td></td><th scope="col">${esc(A.b.name)}</th><th scope="col">${esc(B.b.name)}</th></tr></thead><tbody>
+      <tr><th scope="row">Score</th><td>${A.a === null ? "No score yet" : f1(A.a)}</td><td>${B.a === null ? "No score yet" : f1(B.a)}</td></tr>
+      <tr><th scope="row">Reviews</th><td>${A.rs.length}</td><td>${B.rs.length}</td></tr>
+      <tr><th scope="row">Good reviews</th><td>${cell(A.good)}</td><td>${cell(B.good)}</td></tr>
+      <tr><th scope="row">Bad reviews</th><td>${cell(A.bad)}</td><td>${cell(B.bad)}</td></tr>
+      <tr><th scope="row">Replied in 24h</th><td>${cell(A.sp)}</td><td>${cell(B.sp)}</td></tr>${starRows}</tbody></table></div>
+      <section class="compare-topics panel-head" id="compare-topics" aria-label="What customers talk about" style="padding: 16px 20px 0"><h2>What customers talk about</h2></section>
+      ${topicRows ? `<div class="table-wrap"><table class="compare-table"><thead><tr><td></td><th scope="col">${esc(A.b.name)}</th><th scope="col">${esc(B.b.name)}</th></tr></thead><tbody>${topicRows}</tbody></table></div>` : `<p class="compare-message">No topics found for these locations in this period.</p>`}</div>`;
+  }
+  return shell("compare", "Compare locations", "Two locations side by side for a period.", s.a && s.b && s.a !== s.b ? `<button class="button" type="button" data-action="export-compare">Download CSV</button>` : "", `<section class="panel">
+    <form class="filters" id="compare-form" data-action="compare" aria-label="Compare locations">
+      <div class="field"><label for="compare-a">Location A</label><select id="compare-a" name="a">${locs(s.a)}</select></div>
+      <div class="field"><label for="compare-b">Location B</label><select id="compare-b" name="b">${locs(s.b)}</select></div>
+      <div class="field"><label for="compare-period">Period</label><select id="compare-period" name="period">${opt("", "All time", s.period)}${opt("30", "Last 30 days", s.period)}${opt("90", "Last 90 days", s.period)}</select></div>
+      <div class="filter-actions"><button class="button button-apply" type="submit">Compare</button></div></form>${result}</section>`);
+};
+
+/* ---- Settings ---- */
+S.settings = () => {
+  const s = ui.settings ||= { pw: {}, loc: {}, goals: {}, tpl: {} };
+  const err = (id, list) => list && list.length ? `<div id="${id}">${list.map((e) => `<p class="settings-error">${esc(e)}</p>`).join("")}</div>` : "";
+  const inv = (list) => list && list.length ? ' aria-invalid="true"' : "";
+  const goalField = (b) => { const e = s.goals.errors && s.goals.errors[b.id]; const v = s.goals.values ? s.goals.values[b.id] : (b.goal === null ? "" : f1(b.goal));
+    return `<div class="settings-field"><label for="goal-${b.id}" data-sensitive>${esc(b.name)}</label><input type="number" id="goal-${b.id}" name="goal-${b.id}" step="0.1" min="1.0" max="5.0" value="${esc(v)}"${e ? ` aria-invalid="true" aria-describedby="goal-${b.id}-error"` : ""}>${e ? `<p class="settings-error" id="goal-${b.id}-error">${e}</p>` : ""}</div>`; };
+  const tpls = [...db.templates].sort((a, b) => a.name.localeCompare(b.name));
+  return shell("settings-page", "Settings", "Your account and how ReviewRadar is set up.", "", `
+  <section class="panel settings-panel" id="settings-account"><h2>Account</h2>${notice(s.pwSaved && "Password changed.", "password-saved")}
+    <p class="settings-row"><span class="muted">Username</span> <strong data-sensitive>${esc(db.user)}</strong></p><p class="muted">To change your username, ask your ReviewRadar admin.</p>
+    <h3>Change password</h3>
+    <form class="settings-form" data-action="password" novalidate>
+      <div class="settings-field"><label for="id_old_password">Current password</label><input type="password" name="old_password" id="id_old_password" autocomplete="current-password"${inv(s.pw.old)}>${err("id_old_password_error", s.pw.old)}</div>
+      <div class="settings-field"><label for="id_new_password1">New password</label><input type="password" name="new_password1" id="id_new_password1" autocomplete="new-password" aria-describedby="id_new_password1_helptext"${inv(s.pw.new1)}>${err("id_new_password1_error", s.pw.new1)}</div>
+      <div class="settings-field"><label for="id_new_password2">Confirm new password</label><input type="password" name="new_password2" id="id_new_password2" autocomplete="new-password"${inv(s.pw.new2)}>${err("id_new_password2_error", s.pw.new2)}</div>
+      <p class="muted settings-hint" id="id_new_password1_helptext">At least 8 characters, not only numbers, not a common password and not like your username.</p>
+      <button type="submit" class="button">Change password</button></form></section>
+  <section class="panel settings-panel" id="settings-locations"><h2>Locations</h2>${notice(s.locNotice, "locations-saved")}
+    ${db.branches.length ? `<ul class="settings-locations-list">${db.branches.map((b) => `<li class="settings-locations-row${ui.flash === "loc" + b.id ? " flash" : ""}"><span>${esc(b.name)}</span> <a href="#rename-location-${b.id}" aria-label="Rename ${esc(b.name)}">Rename</a></li>`).join("")}</ul>` : `<p class="muted">No locations yet. Add the first one below.</p>`}
+    <h3>Add a location</h3>
+    <form class="settings-form settings-locations-form" data-action="add-location" novalidate><div class="settings-field"><label for="location-name">Name</label><input type="text" id="location-name" name="name" maxlength="120" value="${esc(s.loc.typed || "")}"${inv(s.loc.errors)}>${err("location-name-error", s.loc.errors)}</div><button type="submit" class="button">Add location</button></form></section>
+  <section class="panel settings-panel" id="settings-goals"><h2>Location goals</h2>${notice(s.goalsSaved && "Goals saved.", "goals-saved")}<p class="muted">Target score from 1.0 to 5.0. Leave empty for no goal.</p>
+    ${db.branches.length ? `<form class="settings-form" data-action="goals" novalidate>${db.branches.map(goalField).join("")}<button type="submit" class="button">Save goals</button></form>` : `<p class="muted">Add a location first.</p>`}</section>
+  <section class="panel settings-panel" id="settings-templates"><h2>Reply templates</h2>${notice(s.tplNotice, "templates-saved")}<p class="muted">Use {location} for the location's name.</p>
+    ${tpls.length ? `<ul class="settings-templates-list">${tpls.map((t) => `<li class="settings-row${ui.flash === "tpl" + t.id ? " flash" : ""}"><strong data-sensitive>${esc(t.name)}</strong> <span class="muted">${KIND_LABELS[t.kind]}</span> <a href="#edit-template-${t.id}">Edit</a></li>`).join("")}</ul>` : `<p class="muted">No templates yet.</p>`}
+    <h3>Add a template</h3>
+    <form class="settings-form" data-action="add-template" novalidate>
+      <div class="settings-field"><label for="template-name">Name</label><input type="text" id="template-name" name="name" maxlength="60" value="${esc(s.tpl.name || "")}"${inv(s.tpl.nameErr)}>${err("template-name-error", s.tpl.nameErr)}</div>
+      <div class="settings-field"><label for="template-kind">Kind</label><select id="template-kind" name="kind">${Object.entries(KIND_LABELS).map(([k, v]) => opt(k, v, s.tpl.kind || "any")).join("")}</select></div>
+      <div class="settings-field"><label for="template-text">Text</label><textarea id="template-text" name="text" maxlength="1000" rows="4"${inv(s.tpl.textErr)}>${esc(s.tpl.text || "")}</textarea>${err("template-text-error", s.tpl.textErr)}</div>
+      <button type="submit" class="button">Add template</button></form></section>
+  <section class="panel settings-panel" id="settings-suggestions"><h2>Reply suggestions</h2><p class="settings-row"><span class="badge badge-watch">Demo</span></p><p class="muted">No API key: the button gives a fixed sample draft and nothing is sent to Claude.</p></section>`);
+};
+S.renameLocation = (id) => {
+  const b = branch(id); if (!b) return S.notfound();
+  const s = ui.rename && ui.rename.id === id ? ui.rename : (ui.rename = { id, typed: b.name, errors: null });
+  return shell("settings-page", "Rename location", "Reviews, goal and score stay with the location.", "", `<section class="panel settings-panel"><form class="settings-form" data-action="rename-location" novalidate>
+    <div class="settings-field"><label for="location-name">Name</label><input type="text" id="location-name" name="name" maxlength="120" value="${esc(s.typed)}"${s.errors ? ' aria-invalid="true" aria-describedby="location-name-error"' : ""}>${s.errors ? `<div id="location-name-error">${s.errors.map((e) => `<p class="settings-error">${esc(e)}</p>`).join("")}</div>` : ""}</div>
+    <div class="settings-row"><button type="submit" class="button">Save name</button><a href="#settings-locations">Cancel</a></div></form></section>`);
+};
+S.editTemplate = (id) => {
+  const t = db.templates.find((x) => x.id === id); if (!t) return S.notfound();
+  const s = ui.edit && ui.edit.id === id ? ui.edit : (ui.edit = { id, name: t.name, kind: t.kind, text: t.text });
+  return shell("settings-page", "Edit reply template", "Use {location} for the location's name.", "", `<section class="panel settings-panel"><form class="settings-form" data-action="edit-template" novalidate>
+    <div class="settings-field"><label for="template-name">Name</label><input type="text" id="template-name" name="name" maxlength="60" value="${esc(s.name)}" data-sensitive${s.nameErr ? ' aria-invalid="true"' : ""}>${s.nameErr ? `<p class="settings-error">${s.nameErr}</p>` : ""}</div>
+    <div class="settings-field"><label for="template-kind">Kind</label><select id="template-kind" name="kind">${Object.entries(KIND_LABELS).map(([k, v]) => opt(k, v, s.kind)).join("")}</select></div>
+    <div class="settings-field"><label for="template-text">Text</label><textarea id="template-text" name="text" maxlength="1000" rows="4" data-sensitive${s.textErr ? ' aria-invalid="true"' : ""}>${esc(s.text)}</textarea>${s.textErr ? `<p class="settings-error">${s.textErr}</p>` : ""}</div>
+    <div class="settings-row"><button type="submit" class="button">Save template</button><a href="#settings-templates">Cancel</a><button type="button" class="link-button" data-action="delete-template">Delete template</button></div></form></section>`);
+};
+S.notfound = () => shell("", "Page not found", "The page you asked for does not exist.", "", `<section class="panel empty"><h2>Page not found</h2><p>Check the link, or go back to the dashboard.</p><p>${link("dashboard", "Go to the dashboard", "")}</p></section>`);
+
+/* ======================= Routing (hash = screen or scenario) ======================= */
+// Scenarios: the states a reviewer (or the build's design check) opens directly.
+const SCENARIOS = [
+  ["login", "Sign in", "Sign in"], ["login-error", "Sign in", "Wrong password"],
+  ["dashboard", "Dashboard", "Normal"], ["dashboard-empty", "Dashboard", "No locations"],
+  ["reviews", "Reviews", "All reviews"], ["reviews-filtered", "Reviews", "Bad, not replied"], ["reviews-no-match", "Reviews", "No match"], ["reviews-search-short", "Reviews", "Search too short"], ["reviews-empty", "Reviews", "No reviews yet"],
+  ["import", "Import", "Choose a file"], ["import-done", "Import", "Sample imported"], ["import-error", "Import", "Wrong file"],
+  ["replies", "Reply drafts", "Queue"], ["replies-overdue", "Reply drafts", "Overdue only"], ["replies-empty", "Reply drafts", "All caught up"],
+  ["reply-1", "Reply", "Bad review, no reply"], ["reply-error", "Reply", "Empty reply"], ["reply-suggest-failed", "Reply", "Suggestion failed"], ["reply-12", "Reply", "Case contacted"],
+  ["location-1", "Location", "Airport"], ["location-2", "Location", "Downtown"],
+  ["reports", "Reports", "November 2026"], ["topics", "Topics", "All time"], ["compare", "Compare", "Pick two"], ["compare-1-2", "Compare", "Airport vs Downtown"], ["compare-same", "Compare", "Same location"],
+  ["settings-page", "Settings", "Normal"], ["settings-goal-error", "Settings", "Goal out of range"], ["settings-location-error", "Settings", "Duplicate location"], ["settings-empty", "Settings", "No locations"],
+  ["rename-location-1", "Settings", "Rename location"], ["edit-template-1", "Settings", "Edit template"], ["not-found", "Other", "Page not found"],
+];
+function resetFor(dataMode) { P.data = dataMode; db = dataMode === "empty" ? emptyData() : demoData(); ui = {}; }
+function route(name) {
+  let m; const fresh = !ui.keep;
+  const want = (mode) => { if (P.data !== mode) resetFor(mode); };
+  if (name.endsWith("-empty") && name !== "replies-empty") want("empty");
+  if (!P.signedIn && name !== "login" && name !== "login-error") return { html: S.login() };
+  switch (true) {
+    case name === "login": if (fresh) { P.signedIn = false; ui.login = {}; } return { html: S.login() };
+    case name === "login-error": if (fresh) { P.signedIn = false; ui.login = { error: true, username: "demo" }; } return { html: S.login() };
+    case name === "" || name === "dashboard" || name === "dashboard-empty": return { html: S.dashboard(), nav: "dashboard" };
+    case name === "reviews" || name === "reviews-empty": if (fresh) { ui.reviews = null; } return { html: S.reviews() };
+    case name === "reviews-filtered": if (fresh) { ui.reviews = { ...reviewFilters(), rating: "bad", reply: "no", page: 1 }; } return { html: S.reviews() };
+    case name === "reviews-no-match": if (fresh) { ui.reviews = { ...reviewFilters(), search: "refund", page: 1 }; } return { html: S.reviews() };
+    case name === "reviews-search-short": if (fresh) { ui.reviews = { ...reviewFilters(), search: "wa", page: 1 }; } return { html: S.reviews() };
+    case !!(m = /^reviews-(location|rating|topic|followup)-([\w]+)(?:-topic-(\w+))?$/.exec(name)): {
+      const f = { search: "", location: "", rating: "", topic: "", reply: "", followup: "", week: "", page: 1 }; f[m[1]] = m[2]; if (m[3]) f.topic = m[3]; ui.reviews = f; return { html: S.reviews() }; }
+    case name === "import": if (fresh) { ui.import = {}; } return { html: S.import() };
+    case name === "import-done": if (fresh) { ui.import = importCsv("import-sample.csv", SAMPLE_CSV); } return { html: S.import() };
+    case name === "import-error": if (fresh) { ui.import = { refusal: "Choose a .csv file." }; } return { html: S.import() };
+    case name === "replies" || name === "replies-empty": if (name === "replies-empty") db.reviews.forEach((r) => r.reply ||= { text: THANKS, at: NOW }); if (fresh) { ui.replies = { page: 1 }; } return { html: S.replies(false) };
+    case name === "replies-overdue": if (fresh) { ui.replies = { page: 1 }; } return { html: S.replies(true) };
+    case name === "reply-error": if (fresh) { ui.reply = { id: 1, text: "", fuStatus: "open", fuNote: "", invalid: true }; } return { html: S.reply(1) };
+    case name === "reply-suggest-failed": if (fresh) { ui.reply = { id: 1, text: "", fuStatus: "open", fuNote: "", suggestFailed: true }; } return { html: S.reply(1) };
+    case !!(m = /^reply-(\d+)$/.exec(name)): if (!ui.reply || ui.reply.id !== +m[1] || !ui.keep) ui.reply = null; return { html: S.reply(+m[1]) };
+    case !!(m = /^location-(\d+)$/.exec(name)): return { html: S.location(+m[1]) };
+    case name === "reports": return { html: S.reports() };
+    case name === "topics": return { html: S.topics() };
+    case name === "compare": if (fresh) { ui.compare = { a: "", b: "", period: "" }; } return { html: S.compare() };
+    case name === "compare-same": if (fresh) { ui.compare = { a: "1", b: "1", period: "" }; } return { html: S.compare() };
+    case !!(m = /^compare-(\d+)(?:-(\d+))?$/.exec(name)): if (fresh) { ui.compare = { a: m[1], b: m[2] || "", period: "" }; } return { html: S.compare() };
+    case ["settings-page", "settings-empty", "settings-locations", "settings-goals", "settings-templates"].includes(name): if (!ui.keep) ui.settings = null; return { html: S.settings(), scroll: ["settings-locations", "settings-goals", "settings-templates"].includes(name) ? name : "" };
+    case name === "settings-goal-error": if (fresh) { ui.settings = { pw: {}, loc: {}, tpl: {}, goals: { values: { 1: "6", 2: "4.5", 3: "3.0" }, errors: { 1: "Enter a goal from 1.0 to 5.0." } } }; } return { html: S.settings(), scroll: "settings-goals" };
+    case name === "settings-location-error": if (fresh) { ui.settings = { pw: {}, goals: {}, tpl: {}, loc: { typed: "Downtown", errors: ["A location with this name already exists."] } }; } return { html: S.settings(), scroll: "settings-locations" };
+    case !!(m = /^rename-location-(\d+)$/.exec(name)): if (!ui.keep) ui.rename = null; return { html: S.renameLocation(+m[1]) };
+    case !!(m = /^edit-template-(\d+)$/.exec(name)): if (!ui.keep) ui.edit = null; return { html: S.editTemplate(+m[1]) };
+    default: return { html: S.notfound() };
+  }
+}
+const app = document.getElementById("app");
+let current = "";
+function render(opts = {}) {
+  const name = decodeURIComponent(location.hash.slice(1));
+  if (name !== current) { ui.notice = null; ui.flash = null; }
+  current = name;
+  const r = route(name);
+  ui.keep = false;
+  app.innerHTML = r.html;
+  if (opts.noAnim) app.querySelectorAll(".view-enter").forEach((el) => el.classList.remove("view-enter"));
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    app.querySelectorAll("[data-w]").forEach((el) => { el.style.width = el.dataset.w; });
+    app.querySelectorAll("[data-h]").forEach((el) => { el.style.height = el.dataset.h; });
+  }));
+  if (r.scroll) { const el = document.getElementById(r.scroll); if (el) el.scrollIntoView({ block: "start" }); } else if (!opts.keepScroll) window.scrollTo(0, 0);
+  ui.swap = false;
+  renderProto();
+}
+function go(name, opts = {}) { ui.keep = !!opts.keep; if (location.hash.slice(1) === name) render(opts); else location.hash = name; }
+function rerender() { ui.keep = true; render({ noAnim: true, keepScroll: true }); }
+window.addEventListener("hashchange", () => { if (decodeURIComponent(location.hash.slice(1)) !== current) render(); });
+function goWith(name, setup) { current = name; ui.notice = null; ui.flash = null; location.hash = name; setup(); ui.keep = true; render(); }
+
+/* ======================= Feedback: toast and modal ======================= */
+function toast(text, bad = false) {
+  const el = document.createElement("div"); el.className = "toast" + (bad ? " is-bad" : ""); el.textContent = text; el.setAttribute("role", "status");
+  document.getElementById("toasts").appendChild(el);
+  setTimeout(() => { el.classList.add("is-leaving"); setTimeout(() => el.remove(), 260); }, 2600);
+}
+function modal(html, onAction) {
+  const root = document.getElementById("modal-root");
+  root.innerHTML = `<div class="modal-back" data-close><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;
+  const back = root.firstElementChild;
+  const close = () => { back.classList.add("is-leaving"); setTimeout(() => { root.innerHTML = ""; }, 180); };
+  back.addEventListener("click", (e) => { if (e.target === back || e.target.closest("[data-modal-close]")) close(); const a = e.target.closest("[data-modal-action]"); if (a) { close(); onAction && onAction(a.dataset.modalAction); } });
+  back.querySelector("button")?.focus();
+  document.addEventListener("keydown", function esc(e) { if (e.key === "Escape") { close(); document.removeEventListener("keydown", esc); } });
+}
+function downloadModal(file, rows, note) {
+  const csv = rows.map((r) => r.map((c) => /[",\n]/.test(String(c)) ? `"${String(c).replace(/"/g, '""')}"` : c).join(",")).join("\n");
+  modal(`<h2>Download ${esc(file)}</h2><p class="muted">${esc(note)} In the app the browser saves the file; here you see what it holds.</p><pre>${esc(csv)}</pre><div class="modal-actions"><button class="button" type="button" data-modal-close>Close</button></div>`);
+}
+const busy = (btn, ms) => new Promise((res) => { if (btn) btn.setAttribute("aria-busy", "true"); setTimeout(res, ms); });
+
+/* ======================= Actions ======================= */
+const formData = (form) => Object.fromEntries(new FormData(form).entries());
+const ACT = {};
+ACT.signin = async (form, btn) => { const d = formData(form); await busy(btn, 500);
+  if (d.username.trim() && d.password === "demo") { P.signedIn = true; db.user = d.username.trim(); ui.login = {}; go("dashboard"); toast(`Signed in as ${db.user}`); }
+  else { ui.login = { error: true, username: d.username }; rerender(); } };
+ACT.signout = async () => { P.signedIn = false; ui.login = {}; go("login"); };
+ACT["filter-reviews"] = (form) => { const d = formData(form); ui.reviews = { ...d, page: 1 }; ui.swap = true; rerender(); };
+ACT["clear-reviews"] = () => { ui.reviews = null; ui.swap = true; rerender(); };
+ACT.import = async (form, btn) => { const file = form.querySelector("#id_file").files[0];
+  if (!file) { ui.import = { refusal: "Choose a CSV file first." }; return rerender(); }
+  const text = await file.text(); await busy(btn, 700); ui.import = importCsv(file.name, text); rerender();
+  if (ui.import.result) toast(`${plural(ui.import.result.imported, "review")} imported`); };
+ACT["import-sample"] = async (_, btn) => { await busy(document.getElementById("import-submit"), 700); ui.import = importCsv("import-sample.csv", SAMPLE_CSV); rerender(); if (ui.import.result) toast(`${plural(ui.import.result.imported, "review")} imported`); };
+ACT["use-template"] = () => { const sel = document.getElementById("reply-template-select"), t = db.templates.find((x) => x.id === +sel.value), r = db.reviews.find((x) => x.id === ui.reply.id);
+  ui.reply.template = sel.value; ui.reply.text = t.text.replaceAll("{location}", branch(r.b).name); ui.reply.invalid = false; ui.reply.suggestNote = false; rerender(); };
+ACT.suggest = async () => { const r = db.reviews.find((x) => x.id === ui.reply.id); ui.reply.text = document.getElementById("reply-text").value;
+  Object.assign(ui.reply, { loading: true, suggestFailed: false, invalid: false }); rerender(); await busy(null, 1100); ui.reply.loading = false;
+  if (P.failures) { ui.reply.suggestFailed = true; } else { ui.reply.text = `${FAKE_REPLY_TEXT}\n\n— ${branch(r.b).name} team`; ui.reply.suggestNote = true; }
+  rerender(); };
+ACT.reply = async (form, btn) => { const text = form.querySelector("#reply-text").value.trim(); ui.reply.text = text;
+  if (!text || text.length > 1000) { ui.reply.invalid = true; return rerender(); }
+  await busy(btn, 450); const r = db.reviews.find((x) => x.id === ui.reply.id); r.reply = { text, at: NOW }; ui.reply = null; goWith("replies", () => { ui.notice = "Reply saved."; }); toast("Reply saved"); };
+ACT.followup = async (form, btn) => { const d = formData(form); Object.assign(ui.reply, { fuStatus: d.status, fuNote: d.note, fuSaved: false, fuError: null });
+  if (d.note.length > 500) { ui.reply.fuError = "Keep the note to 500 characters."; return rerender(); }
+  await busy(btn, 400); const r = db.reviews.find((x) => x.id === ui.reply.id); r.fu = { status: d.status, note: d.note.trim(), at: NOW }; ui.reply.fuSaved = true; rerender(); toast("Follow-up saved"); };
+ACT["report-month"] = (form) => { ui.reports = { month: formData(form).month }; rerender(); };
+ACT.topics = (form) => { ui.topics = formData(form); rerender(); };
+ACT.compare = (form) => { ui.compare = formData(form); rerender(); };
+ACT.password = async (form, btn) => { const d = formData(form), e = { old: [], new1: [], new2: [] };
+  if (!d.old_password) e.old.push("This field is required."); else if (d.old_password !== "demo") e.old.push("Your old password was entered incorrectly. Please enter it again.");
+  if (!d.new_password1) e.new1.push("This field is required.");
+  else { if (d.new_password1.length < 8) e.new1.push("This password is too short. It must contain at least 8 characters."); if (/^\d+$/.test(d.new_password1)) e.new1.push("This password is entirely numeric."); }
+  if (d.new_password1 && d.new_password1 !== d.new_password2) e.new2.push("The two password fields didn’t match.");
+  ui.settings.pw = e; ui.settings.pwSaved = false;
+  if (e.old.length || e.new1.length || e.new2.length) return rerender();
+  await busy(btn, 500); ui.settings.pw = {}; ui.settings.pwSaved = true; rerender(); toast("Password changed"); };
+ACT["add-location"] = async (form, btn) => { const name = formData(form).name.trim(); ui.settings.loc = { typed: name, errors: null }; ui.settings.locNotice = null;
+  if (!name) ui.settings.loc.errors = ["Enter a name."]; else if (db.branches.some((b) => fold(b.name) === fold(name))) ui.settings.loc.errors = ["A location with this name already exists."];
+  if (ui.settings.loc.errors) return rerender();
+  await busy(btn, 400); const id = nextId(db.branches); db.branches.push({ id, name, goal: null }); db.branches.sort((a, b) => a.name.localeCompare(b.name));
+  ui.settings.loc = {}; ui.settings.locNotice = "Location added."; ui.flash = "loc" + id; rerender(); toast("Location added"); };
+ACT["rename-location"] = async (form, btn) => { const name = formData(form).name.trim(), s = ui.rename; s.typed = name; s.errors = null;
+  if (!name) s.errors = ["Enter a name."]; else if (db.branches.some((b) => b.id !== s.id && fold(b.name) === fold(name))) s.errors = ["A location with this name already exists."];
+  if (s.errors) return rerender();
+  await busy(btn, 400); branch(s.id).name = name; db.branches.sort((a, b) => a.name.localeCompare(b.name)); ui.rename = null;
+  goWith("settings-locations", () => { ui.settings = { pw: {}, loc: {}, goals: {}, tpl: {}, locNotice: "Location renamed." }; ui.flash = "loc" + s.id; }); toast("Location renamed"); };
+ACT.goals = async (form, btn) => { const d = formData(form), values = {}, errors = {};
+  db.branches.forEach((b) => { const v = (d[`goal-${b.id}`] || "").trim(); values[b.id] = v; if (v && !(/^\d(\.\d)?$/.test(v) && +v >= 1 && +v <= 5)) errors[b.id] = "Enter a goal from 1.0 to 5.0."; });
+  ui.settings.goalsSaved = false;
+  if (Object.keys(errors).length) { ui.settings.goals = { values, errors }; return rerender(); }
+  await busy(btn, 400); db.branches.forEach((b) => { b.goal = values[b.id] ? +values[b.id] : null; }); ui.settings.goals = {}; ui.settings.goalsSaved = true; rerender(); toast("Goals saved"); };
+function checkTemplate(d) { const e = {}; if (!d.name.trim()) e.nameErr = ["Enter a name."]; if (!d.text.trim()) e.textErr = ["Write the text of the template."]; return e; }
+ACT["add-template"] = async (form, btn) => { const d = formData(form), e = checkTemplate(d); ui.settings.tpl = { ...d, ...e }; ui.settings.tplNotice = null;
+  if (e.nameErr || e.textErr) return rerender();
+  await busy(btn, 400); const id = nextId(db.templates); db.templates.push({ id, name: d.name.trim(), kind: d.kind, text: d.text.trim() });
+  ui.settings.tpl = {}; ui.settings.tplNotice = "Template added."; ui.flash = "tpl" + id; rerender(); toast("Template added"); };
+ACT["edit-template"] = async (form, btn) => { const d = formData(form), e = checkTemplate(d), s = ui.edit; Object.assign(s, d, { nameErr: e.nameErr && e.nameErr[0], textErr: e.textErr && e.textErr[0] });
+  if (e.nameErr || e.textErr) return rerender();
+  await busy(btn, 400); Object.assign(db.templates.find((t) => t.id === s.id), { name: d.name.trim(), kind: d.kind, text: d.text.trim() }); ui.edit = null;
+  goWith("settings-templates", () => { ui.settings = { pw: {}, loc: {}, goals: {}, tpl: {}, tplNotice: "Template saved." }; ui.flash = "tpl" + s.id; }); toast("Template saved"); };
+ACT["delete-template"] = () => { const t = db.templates.find((x) => x.id === ui.edit.id);
+  modal(`<h2>Delete reply template</h2><p data-sensitive>Delete the template "${esc(t.name)}"? Saved replies do not change.</p><div class="modal-actions"><button class="button" type="button" data-modal-close>Cancel</button><button class="button button-danger" type="button" data-modal-action="delete">Delete template</button></div>`,
+    () => { db.templates = db.templates.filter((x) => x.id !== t.id); ui.edit = null; goWith("settings-templates", () => { ui.settings = { pw: {}, loc: {}, goals: {}, tpl: {}, tplNotice: "Template deleted." }; }); toast("Template deleted"); }); };
+ACT["export-reviews"] = () => { const f = reviewFilters(), list = filteredReviews(f), b = f.location ? branch(+f.location) : null;
+  const file = `reviews-${b ? b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" : ""}2026-11-12.csv`;
+  downloadModal(file, [["Location", "Rating", "Review text", "Date", "Reply", "Follow-up"], ...list.map((r) => [branch(r.b).name, r.rating, r.text, fullDate(r.at), r.reply ? r.reply.text : "", followupStatus(r) ? FOLLOWUP_LABELS[followupStatus(r)] : ""])], `${plural(list.length, "review")} with the filters you chose.`); };
+ACT["export-report"] = () => { const s = ui.reports; downloadModal(`report-${s.month}.csv`, [["Location", "Reviews", "Average", "Good (4-5)", "Bad (1-2)"], ...[...app.querySelectorAll(".report-table")[0]?.tBodies[0].rows || []].map((tr) => [...tr.cells].slice(0, 5).map((c) => c.textContent.trim()))], "One row per location for the month you chose."); };
+ACT["export-compare"] = () => { const rows = [...document.querySelectorAll("#compare-table tr")].map((tr) => [...tr.cells].map((c) => c.firstChild ? c.firstChild.textContent.trim() : "")); downloadModal("compare.csv", rows, "The two locations side by side."); };
+ACT["export-json"] = () => { modal(`<h2>Export JSON</h2><p class="muted">In the app this opens the dashboard numbers as JSON at /api/dashboard/.</p><pre>${esc(JSON.stringify({ locations: db.branches.map((b) => { const rs = reviewsOf(b.id); return { name: b.name, reviews: rs.length, average: avg(rs.reduce((t, r) => t + r.rating, 0), rs.length) }; }) }, null, 2))}</pre><div class="modal-actions"><button class="button" type="button" data-modal-close>Close</button></div>`); };
+
+app.addEventListener("submit", (e) => { const form = e.target.closest("form[data-action]"); if (!form) return; e.preventDefault(); const fn = ACT[form.dataset.action]; if (fn) fn(form, e.submitter || form.querySelector("button[type=submit]")); });
+app.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-action]:not(form)"); if (b) { e.preventDefault(); const fn = ACT[b.dataset.action]; if (fn) fn(b.closest("form"), b); return; }
+  const p = e.target.closest("[data-page]"); if (p) { e.preventDefault(); const which = p.closest("[data-pager]").dataset.pager; (ui[which] ||= {}).page = +p.dataset.page; ui.swap = true; rerender(); }
+});
+app.addEventListener("input", (e) => { if (e.target.id === "reply-text") { ui.reply.text = e.target.value; const c = document.getElementById("reply-count"); if (c) c.textContent = e.target.value.length; } });
+app.addEventListener("dragover", (e) => { const d = e.target.closest("#import-drop"); if (d) { e.preventDefault(); d.classList.add("is-over"); } });
+app.addEventListener("dragleave", (e) => { const d = e.target.closest("#import-drop"); if (d) d.classList.remove("is-over"); });
+app.addEventListener("drop", async (e) => { const d = e.target.closest("#import-drop"); if (!d) return; e.preventDefault(); d.classList.remove("is-over"); const file = e.dataTransfer.files[0]; if (!file) return; await busy(d.querySelector("#import-submit"), 700); ui.import = importCsv(file.name, await file.text()); rerender(); });
+
+/* ======================= Prototype bar ======================= */
+const bare = /[?&]bare\b/.test(location.search);
+if (bare) document.documentElement.classList.add("is-bare");
+let protoOpen = false;
+const fab = document.getElementById("proto-fab");
+fab.addEventListener("click", () => { protoOpen = !protoOpen; fab.setAttribute("aria-expanded", protoOpen); renderProto(); });
+function renderProto() {
+  const root = document.getElementById("proto-root");
+  if (!protoOpen) { root.innerHTML = ""; return; }
+  const groups = {}; SCENARIOS.forEach(([id, g, label]) => (groups[g] ||= []).push([id, label]));
+  const seg = (key, items) => `<div class="proto-seg" role="group">${items.map(([v, l]) => `<button type="button" data-proto="${key}" data-value="${v}" aria-pressed="${String(P[key]) === String(v)}">${l}</button>`).join("")}</div>`;
+  root.innerHTML = `<div class="proto-panel" id="proto-panel" role="dialog" aria-label="Prototype controls">
+    <div><h2>ReviewRadar prototype</h2><p class="proto-note">Every screen of the app on demo data. Clicks and forms work; nothing leaves this page. Sign in with any username and the password <strong>demo</strong>.</p></div>
+    <div><h3>Data</h3>${seg("data", [["demo", "Demo (3 locations)"], ["empty", "Empty"]])}</div>
+    <div><h3>Outside services</h3>${seg("failures", [[false, "Working"], [true, "Failing"]])}</div>
+    <div><h3>Screen width</h3>${seg("phone", [[false, "Full"], [true, "Phone 390 px"]])}</div>
+    <div><h3>Screens and states</h3>${Object.entries(groups).map(([g, items]) => `<p class="proto-note" style="margin-top:6px">${g}</p><ul class="proto-list">${items.map(([id, l]) => `<li><a href="#${id}"${id === current ? ' aria-current="true"' : ""}>${l}<code>#${id}</code></a></li>`).join("")}</ul>`).join("")}</div>
+    <div><button type="button" class="button" data-proto="reset">Reset demo data</button></div></div>`;
+  root.querySelectorAll(".proto-list a").forEach((a) => a.addEventListener("click", () => { const id = a.getAttribute("href").slice(1); P.signedIn = true; if (!id.endsWith("-empty") && P.data === "empty") resetFor("demo"); if (id === current) render(); }));
+  root.querySelectorAll("[data-proto]").forEach((btn) => btn.addEventListener("click", () => {
+    const k = btn.dataset.proto;
+    if (k === "reset") { resetFor(P.data); P.signedIn = true; render(); toast("Demo data reset"); return; }
+    if (k === "data") { resetFor(btn.dataset.value); render(); toast(btn.dataset.value === "empty" ? "Empty account" : "Demo data loaded"); return; }
+    P[k] = btn.dataset.value === "true"; if (k === "phone") app.classList.toggle("is-phone", P.phone); renderProto();
+  }));
+}
+
+if (!location.hash) history.replaceState(null, "", "#dashboard");
+render();
+</script>
