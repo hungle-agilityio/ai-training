@@ -30,3 +30,18 @@ deploy_line = "Render deploys branch deploy after Checks pass."
 [plugin]
 id = "agent-flow@ai-training"
 marketplace = "ai-training"
+
+# A change to one of these makes the build's review level "high" (glob patterns from this folder).
+[paths]
+review_sensitive = [
+    "reviews/models.py",
+    "reviews/migrations/*",
+    "reviews/repositories.py",
+    "reviews/*_repository.py",
+    "reviews/management/commands/*",
+    "reviews/claude_client.py",
+    "reviews/templates/registration/*",
+    "reviewradar/settings.py",
+    "reviewradar/urls.py",
+    "../render.yaml",
+]

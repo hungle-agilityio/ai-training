@@ -11,9 +11,9 @@
      A task with needs-ui: yes also gets a `## Screens to capture` section in its issue body: one fenced `json` block, a check-in-browser spec in which every step has `goto` and `capture`, for example:
        ## Screens to capture
        ```json
-       {"steps": [{"name": "reviews-filters", "goto": "/reviews/", "capture": "#filter-rating"}]}
+       {"steps": [{"name": "reviews-filters", "goto": "/reviews/", "capture": "#filter-rating", "design": "reviews-filtered"}]}
        ```
-     The build copies the block unchanged into `build_report.py --browser --spec`. A needs-ui issue without a valid block, or with "steps": [], opens no pull request (agent:failed). A task with needs-ui: no has no section and its report runs with --no-ui. -->
+     The build copies the block unchanged into `build_report.py --browser --spec`. Every step whose page has a state in design/app/prototype.html names it with "design"; the verify report shows that state next to the built screen. A needs-ui issue without a valid block, or with "steps": [], opens no pull request (agent:failed). A task with needs-ui: no has no section and its report runs with --no-ui. -->
 
 <!-- Epic only: keep a query budget so later tasks list the query-cap tests earlier tasks add (ADR-024). -->
 

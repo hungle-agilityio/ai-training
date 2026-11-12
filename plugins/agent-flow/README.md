@@ -22,6 +22,7 @@ The skills, commands and sub-agents name a project's folders by the keys of the 
 | `templates_dir` | the issue and spec templates | `docs/app/templates` | `docs/templates` |
 | `code_dirs` | the product's code | the app folders | `src` |
 | `flow_dirs` | the flow's own folders (`area:flow`) | `ops/`, `.claude/`, `.github/`, `specs/`, `docs/learning/` | `.flow/`, `.claude/`, `.github/`, `docs/intent/`, `docs/specs/`, `scripts/` |
+| `review_sensitive` | glob patterns, from the app folder (`../` reaches the repository root), of the files whose change makes a build's review level "high" | empty | empty |
 
 The spec rule: a spec pull request changes only the folders of `paths.spec_pr_dirs`.
 
