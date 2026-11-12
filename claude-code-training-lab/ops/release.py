@@ -16,12 +16,16 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 try:
     from ops import flow_config
 except ImportError:  # started as `python ops/release.py`: ops/ is the first path entry
     import flow_config  # type: ignore[import-not-found,no-redef,unused-ignore]
+
+if TYPE_CHECKING:
+    from ops import security_check
 
 DEPLOY = "deploy"
 SPRINT_PREFIX = "release/sprint-"
@@ -59,6 +63,7 @@ class Plan:
     tag: str
     client_facing: tuple[str, ...]
     internal: tuple[str, ...]
+    security: tuple[str, ...] = ()
 
 
 def git(args: Sequence[str], cwd: Path, check: bool = True) -> str:
@@ -93,6 +98,31 @@ def latest_checks(sha: str, cwd: Path) -> str | None:
     if runs[0]["status"] != "completed":
         return "running"
     return str(runs[0]["conclusion"] or "failure")
+
+
+def run_security(sha: str, since: str | None, cwd: Path) -> tuple[security_check.CheckResult, ...]:
+    """Run the security checks on the release commit."""
+    try:
+        from ops import security_check as checks
+    except ImportError:  # started as `python ops/release.py`
+        import security_check as checks  # type: ignore[import-not-found,no-redef,unused-ignore]
+
+    return checks.run_checks(sha, since, cwd)
+
+
+def security_lines(
+    results: tuple[security_check.CheckResult, ...], since: str | None, sha: str
+) -> tuple[str, ...]:
+    """The printed security block of a release plan."""
+    lines = ["Security checks:"]
+    for result in results:
+        lines.append("  " + result.name + (": ok" if result.ok else ": FAILED"))
+        lines.extend("    " + line for line in result.lines)
+    if since:
+        lines.append("Security review diff: " + since[:7] + ".." + sha[:7])
+    else:
+        lines.append("Security review diff: " + sha[:7] + " (first release)")
+    return tuple(lines)
 
 
 def remote_names(cwd: Path, kind: str) -> set[str]:
@@ -171,6 +201,12 @@ def make_plan(cwd: Path, now: datetime) -> Plan:
         ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", deploy, sha], cwd=cwd)
         if ancestor.returncode != 0:
             raise Refusal("origin/" + DEPLOY + " is not an ancestor of " + short)
+    results = run_security(sha, deploy or None, cwd)
+    security = security_lines(results, deploy or None, sha)
+    failed = [result.name for result in results if not result.ok]
+    if failed:
+        print("\n".join(security), file=sys.stderr)
+        raise Refusal("security check failed: " + ", ".join(failed))
     tags = remote_names(cwd, "tags") | set(git(["tag", "-l"], cwd).splitlines())
     client_facing, internal = merged_pull_requests(cwd, deploy or None, sha)
     return Plan(
@@ -180,6 +216,7 @@ def make_plan(cwd: Path, now: datetime) -> Plan:
         tag=next_tag(tags, now),
         client_facing=client_facing,
         internal=internal,
+        security=security,
     )
 
 
@@ -188,6 +225,7 @@ def describe(plan: Plan) -> list[str]:
         "Commit: " + plan.sha[:7] + " " + plan.title,
         "Branch: " + plan.branch,
         "Tag: " + plan.tag,
+        *plan.security,
         "Client-facing pull requests:",
         *(["  " + pr for pr in plan.client_facing] or ["  (none)"]),
         "Internal pull requests:",
@@ -233,6 +271,9 @@ def main(
     except subprocess.CalledProcessError as failure:
         detail = (failure.stderr or "").strip().splitlines()
         print("git or gh failed: " + (detail[-1] if detail else str(failure.cmd)), file=sys.stderr)
+        return 1
+    except (subprocess.TimeoutExpired, OSError) as failure:
+        print("git or gh failed: " + type(failure).__name__, file=sys.stderr)
         return 1
     print("\n".join(describe(plan)))
     if DEPLOY_LINE:

@@ -11,9 +11,16 @@ from reviews import (
     topic_views,
     views,
 )
+from reviews.forms import LimitedAuthenticationForm
 
 urlpatterns: list[URLPattern | URLResolver] = [
-    path("login/", auth_views.LoginView.as_view(redirect_authenticated_user=True), name="login"),
+    path(
+        "login/",
+        auth_views.LoginView.as_view(
+            authentication_form=LimitedAuthenticationForm, redirect_authenticated_user=True
+        ),
+        name="login",
+    ),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("healthz/", views.healthz, name="healthz"),
     path("favicon.ico", views.favicon),

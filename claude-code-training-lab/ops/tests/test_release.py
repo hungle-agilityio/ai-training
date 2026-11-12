@@ -66,6 +66,7 @@ def run(
     clone: Path, monkeypatch: pytest.MonkeyPatch, *args: str, checks: str | None = GREEN
 ) -> int:
     monkeypatch.setattr(release, "latest_checks", lambda sha, cwd: checks)
+    monkeypatch.setattr(release, "run_security", lambda sha, since, cwd: ())
     return release.main(list(args), cwd=clone, now=CLOSING_NOW)
 
 
