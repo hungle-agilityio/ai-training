@@ -259,6 +259,16 @@ Every line goes to stdout:
 
 Exit codes: 0 every check passed (SLOW counts as passed), 1 a line is FAIL, 2 the check could not run (no `[live]` table, `LIVE_CHECK_PASSWORD` not set, an unknown commit, a failing git command, an unreadable `regression_screens.json`, Chromium cannot start), with one line on stderr and no result line.
 
+## Rollback
+
+`uv run python ops/rollback.py [--dry-run] [--to <tag>]` returns the live site to an earlier release through Render's API; the release thread runs it on the owner's request (first `--dry-run` on a card, then the real run). It runs `git fetch origin --tags`, takes the newest release tag (`vYYYY.MM.DD` or `vYYYY.MM.DD.N`) on `origin/deploy` as the current release and, as the target, the release tag before it on another commit, or the tag given with `--to`. It finds Render's newest `live` or `deactivated` deploy of the target's commit and asks Render to roll back to it. It reads two variables from `agent.env` (a variable set in the environment replaces the file's value): `RENDER_API_KEY` (a secret; it never appears in any output) and `RENDER_SERVICE_ID` (`srv-...`).
+
+It prints `Current: <tag> <sha7>`, `Roll back to: <tag> <sha7> <subject>`, `Render deploy: <id>`, the number of migrations since the target, and `Pull requests undone:` with the pull requests merged since the target (as `release.py` lists them) or `  (none)`. `--dry-run` stops there and changes nothing. Without it, it starts the rollback and prints `Rollback started. Check it with: uv run python ops/live_check.py --commit <sha>`.
+
+It refuses with exit 1 and one line on stderr, before any change: no `[live]` table; `RENDER_API_KEY` or `RENDER_SERVICE_ID` not set; `origin/deploy` missing or not on a release tag; no earlier release; a `--to` tag that is not an earlier release on `origin/deploy`; migrations since the target while `[live] persistent_database = true` (write a reversing migration on `main` and release it); a failing git command; no Render deploy of the target; a Render answer other than 2xx or none within 30 seconds.
+
+The rollback never moves `deploy` or a tag and pushes nothing, and Render's Auto-Deploy stays on (only the dashboard's Rollback button turns it off). So the next release deploys as usual: fix the problem on `main`, then release again.
+
 ## Kept worktrees
 
 Each tick removes a kept `worktrees/issue-<n>` when issue #n is closed and a kept `worktrees/pr-<n>` when pull request #n is closed or merged, never the folder of a running build or of open work. A moved-aside folder `<key>-<unix time>` is removed 3 days after that time. The checked-out branch is first renamed `archive/<branch>-<unix time>` (a detached worktree has none); no branch is deleted, so the commits stay. At most 10 folders per tick; a failed `git worktree remove` is logged and the tick goes on. The log line is `<key>: closed, worktree removed`.
