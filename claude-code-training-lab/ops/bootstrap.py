@@ -60,6 +60,12 @@ FLAGS = (
 )
 COVERAGE_STEP = re.compile(r"^ +- name: Coverage gate.*?(?=^ +- name:|\Z)", re.S | re.M)
 HOOK_TESTS_STEP = re.compile(r"^ +- name: Hook and skill tests.*?(?=^ +- name:|\Z)", re.S | re.M)
+BROWSER_INSTALL_STEP = re.compile(
+    r"^ +- name: Install the browser.*?(?=^ +- name:|\Z)", re.S | re.M
+)
+BROWSER_REGRESSION_STEP = re.compile(
+    r"^ +- name: Browser regression of the main screens.*?(?=^ +- name:|\Z)", re.S | re.M
+)
 # Allow rules of ReviewRadar's own app; the copy keeps every other rule.
 APP_RULES = (
     "Edit(./reviews/**)",
@@ -287,7 +293,8 @@ def _transform(rel: str, data: bytes, params: Params) -> bytes:
     except UnicodeDecodeError:
         return data
     if rel.endswith("workflows/checks.yml"):
-        text = HOOK_TESTS_STEP.sub("", COVERAGE_STEP.sub("", text))
+        for step in (COVERAGE_STEP, HOOK_TESTS_STEP, BROWSER_INSTALL_STEP, BROWSER_REGRESSION_STEP):
+            text = step.sub("", text)
     if rel == "CLAUDE.md":
         text = adapt_root_claude(text, params)
     if rel == PROJECT_INSTRUCTIONS:
