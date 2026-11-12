@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import functools
 import json
 import re
 from collections.abc import Sequence
+from importlib import util
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 try:
-    from ops import epic_branch
+    from ops import epic_branch, flow_config
 except ImportError:  # run as a script from ops/
     import epic_branch  # type: ignore[import-not-found,no-redef,unused-ignore]
+    import flow_config  # type: ignore[import-not-found,no-redef,unused-ignore]
 
 IN_EPIC = "agent:in-epic"
 EPIC_TITLE_PREFIX = re.compile(r"^\s*epic\s*:\s*", re.IGNORECASE)
@@ -30,13 +34,29 @@ SELF_FIX_SECTION = re.compile(
 )
 QUEUE_MARKER = "<!-- work-queue -->"
 SELF_FIX_MARKER = "<!-- self-fix -->"
-GUARD_DIRS = {".claude", ".github"}
-GUARD_NAMES = {".mcp.json"}
-PLUGIN_ROOTS = {"plugins", ".claude-plugin"}
-GATE_FILES = {  # the same list as before-edit-check of the agent-flow plugin
-    "pyproject.toml", "uv.lock", "conftest.py", "ruff.toml", ".ruff.toml", "mypy.ini",
-    ".mypy.ini", "setup.cfg", "pytest.ini", "tox.ini", ".coveragerc",
-}  # fmt: skip
+
+
+@functools.cache
+def _rule_at(module_path: str) -> ModuleType | None:
+    """guarded_paths.py loaded by file path; None when it cannot be loaded."""
+    try:
+        spec = util.spec_from_file_location("guarded_paths", module_path)
+        if spec is None or spec.loader is None:
+            return None
+        module = util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module if callable(getattr(module, "guarded_kind", None)) else None
+    except Exception:
+        return None
+
+
+def rule_module() -> ModuleType | None:
+    """The plugin's guarded_paths.py, found through the flow config at each call."""
+    try:
+        plugin = flow_config.PROJECT_DIR / flow_config.load().paths_plugin_dir
+        return _rule_at(str(plugin / "hooks" / "guarded_paths.py"))
+    except Exception:
+        return None
 
 
 def labels_of(item: dict[str, Any]) -> set[str]:
@@ -76,12 +96,22 @@ def is_test(path: str) -> bool:
 
 def guarded(status: str, path: str, test_dirs: Sequence[tuple[str, ...]]) -> bool:
     """The files before-edit-check guards in loop mode; a new test file is not guarded."""
+    return _guarded_by(rule_module(), status, path, test_dirs)
+
+
+def _guarded_by(
+    rule: ModuleType | None, status: str, path: str, test_dirs: Sequence[tuple[str, ...]]
+) -> bool:
+    """guarded_kind of the plugin's module decides; without the module every file is guarded."""
     parts = tuple(part.casefold() for part in path.split("/") if part)
     if not parts:
         return False
-    if GUARD_DIRS & set(parts) or parts[-1] in GUARD_NAMES or parts[-1] in GATE_FILES:
+    if rule is None:
         return True
-    if parts[0] in PLUGIN_ROOTS:
+    try:
+        if rule.guarded_kind(parts) is not None:
+            return True
+    except Exception:  # fail closed: a rule that cannot answer guards the file
         return True
     in_tests = any(
         parts[i : i + len(folder)] == folder for folder in test_dirs for i in range(len(parts))
@@ -97,12 +127,13 @@ def guard_paths(name_status: str, protected_test_dirs: Sequence[str]) -> list[st
     ]
     test_dirs = [folder for folder in test_dirs if folder]
     found: list[str] = []
+    rule = rule_module()
     for line in name_status.splitlines():
         fields = line.split("\t")
         if len(fields) < 2:
             continue
         path = fields[-1].strip()
-        if guarded(fields[0], path, test_dirs) and path not in found:
+        if _guarded_by(rule, fields[0], path, test_dirs) and path not in found:
             found.append(path)
     return found
 
