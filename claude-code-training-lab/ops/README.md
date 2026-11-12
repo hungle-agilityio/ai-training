@@ -122,7 +122,7 @@ A task belongs to an epic when its issue body has the line `Part of the epic #<N
 - A dependency on a task of the same epic is met when that issue has `agent:in-epic`. A dependency outside the epic must be closed.
 - Each tick (`merge_epic_tasks`), an open loop pull request into the branch is merged with `gh pr merge --merge --delete-branch --match-head-commit <head>`, without an owner comment, when it is not a draft, has `pr:ready-for-review`, at least one check and every check green, a `https://claude.ai/artifact/` link in its body, no open change request, no run going, and a merge state other than `DIRTY` or `BLOCKED`. At most one is merged per epic branch per tick. A pull request that is `BEHIND` is updated with `gh pr update-branch` and merged at a later tick. Nothing is merged into the branch of a closed epic.
 - After the merge, by the tick or by hand, the issue gets `agent:in-epic` and loses `agent:review`, `agent:running` and `agent:ready`, and stays open until the epic pull request into `main` closes it. The tick logs `pr-<n>: merged into <branch>; #<issue> agent:in-epic` and sends one ntfy message `PR #<n> merged into <branch> (#<issue>)` (once per pull request, `~/.reviewradar/epic-tasks-merged`).
-- Only the tick pushes `epic/*` or deletes it; a build never does. Merging `main` happens in a throw-away worktree under `~/.reviewradar/epic-work/<N>`; the main checkout is not touched.
+- Only the tick pushes `epic/*` or deletes it, except that a member creates the branch of an epic they claimed before any loop task of it started (`## Team members`); a build never does. Merging `main` happens in a throw-away worktree under `~/.reviewradar/epic-work/<N>`; the main checkout is not touched.
 - When `origin/main` has commits the branch lacks, it is merged into the branch with a merge commit and pushed.
 - A task pull request that conflicts with the branch (`DIRTY`, or a failed update): the tick posts once per head commit on that pull request `/redo merge origin/epic/<N>-<slug> into this branch and fix the conflict` (`~/.reviewradar/epic-redo`). A conflict with `main`: the merge is aborted, the branch stays as it was, and one message per hour names it (`~/.reviewradar/epic-conflict-<N>`).
 - The log has one line per epic per tick: `epic #<N>: branch epic/<N>-<slug>, up to date with main`, or `..., conflict with main`.
@@ -142,6 +142,21 @@ When every open issue with `Part of the epic #<N>` has `agent:in-epic` (at least
 - `main` keeps going into the branch each tick; a conflict sends one message per hour.
 
 Tests: `ops/tests/test_epic_pull_request.py`.
+
+## Team members
+
+An assignee other than the owner (`hungle-agilityio`), on the issue or on its epic, makes the issue that member's work: the loop skips it (`issue-<n>: assigned to <login>; skipped`, or `assigned to <login> (epic #<N>)`), never retries it when it has `agent:failed`, and does not count it as ready. The task's own member wins over the epic's.
+
+- Claim: `gh issue edit <n> --add-assignee @me`. An epic is claimed the same way on the epic issue.
+- Give back: `gh issue edit <n> --remove-assignee @me`. The loop takes the issue at the next tick when it still has `agent:ready`.
+- Hand off: `gh issue edit <n> --remove-assignee @me --add-assignee <login>`.
+- Claiming an issue labelled `agent:running` or `agent:review` does not stop the loop's build: the tick only logs it and sends one message per issue and member (`~/.reviewradar/member-claims`). Check the label first.
+- Your branch is `<kind>/<n>-<short-description>`. The pull request for a task of an epic goes into `epic/<N>-<slug>` with `Closes #<n>` in its body, otherwise into `main`.
+- When `epic/<N>-<slug>` does not exist yet (no loop task of the epic has started), create it from main with exactly the name the tick uses (`branch_name()` in `ops/epic_branch.py`): `epic/<N>-` and the epic title without `Epic:`, lowercase, every run of other characters turned into one `-`, cut at 40 characters, no `-` at either end. For example `git push origin origin/main:refs/heads/epic/<N>-<slug>`. From then on the tick keeps it up to date and opens the epic pull request as usual.
+- A pull request merged by hand into an epic branch marks its task `agent:in-epic` at the next tick, so the epic's next tasks start. The tick never merges or comments on it.
+- The owner clicks Merge. Only the owner's `agent:ready` hands an issue to the loop.
+
+Tests: `ops/tests/test_tick_member_assignment.py`.
 
 ## The Artifact tool check
 
