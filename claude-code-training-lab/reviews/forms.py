@@ -2,10 +2,11 @@ from datetime import date
 from typing import Any
 
 from django import forms
-from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 
-from reviews import reply_service
+from reviews import login_limit, reply_service
 from reviews.followup import STATUS_LABELS
 from reviews.search_text import tidy_search_input
 from reviews.services import RATING_RANGES, REPLY_CHOICES, ReviewFilters
@@ -78,6 +79,25 @@ class AccountPasswordForm(PasswordChangeForm):
         self.fields["old_password"].label = "Current password"
         self.fields["new_password2"].label = "Confirm new password"
         self.fields["new_password2"].help_text = ""
+
+
+class LimitedAuthenticationForm(AuthenticationForm):
+    """Sign-in form that refuses a locked username before the password is checked."""
+
+    def clean(self) -> dict[str, Any]:
+        if self.errors:
+            return super().clean()
+        username = str(self.data.get(self.add_prefix("username"), ""))
+        if login_limit.is_locked(username):
+            raise ValidationError(login_limit.LOCKED_MESSAGE, code="locked")
+        try:
+            cleaned = super().clean()
+        except ValidationError as error:
+            if error.code == "invalid_login":
+                login_limit.record_failure(username)
+            raise
+        login_limit.record_success(username)
+        return cleaned
 
 
 class ReportMonthForm(forms.Form):
