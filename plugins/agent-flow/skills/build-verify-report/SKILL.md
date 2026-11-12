@@ -11,7 +11,7 @@ One command runs every axis, reads the numbers from the real output (nothing is 
 
 ```
 uv run python <this skill's folder>/build_report.py --title "<issue title>" \
-  --criteria <criteria file> [--review <review file>] (--browser --spec <file> | --no-ui) [--no-open]
+  --criteria <criteria file> [--review <review file>] (--browser --spec <file> | --no-ui) [--design <file>] [--no-open]
 ```
 
 `<this skill's folder>` is the base directory Claude Code gives when this skill loads: an absolute path in the installed plugin. Run the script from there as one plain command, with no pipe, redirection or `2>&1`, and never from `../plugins/agent-flow/` in the repository: only that plain call runs without a prompt, so any other form stops a loop build.
@@ -19,6 +19,7 @@ uv run python <this skill's folder>/build_report.py --title "<issue title>" \
 Input files: write the criteria file to `out/verify-input/criteria.json` and the screens file to `out/verify-input/spec.json` with the Write tool, and run `build_report.py` with those relative paths as one plain command.
 
 - **A task that changes a screen:** `--browser --spec <file>`, where the file is the issue's `## Screens to capture` block copied unchanged. It runs the `check-in-browser` skill on those steps only, and the report shows each step's full page next to its close-up (`<name> (close-up)`) when the step gives `capture`. There are no default pages any more: `--browser` without `--spec` makes the Browser axis `FAIL` with `no screens given: pass --spec from the issue's "Screens to capture"`. A step whose `capture` matched nothing visible makes the Browser axis `FAIL` and names the step. In the report a click on a screenshot opens it full size; click again or press Escape to close it.
+- **Design vs build:** for each step of the spec that names a state of the app prototype in `"design"`, the report shows, after the screenshots, the prototype's picture of that state (`Design: <state id>`) next to the built screen (`Build: <step name>`), taken at the same window size; a state the prototype does not have reads `Design not found: <id>`, and nothing fails because of this section. `--design <file>` sets the prototype file; without it the file is `design/app/prototype.html` under the project's folder.
 - **A task that changes no screen:** `--no-ui`. No browser runs, the Browser axis reads `NOT APPLICABLE` (`the task changes no screen`) and the report has no screenshots. `NOT APPLICABLE` does not make the verdict `INCOMPLETE`. The masking status is then `clean` when no report text holds personal data, so the report can still be shared.
 - `--browser` and `--no-ui` together are refused (exit code 2). With neither, the Browser axis is `NOT CONFIGURED`.
 - The report is `out/verify/<time>/report.html` (one self-contained page, git-ignored) and `report.json`. It opens by itself unless `--no-open` is given.
