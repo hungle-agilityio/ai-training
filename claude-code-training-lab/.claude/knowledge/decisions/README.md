@@ -45,3 +45,4 @@ One file per decision: `ADR-001-short-title.md`, numbered in order. Write one fo
 - [ADR-028: An issue assigned to a team member is that member's work; the loop leaves it alone](ADR-028-member-assignment.md)
 - [ADR-029: Every build and every epic gets /code-review; the main screens are checked in a browser in CI; one living release notes page](ADR-029-test-and-harden.md)
 - [ADR-030: One clickable prototype of the whole app is the design; the work is split only after "Prototype ổn"](ADR-030-app-prototype.md)
+- [ADR-031: Every release passes three automatic security checks and a Claude security review before it reaches end users](ADR-031-security-check-before-release.md)
