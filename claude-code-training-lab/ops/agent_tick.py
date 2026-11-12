@@ -1290,6 +1290,55 @@ def member_text(found: tuple[str, int | None]) -> str:
     return login if epic is None else f"{login} (epic #{epic})"
 
 
+def member_note(found: tuple[str, int | None]) -> str:
+    """#525 AC1, AC3: ` (member alice)`, or ` (member bob, epic #600)` when the epic gave it."""
+    login, epic = found
+    return f" (member {login})" if epic is None else f" (member {login}, epic #{epic})"
+
+
+@dataclass(frozen=True)
+class MemberHolds:
+    """#525: the issues a member claimed, by path (lowest number first), and their notes."""
+
+    paths: dict[str, tuple[int, ...]]
+    notes: dict[int, str]
+
+    def holder(self, path: str, ignored: set[int]) -> int:
+        """#525 AC5: the lowest member issue that holds the path and is not ignored, or 0."""
+        return next((n for n in self.paths.get(path, ()) if n not in ignored), 0)
+
+
+def member_holds(tick: Tick, issues: list[dict[str, Any]]) -> MemberHolds:
+    """#525 AC1: an open issue with a member holds its paths unless it is running or in review."""
+    paths: dict[str, list[int]] = {}
+    notes: dict[int, str] = {}
+    for item in issues:
+        if names(item) & {"agent:running", "agent:review"}:
+            continue
+        found = member_of(tick, item)
+        if found is None:
+            continue
+        notes[item["number"]] = member_note(found)
+        for path in files_of(item.get("body") or ""):
+            paths.setdefault(path, []).append(item["number"])
+    return MemberHolds({path: tuple(sorted(found)) for path, found in paths.items()}, notes)
+
+
+def path_holder(
+    busy: dict[str, int],
+    owners: dict[str, set[int]],
+    member: MemberHolds,
+    path: str,
+    ignored: set[int],
+) -> tuple[int, str]:
+    """#525 AC5: the loop holder first, then the member holder with its note, else (0, "")."""
+    loop = shared_holder(busy, owners, path, ignored)
+    if loop:
+        return loop, ""
+    holder = member.holder(path, ignored)
+    return holder, member.notes.get(holder, "")
+
+
 def considered(issue: dict[str, Any], key: str, running: dict[str, bool]) -> bool:
     """True for an issue choose() would otherwise look at."""
     if key in running:
@@ -1450,6 +1499,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
             for path in files_of(item.get("body") or ""):
                 busy.setdefault(path, item["number"])
                 owners.setdefault(path, set()).add(item["number"])
+    member = member_holds(tick, issues)
     open_numbers = {item["number"] for item in issues}
     ready = self_fixed_first(
         tick,
@@ -1496,10 +1546,11 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         ignored = stack_issues(prs, parent_pr) if parent_pr is not None else set()
         if on_epic is not None:
             ignored = set(waiting)  # their files are in the epic branch this task builds on
-        shared = [p for p in sorted(files) if shared_holder(busy, owners, p, ignored)]
-        if shared:
-            holder = shared_holder(busy, owners, shared[0], ignored)
-            tick.say(f"{key}: waits for #{holder}, which also touches {shared[0]}")
+        held_by = ((p, *path_holder(busy, owners, member, p, ignored)) for p in sorted(files))
+        first = next((found for found in held_by if found[1]), None)
+        if first is not None:
+            path, holder, note = first
+            tick.say(f"{key}: waits for #{holder}{note}, which also touches {path}")
             continue
         if not labelled_by_owner(tick, issue["number"]):
             tick.say(f"{key}: agent:ready was not added by {OWNER}; skipped")
@@ -2580,6 +2631,7 @@ def blocked_lines(
             for path in files_of(item.get("body") or ""):
                 busy.setdefault(path, item["number"])
                 owners.setdefault(path, set()).add(item["number"])
+    member = member_holds(tick, issues)
     ready = sorted(
         (
             i
@@ -2618,14 +2670,14 @@ def blocked_lines(
             ignored = stack_issues(prs, parent_pr) if parent_pr is not None else set()
             if epic is not None:
                 ignored = set(waiting)
-            shared: dict[int, str] = {}
+            shared: dict[int, tuple[str, str]] = {}
             for path in sorted(files_of(body)):
-                holder = shared_holder(busy, owners, path, ignored)
+                holder, note = path_holder(busy, owners, member, path, ignored)
                 if holder:
-                    shared.setdefault(holder, path)
+                    shared.setdefault(holder, (path, note))
             found = [
-                (m, f"#{number} waits for #{m}, which also touches {path}")
-                for m, path in sorted(shared.items())
+                (m, f"#{number} waits for #{m}{note}, which also touches {path}")
+                for m, (path, note) in sorted(shared.items())
             ]
         if found and labelled_by_owner(tick, number):
             blocked.add(number)
