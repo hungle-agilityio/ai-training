@@ -168,13 +168,15 @@ def test_a_failed_create_is_logged_and_sends_nothing(home: Path) -> None:
 
 
 def test_an_unlabelled_epic_pull_request_starts_no_run(home: Path) -> None:
-    host = host_for(*two_merged(), the_epic_pr(labels=()))
+    review = remark(7, f"{MARKER}\n<!-- epic-review -->\n## Epic review\n\nNo findings.")
+    host = host_for(*two_merged(), the_epic_pr(review, labels=()))
     tick(host, home)
     assert started(host) == []
 
 
 def test_green_checks_label_it_ready_even_without_a_report_link(home: Path) -> None:
-    host = host_for(*two_merged(), the_epic_pr(labels=()))
+    review = remark(7, f"{MARKER}\n<!-- epic-review -->\n## Epic review\n\nNo findings.")
+    host = host_for(*two_merged(), the_epic_pr(review, labels=()))
     tick(host, home)
     assert any("pr:ready-for-review" in c for c in host.gh_calls("pr", "edit", str(NEW_PR)))
 

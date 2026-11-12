@@ -8,6 +8,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -155,8 +156,9 @@ def test_a_wrong_path_key_names_file_and_key(tmp_path: Path, line: str, message:
     assert str(caught.value) == f"{path}: {message}"
 
 
-def test_reviewradar_flow_toml_has_no_paths_table() -> None:
-    assert "[paths]" not in (OPS / "flow.toml").read_text()
+def test_reviewradar_flow_toml_paths_table_has_only_review_sensitive() -> None:
+    data = tomllib.loads((OPS / "flow.toml").read_text(encoding="utf-8"))
+    assert list(data["paths"]) == ["review_sensitive"]
 
 
 @pytest.mark.parametrize(("key", "value"), sorted(REVIEWRADAR.items()))

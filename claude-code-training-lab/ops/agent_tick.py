@@ -48,6 +48,8 @@ MARKER = "<!-- work-queue -->"
 STACKED_LINE = re.compile(r"^Stacked on\b", re.MULTILINE)
 DECISION_MARKER = "<!-- needs-decision -->"
 SELF_FIX_MARKER = "<!-- self-fix -->"
+EPIC_REVIEW_MARKER = "<!-- epic-review -->"
+EPIC_REVIEW_RUNS = 2
 PINNED_SCRIPT = Path(__file__).resolve().parent / "pinned_tests.py"
 PINNED_HIT = re.compile(r"^- `([^`]+::[^`]+)`", re.MULTILINE)
 PINNED_LINE = (
@@ -136,7 +138,7 @@ SIGNED_OUT_TEXT = "Claude Code is not signed in"
 ENTRYPOINT = "claude-desktop"  # `claude -p` offers the Artifact tool only with this
 LOW_PRIORITY = re.compile("")
 LOW_PRIORITY_TAIL = (
-    r"(?:started #|working on PR #|waiting: |queue empty, |"
+    r"(?:started #|working on PR #|reviewing epic PR #|waiting: |queue empty, |"
     r"PR #\d+ merged \(#\d+\); main is now )"
 )
 
@@ -267,6 +269,7 @@ class Target:
     ui: bool = False
     test_edits: tuple[str, ...] = ()
     allowed_edits: tuple[str, ...] = ()
+    epic_review: bool = False
 
 
 @dataclass
@@ -963,6 +966,63 @@ def pr_needs_run(tick: Tick, pr: dict[str, Any]) -> bool:
     return "pr:ready-for-review" in labels and red
 
 
+def has_epic_review(pr: dict[str, Any]) -> bool:
+    """An owner comment whose first two lines are the marker and the epic review marker."""
+    for comment in pr.get("comments") or []:
+        if (comment.get("author") or {}).get("login") != OWNER:
+            continue
+        lines = str(comment.get("body") or "").strip().splitlines()
+        if [line.strip() for line in lines[:2]] == [MARKER, EPIC_REVIEW_MARKER]:
+            return True
+    return False
+
+
+def epic_review_count(tick: Tick, number: int) -> int:
+    """The epic review runs started for a pull request; a missing or unreadable file is 0."""
+    try:
+        return int((tick.home / f"epic-review-{number}").read_text().strip())
+    except (OSError, ValueError):
+        return 0
+
+
+def awaits_epic_review(tick: Tick, pr: dict[str, Any]) -> bool:
+    """An epic pull request with no epic review comment and fewer than two review runs."""
+    return (
+        is_epic_pr(pr)
+        and not has_epic_review(pr)
+        and epic_review_count(tick, pr["number"]) < EPIC_REVIEW_RUNS
+    )
+
+
+def needs_epic_review(tick: Tick, pr: dict[str, Any]) -> bool:
+    """Open, no status label, every check green, no open change request, not yet reviewed."""
+    if pr["state"] != "OPEN" or names(pr) & PR_LABELS or not awaits_epic_review(tick, pr):
+        return False
+    checks = [check_state(c) for c in pr.get("statusCheckRollup") or []]
+    return bool(checks) and set(checks) == {"green"} and not open_requests(tick, pr)
+
+
+def tell_unfinished_epic_reviews(
+    tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]
+) -> None:
+    """Two epic review runs ended without the comment: tell the owner once, whatever the checks."""
+    for pr in prs:
+        number = pr["number"]
+        if pr["state"] != "OPEN" or not is_epic_pr(pr) or f"pr-{number}" in running:
+            continue
+        if has_epic_review(pr) or epic_review_count(tick, number) < EPIC_REVIEW_RUNS:
+            continue
+        told = tick.home / f"epic-review-{number}-told"
+        if told.exists():
+            continue
+        told.write_text(str(int(tick.host.now())))
+        tick.say(f"pr-{number}: the epic review did not finish after {EPIC_REVIEW_RUNS} runs")
+        tick.notify(
+            f"{NAME} epic PR #{number}: the epic review did not finish; "
+            f"review it without it: https://github.com/{REPO}/pull/{number}"
+        )
+
+
 def mark_green_ready(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> None:
     """A finished pull request with green checks and a report needs no build to get its label."""
     for pr in prs:
@@ -971,6 +1031,7 @@ def mark_green_ready(tick: Tick, prs: list[dict[str, Any]], running: dict[str, b
             pr["state"] != "OPEN"
             or names(pr) & PR_LABELS
             or ("claude.ai/artifact/" not in pr["body"] and not is_epic_pr(pr))
+            or awaits_epic_review(tick, pr)
         ):
             continue
         if f"pr-{number}" in running or f"issue-{closes(pr)}" in running:
@@ -1355,11 +1416,17 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
         if key not in running and opener in running and pr_needs_run(tick, pr):
             tick.say(f"{key}: waits for {opener} to end")  # its branch is still checked out
             continue
-        if len(chosen) < free and key not in running and pr_needs_run(tick, pr):
+        if len(chosen) >= free or key in running:
+            continue
+        review = needs_epic_review(tick, pr)
+        if review or pr_needs_run(tick, pr):
             prompt = f"Use the work-queue skill for pull request #{pr['number']} only."
             count = redo_count(tick, pr)
             what = f"{count} change requests open" if count else "CI"
             message = f"{NAME} working on PR #{pr['number']} ({what})"
+            if review:
+                prompt = prompt[:-1] + ": epic review."
+                message = f"{NAME} reviewing epic PR #{pr['number']}"
             chosen.append(
                 Target(
                     key,
@@ -1370,6 +1437,7 @@ def choose(tick: Tick, prs: list[dict[str, Any]], running: dict[str, bool]) -> l
                     ui=issue_needs_ui(tick, closes(pr)),
                     test_edits=issue_test_edits(tick, closes(pr)),
                     allowed_edits=issue_allowed_edits(tick, closes(pr)),
+                    epic_review=review,
                 )
             )
     if any(running.values()) or tick.main_red:
@@ -1539,7 +1607,9 @@ def start(tick: Tick, target: Target) -> bool:
             start_failed(tick, target, name)
             return False
     (tick.home / "start-failed" / target.key).unlink(missing_ok=True)
-    if target.key.startswith("pr-"):
+    if target.epic_review:  # no report of its own: the finish hook must ask for none
+        (lab / "out" / "pr-round.json").unlink(missing_ok=True)
+    elif target.key.startswith("pr-"):
         write_round(tick, worktree, lab, target.number, target.ui)
     if target.key.startswith("issue-"):
         stacked = tick.home / "stacked" / str(target.number)
@@ -1601,6 +1671,9 @@ def start(tick: Tick, target: Target) -> bool:
     pid = tick.host.spawn(wrapper, run / "log.txt")
     (run / "pid").write_text(str(pid))
     (run / "started").write_text(str(int(tick.host.now())))
+    if target.epic_review:
+        count = epic_review_count(tick, target.number) + 1
+        (tick.home / f"epic-review-{target.number}").write_text(str(count))
     tick.say(f"{target.key}: started (pid {pid})")
     if target.message:
         tick.notify(target.message)
@@ -2642,6 +2715,7 @@ def tick_once(host: Host, home: Path) -> list[str]:
         tidy_failed(tick)
         needs_you(tick, prs)
         running = running_keys(tick)
+        tell_unfinished_epic_reviews(tick, prs, running)
         mark_green_ready(tick, prs, running)
         settle_children(tick, prs)
         settle_epic_children(tick, prs)

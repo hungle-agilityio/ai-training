@@ -1,0 +1,87 @@
+{
+  "steps": [
+    {
+      "name": "dashboard",
+      "goto": "/dashboard/",
+      "expect": [
+        "Reputation dashboard",
+        "Riverside"
+      ],
+      "capture": "#kpi-open-cases"
+    },
+    {
+      "name": "location",
+      "goto": "/dashboard/",
+      "actions": [
+        {
+          "click": "a[aria-label^='Details for']"
+        }
+      ],
+      "expect": [
+        "Weekly trend",
+        "Rating breakdown",
+        "Latest reviews"
+      ]
+    },
+    {
+      "name": "reviews",
+      "goto": "/reviews/",
+      "expect": [
+        "Reviews",
+        "Follow-up"
+      ]
+    },
+    {
+      "name": "reply",
+      "goto": "/reviews/?rating=bad",
+      "actions": [
+        {
+          "click": "a[href$='/reply/']"
+        }
+      ],
+      "expect": [
+        "Reply to a review",
+        "Follow-up",
+        "Template"
+      ]
+    },
+    {
+      "name": "replies",
+      "goto": "/replies/",
+      "expect": [
+        "Reply drafts"
+      ]
+    },
+    {
+      "name": "settings",
+      "goto": "/settings/",
+      "expect": [
+        "Settings",
+        "Locations",
+        "Location goals",
+        "Reply templates"
+      ]
+    },
+    {
+      "name": "reports",
+      "goto": "/reports/",
+      "expect": [
+        "Monthly report"
+      ]
+    },
+    {
+      "name": "compare",
+      "goto": "/compare/",
+      "expect": [
+        "Compare locations"
+      ]
+    },
+    {
+      "name": "topics",
+      "goto": "/topics/",
+      "expect": [
+        "Topics"
+      ]
+    }
+  ]
+}
