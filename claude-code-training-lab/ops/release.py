@@ -30,14 +30,18 @@ CI_WORKFLOW = ""
 DEPLOY_LINE = ""
 PR_NUMBER = re.compile(r"#(\d+)")
 PROJECT_ROOT = flow_config.PROJECT_DIR
+CODE_DIRS: tuple[str, ...] = ()
+APP_DIR = "."
 
 
 def configure(config: flow_config.FlowConfig) -> None:
-    """Set the time zone, CI workflow and deploy line from the flow config."""
-    global ZONE, CI_WORKFLOW, DEPLOY_LINE
+    """Set the time zone, CI workflow, deploy line and code folders from the flow config."""
+    global ZONE, CI_WORKFLOW, DEPLOY_LINE, CODE_DIRS, APP_DIR
     ZONE = ZoneInfo(config.release_timezone)
     CI_WORKFLOW = config.checks_ci_workflow
     DEPLOY_LINE = config.release_deploy_line
+    CODE_DIRS = config.paths_code_dirs
+    APP_DIR = config.project_app_dir
 
 
 configure(flow_config.load())
@@ -53,7 +57,8 @@ class Plan:
     title: str
     branch: str
     tag: str
-    pull_requests: tuple[str, ...]
+    client_facing: tuple[str, ...]
+    internal: tuple[str, ...]
 
 
 def git(args: Sequence[str], cwd: Path, check: bool = True) -> str:
@@ -113,20 +118,39 @@ def next_tag(tags: set[str], now: datetime) -> str:
     return tag
 
 
-def merged_pull_requests(cwd: Path, since: str | None, sha: str) -> tuple[str, ...]:
+def code_prefixes() -> tuple[str, ...]:
+    """Path prefixes, from the repository root, of the code folders."""
+    base = "" if APP_DIR == "." else APP_DIR + "/"
+    return tuple(base + code_dir + "/" for code_dir in CODE_DIRS)
+
+
+def is_client_facing(cwd: Path, merge: str) -> bool:
+    """A pull request is client-facing when it changes a file inside a code folder."""
+    out = git(["diff", "--name-only", merge + "^1", merge], cwd)
+    prefixes = code_prefixes()
+    return any(path.startswith(prefixes) for path in out.splitlines())
+
+
+def merged_pull_requests(
+    cwd: Path, since: str | None, sha: str
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
     span = since + ".." + sha if since else sha
     out = git(
-        ["log", "--merges", "--first-parent", "--reverse", "--format=%s%x00%b%x1e", span], cwd
+        ["log", "--merges", "--first-parent", "--reverse", "--format=%H%x00%s%x00%b%x1e", span],
+        cwd,
     )
-    lines: list[str] = []
+    client_facing: list[str] = []
+    internal: list[str] = []
     for record in out.split("\x1e"):
-        subject, _, body = record.strip().partition("\x00")
+        merge, _, rest = record.strip().partition("\x00")
+        subject, _, body = rest.partition("\x00")
         found = PR_NUMBER.search(subject)
         if not found:
             continue
         title = next((ln.strip() for ln in body.splitlines() if ln.strip()), subject)
-        lines.append("#" + found.group(1) + " " + title)
-    return tuple(lines)
+        line = "#" + found.group(1) + " " + title
+        (client_facing if is_client_facing(cwd, merge) else internal).append(line)
+    return tuple(client_facing), tuple(internal)
 
 
 def make_plan(cwd: Path, now: datetime) -> Plan:
@@ -148,12 +172,14 @@ def make_plan(cwd: Path, now: datetime) -> Plan:
         if ancestor.returncode != 0:
             raise Refusal("origin/" + DEPLOY + " is not an ancestor of " + short)
     tags = remote_names(cwd, "tags") | set(git(["tag", "-l"], cwd).splitlines())
+    client_facing, internal = merged_pull_requests(cwd, deploy or None, sha)
     return Plan(
         sha=sha,
         title=git(["log", "-1", "--format=%s", sha], cwd),
         branch=next_branch(remote_names(cwd, "heads")),
         tag=next_tag(tags, now),
-        pull_requests=merged_pull_requests(cwd, deploy or None, sha),
+        client_facing=client_facing,
+        internal=internal,
     )
 
 
@@ -162,9 +188,12 @@ def describe(plan: Plan) -> list[str]:
         "Commit: " + plan.sha[:7] + " " + plan.title,
         "Branch: " + plan.branch,
         "Tag: " + plan.tag,
-        "Merged pull requests:",
+        "Client-facing pull requests:",
+        *(["  " + pr for pr in plan.client_facing] or ["  (none)"]),
+        "Internal pull requests:",
+        *(["  " + pr for pr in plan.internal] or ["  (none)"]),
     ]
-    return lines + (["  " + pr for pr in plan.pull_requests] or ["  (none)"])
+    return lines
 
 
 def push(plan: Plan, cwd: Path) -> None:
