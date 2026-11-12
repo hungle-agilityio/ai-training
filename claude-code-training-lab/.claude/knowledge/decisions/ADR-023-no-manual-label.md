@@ -38,4 +38,4 @@ On 2026-11-10 the Mac mini pushed a throw-away branch `task/probe-workflow-push`
 
 - Flow work goes through the loop like app work, with the same verify report and review. #386 to #388 were the last tasks built by hand.
 - A build can change its own rules, hooks and tests when its issue lists them. The safety net is the list itself, the keys of point 3, the Guard files section and the owner's review.
-- The guard rules are written twice: in `before-edit-check.py` (plugin) and in `ops/epic_pull_request.py` (the Guard files section). A change to one is copied to the other.
+- The guard rules live once, in `plugins/agent-flow/hooks/guarded_paths.py`; the hook and `ops/epic_pull_request.py` read it, and `flow.toml` is guarded (#486, 2026-11-12).
