@@ -21,7 +21,7 @@ FILES = sorted(
 def test_the_plugin_holds_the_flow() -> None:
     assert len(list((PLUGIN / "skills").glob("*/SKILL.md"))) == 10
     assert len(list((PLUGIN / "commands").glob("*.md"))) == 8
-    assert len(list((PLUGIN / "agents").glob("*.md"))) == 5
+    assert len(list((PLUGIN / "agents").glob("*.md"))) == 6
 
 
 @pytest.mark.parametrize("path", FILES, ids=lambda p: str(p.relative_to(PLUGIN)))
