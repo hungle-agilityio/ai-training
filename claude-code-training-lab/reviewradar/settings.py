@@ -3,6 +3,8 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 
+from reviewradar.monitoring import init_error_tracking
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 DEV_SECRET_KEY = "dev-only-insecure-key"
@@ -89,3 +91,5 @@ USE_TZ = True
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "").strip() or "claude-haiku-5-5"
 REVIEWRADAR_AI_FAKE = os.environ.get("REVIEWRADAR_AI_FAKE") == "1"
+
+init_error_tracking(os.environ, DEBUG)
