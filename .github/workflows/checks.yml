@@ -39,6 +39,10 @@ jobs:
         run: uv run mypy .
       - name: App tests with coverage
         run: uv run pytest -q
+      - name: Install the browser
+        run: uv run playwright install --with-deps chromium
+      - name: Browser regression of the main screens
+        run: uv run python .claude/skills/check-in-browser/browser_check.py --spec ops/regression_screens.json
       - name: Coverage gate, 90 percent on services and repositories
         run: uv run coverage report --include="reviews/services.py,reviews/repositories.py" --fail-under=90
       - name: Hook and skill tests

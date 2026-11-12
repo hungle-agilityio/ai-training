@@ -18,7 +18,14 @@ LAYOUT_STUBS = Path(__file__).resolve().with_name("bootstrap_stubs") / "layout"
 LOOP_DIR = ".flow/loop"
 PLUGIN_DIR = ".flow/plugin"
 PLUGIN_VERSION = "1.0.0"
-LOOP_SKIP = ("bootstrap", "flow.toml", "tests", "__init__.py", "__pycache__")
+LOOP_SKIP = (
+    "bootstrap",
+    "flow.toml",
+    "tests",
+    "regression_screens.json",
+    "__init__.py",
+    "__pycache__",
+)
 PLUGIN_SKIP = ("tests", "__pycache__", ".pytest_cache")
 # Where an entry of the manifest goes in the new layout; None means it is not copied.
 MOVES: dict[str, str | None] = {
