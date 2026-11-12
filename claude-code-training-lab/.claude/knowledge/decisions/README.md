@@ -41,3 +41,4 @@ One file per decision: `ADR-001-short-title.md`, numbered in order. Write one fo
 - [ADR-024: A loop build fixes technical stops itself](ADR-024-loop-self-fix.md)
 - [ADR-025: A new project gets a stack-agnostic layout; the flow lives in .flow/](ADR-025-stack-agnostic-project-layout.md)
 - [ADR-026: Every spec and issue carries a user story, Given/When/Then and a test matrix; an issue passes a zero-questions test](ADR-026-issue-pack-and-test-matrix.md)
+- [ADR-027: A loop build shows its plan, gets its tests from a separate test author, checks the test matrix and records its decisions next to the spec](ADR-027-plan-tests-and-build-decisions.md)
