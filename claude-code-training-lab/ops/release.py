@@ -40,6 +40,11 @@ APP_DIR = "."
 STATE_DIR = Path(".")
 GITHUB_HOST = "github.com"
 PAGE_TIMEOUT_SECONDS = 60
+SETTINGS_FILE = ".claude/project-instructions.md"
+SETTINGS_LINE = (
+    "Project settings: " + SETTINGS_FILE + " changed since the last release; "
+    "paste it into Project settings."
+)
 
 
 def configure(config: flow_config.FlowConfig) -> None:
@@ -69,6 +74,7 @@ class Plan:
     client_facing: tuple[str, ...]
     internal: tuple[str, ...]
     security: tuple[str, ...] = ()
+    settings_changed: bool = False
 
 
 def git(args: Sequence[str], cwd: Path, check: bool = True) -> str:
@@ -188,6 +194,17 @@ def merged_pull_requests(
     return tuple(client_facing), tuple(internal)
 
 
+def settings_changed(cwd: Path, since: str | None, sha: str) -> bool:
+    """The Project settings text on the release commit differs from the last release."""
+    path = ("" if APP_DIR == "." else APP_DIR + "/") + SETTINGS_FILE
+    try:
+        new = git(["ls-tree", sha, "--", path], cwd)
+        old = git(["ls-tree", since, "--", path], cwd) if since else ""
+    except (subprocess.CalledProcessError, OSError):
+        return False
+    return bool(new) and new != old
+
+
 def make_plan(cwd: Path, now: datetime) -> Plan:
     git(["fetch", "origin"], cwd)
     sha = git(["rev-parse", "origin/main"], cwd)
@@ -222,6 +239,7 @@ def make_plan(cwd: Path, now: datetime) -> Plan:
         client_facing=client_facing,
         internal=internal,
         security=security,
+        settings_changed=settings_changed(cwd, deploy or None, sha),
     )
 
 
@@ -236,6 +254,8 @@ def describe(plan: Plan) -> list[str]:
         "Internal pull requests:",
         *(["  " + pr for pr in plan.internal] or ["  (none)"]),
     ]
+    if plan.settings_changed:
+        lines.append(SETTINGS_LINE)
     return lines
 
 
