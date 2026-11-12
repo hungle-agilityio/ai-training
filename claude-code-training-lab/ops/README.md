@@ -243,6 +243,22 @@ The loop's open pull requests with their status labels: <https://github.com/hung
 
 It refuses with exit 1 and one line, pushing nothing, when the newest `Checks` run of the commit is missing, still running or not successful; when `origin/deploy` already points at the commit (`nothing new to release`); or when `origin/deploy` is not an ancestor of the commit.
 
+## Live check
+
+`uv run python ops/live_check.py [--commit <commit>]` checks the live site after a release; the release thread runs it after `ops/release.py`. Without `--commit` it runs `git fetch origin` and checks `origin/deploy`. It waits until `<url>/healthz/` answers 200 with `X-Commit` equal to the commit (one request every 20 seconds, at most `wait_minutes`), signs in as `username` in headless Chromium, opens every step of `ops/regression_screens.json` with its load time, then checks five security headers and redirects (`https-redirect`, `frame-options`, `hsts`, `login-required`, `healthz`). It takes no screenshot, writes no file and prints no page text or setting value. Install the browser once with `uv run playwright install chromium`.
+
+The table `[live]` of `ops/flow.toml` holds `url`, `username`, `wait_minutes`, `load_warn_seconds` and `persistent_database`. `ops/agent.env.example` lists three variables for `agent.env`: `LIVE_CHECK_PASSWORD` (the password of `username` on the live site; the only one this check reads), `RENDER_API_KEY` and `RENDER_SERVICE_ID` (for `ops/rollback.py`). A variable set in the environment replaces the file's value.
+
+Every line goes to stdout:
+
+- `live: <commit> after <m>m<ss>s`: the commit is served.
+- `PASS <name> <s>s` or `PASS <name>`: the step or the check passed.
+- `SLOW <name> <s>s (over <n>s)`: the step passed but took more than `load_warn_seconds`.
+- `FAIL <name>: <reason>`, `FAIL wait: ...`, `FAIL sign-in: ...`: what failed.
+- `result: pass`, `result: pass, <k> slow` or `result: fail`: the last line.
+
+Exit codes: 0 every check passed (SLOW counts as passed), 1 a line is FAIL, 2 the check could not run (no `[live]` table, `LIVE_CHECK_PASSWORD` not set, an unknown commit, a failing git command, an unreadable `regression_screens.json`, Chromium cannot start), with one line on stderr and no result line.
+
 ## Kept worktrees
 
 Each tick removes a kept `worktrees/issue-<n>` when issue #n is closed and a kept `worktrees/pr-<n>` when pull request #n is closed or merged, never the folder of a running build or of open work. A moved-aside folder `<key>-<unix time>` is removed 3 days after that time. The checked-out branch is first renamed `archive/<branch>-<unix time>` (a detached worktree has none); no branch is deleted, so the commits stay. At most 10 folders per tick; a failed `git worktree remove` is logged and the tick goes on. The log line is `<key>: closed, worktree removed`.

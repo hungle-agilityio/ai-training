@@ -27,6 +27,14 @@ protected_test_dirs = ["reviews/tests"]
 timezone = "Asia/Ho_Chi_Minh"
 deploy_line = "Render deploys branch deploy after Checks pass."
 
+# The live site that ops/live_check.py checks after a release.
+[live]
+url = "https://reviewradar.onrender.com"
+username = "demo"
+wait_minutes = 15
+load_warn_seconds = 3
+persistent_database = false
+
 [plugin]
 id = "agent-flow@ai-training"
 marketplace = "ai-training"
