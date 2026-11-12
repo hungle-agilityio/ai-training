@@ -1,3 +1,4 @@
+import os
 from dataclasses import asdict
 from typing import cast
 
@@ -39,6 +40,8 @@ from reviews.forms import (
 )
 
 SITE_ICON = "reviews/icon.svg"
+COMMIT_ENV = "RENDER_GIT_COMMIT"
+COMMIT_HEADER = "X-Commit"
 
 
 @login_not_required
@@ -49,7 +52,12 @@ def favicon(request: HttpRequest) -> HttpResponseRedirect:
 
 @login_not_required
 def healthz(request: HttpRequest) -> HttpResponse:
-    return HttpResponse("ok", content_type="text/plain")
+    """X-Commit is the stripped RENDER_GIT_COMMIT, read per request, and absent when blank."""
+    response = HttpResponse("ok", content_type="text/plain")
+    commit = os.environ.get(COMMIT_ENV, "").strip()
+    if commit:
+        response[COMMIT_HEADER] = commit
+    return response
 
 
 def dashboard(request: HttpRequest) -> HttpResponse:
