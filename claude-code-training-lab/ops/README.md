@@ -241,6 +241,8 @@ The loop's open pull requests with their status labels: <https://github.com/hung
 
 `--dry-run` prints the same plan (commit, branch, tag, pull requests) and pushes nothing.
 
+After the push it creates the GitHub Release page of the new tag: it writes `<loop.state_dir>/release-<tag>.md` (the two pull request groups, and with `--notes-url <url>` a last line `Release notes: <url>`) and runs `gh release create <tag> --title <tag> --notes-file <file> --verify-tag`. On success the first line of the output is `Release page: <url>`. If the page cannot be created (`gh` fails, is missing or takes more than 60 seconds) the release still exits 0 and stderr gets one line `warning: GitHub Release not created (<reason>); run: gh release create ...` with the command to run again. The step is skipped when `origin` is not a GitHub URL and in `--dry-run`.
+
 It refuses with exit 1 and one line, pushing nothing, when the newest `Checks` run of the commit is missing, still running or not successful; when `origin/deploy` already points at the commit (`nothing new to release`); or when `origin/deploy` is not an ancestor of the commit.
 
 ## Kept worktrees
