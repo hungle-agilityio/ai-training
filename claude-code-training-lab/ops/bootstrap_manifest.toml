@@ -82,6 +82,62 @@ path = ".claude/knowledge/decisions/ADR-019-flow-config-and-bootstrap.md"
 
 [[copy]]
 scope = "app"
+path = ".claude/knowledge/decisions/ADR-020-flow-as-a-plugin.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-021-epic-branch.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-022-epic-reviewed-once.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-023-no-manual-label.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-024-loop-self-fix.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-025-stack-agnostic-project-layout.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-026-issue-pack-and-test-matrix.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-027-plan-tests-and-build-decisions.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-028-member-assignment.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-029-test-and-harden.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-030-app-prototype.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-031-security-check-before-release.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-032-post-release-checks.md"
+
+[[copy]]
+scope = "app"
+path = ".claude/knowledge/decisions/ADR-033-card-tap-approves-mac-mini-writes.md"
+
+[[copy]]
+scope = "app"
 path = ".claude/knowledge/decisions/README.md"
 
 [[copy]]

@@ -53,12 +53,20 @@ PATHS = {
     "plugin_dir": PLUGIN_DIR,
     "intent_file": "docs/intent/{feature}.md",
     "specs_dir": "docs/specs",
-    "spec_pr_dirs": ["docs/intent", "docs/specs"],
+    "spec_pr_dirs": ["docs/intent", "docs/specs", "docs/design"],
     "plans_dir": "docs/plans",
     "decisions_dir": "docs/decisions",
     "templates_dir": "docs/templates",
     "code_dirs": ["src"],
-    "flow_dirs": [".flow/", ".claude/", ".github/", "docs/intent/", "docs/specs/", "scripts/"],
+    "flow_dirs": [
+        ".flow/",
+        ".claude/",
+        ".github/",
+        "docs/intent/",
+        "docs/specs/",
+        "docs/design/",
+        "scripts/",
+    ],
 }
 SETUP_COMMANDS = {
     "python": ["uv", "sync", "--frozen"],
@@ -85,6 +93,10 @@ CI_SETUP = {
 FOLDER_READMES = {
     "docs/intent/README.md": "One file per idea: the problem, who it is for, what success is.\n",
     "docs/plans/README.md": "The approved plan of each issue, `<number>-<short-description>.md`.\n",
+    "docs/design/README.md": (
+        "The clickable prototype of the whole app, prototype.html (ADR-030); one file, every "
+        "screen and state.\n"
+    ),
     "src/README.md": (
         "The product's code, one folder per feature (`src/<feature>/`), its tests in "
         "`src/<feature>/tests/`.\n"
@@ -115,12 +127,22 @@ SPEC_MOVES = (
         "`docs/intent/<feature>.md`, `docs/specs/<feature>/spec.md` and `tasks.md`",
     ),
     ("`specs/`, `docs/learning/`", "`docs/intent/`, `docs/specs/`, `scripts/`"),
-    ("`specs/` and `design/`", "`docs/intent/` and `docs/specs/`"),
+    ("`specs/` and `design/`", "`docs/intent/`, `docs/specs/` and `docs/design/`"),
     ("specs/<feature>/intent.md", "docs/intent/<feature>.md"),
     ("design/<feature>/README.md", "docs/specs/<feature>/design.md"),
     ("docs/app/issues", "docs/issues"),
 )
 BARE_SPECS = re.compile(r"(?<![\w/.-])specs/")
+# The app prototype lives in docs/design/, which the spec pull request may change; also in code.
+PROTOTYPE_MOVES = (
+    ("design/app/prototype.html", "docs/design/prototype.html"),
+    ('Path("design") / "app" / "prototype.html"', 'Path("docs") / "design" / "prototype.html"'),
+)
+# The index of the copied decision records lists exactly the records the copy holds.
+INDEX_HEADING = "\n## Index\n"
+ADR_FILE = re.compile(r"^ADR-\d{3}-.+\.md$")
+INDEX_LINE = re.compile(r"^- \[ADR-\d{3}: .*\]\((?P<file>ADR-\d{3}-[^)]+\.md)\)$")
+ADR_HEADING = re.compile(r"^# (?P<number>ADR-\d{3}): (?P<title>.+)$", re.M)
 
 
 # A new project has one loop variable, FLOW_LOOP, and one home variable, FLOW_HOME; the source
@@ -142,6 +164,8 @@ LOOP_VARIABLE_MOVES = (
         "Today's hooks, tests and docs keep working",
         "`FLOW_LOOP=1` | A project-specific name | One name for every project",
     ),
+    ("`REVIEWRADAR_DEMO_PASSWORD`", "a password variable named after ReviewRadar"),
+    ("a `REVIEWRADAR_` name", "a variable named after ReviewRadar"),
     ("REVIEWRADAR_LOOP", "FLOW_LOOP"),
     ("REVIEWRADAR_HOME", "FLOW_HOME"),
 )
@@ -151,6 +175,33 @@ def one_loop_variable(text: str) -> str:
     for old, new in LOOP_VARIABLE_MOVES:
         text = text.replace(old, new)
     return text
+
+
+def move_prototype(text: str) -> str:
+    for old, new in PROTOTYPE_MOVES:
+        text = text.replace(old, new)
+    return text
+
+
+def decisions_index(readme: str, records: dict[str, str]) -> str:
+    """After `## Index`, one line per copied record (file name to text), and nothing else."""
+    head, found, rest = readme.partition(INDEX_HEADING)
+    if not found:
+        return readme
+    known = {m.group("file"): line for line in rest.splitlines() if (m := INDEX_LINE.match(line))}
+    lines = []
+    for name in sorted(records):
+        line = known.get(name)
+        if line is None:
+            heading = ADR_HEADING.search(records[name])
+            number, title = (
+                (heading.group("number"), heading.group("title"))
+                if heading
+                else (name[:7], name.removesuffix(".md"))
+            )
+            line = f"- [{number}: {title}]({name})"
+        lines.append(line)
+    return head + INDEX_HEADING + "\n" + "\n".join(lines) + "\n"
 
 
 def move_text(text: str) -> str:

@@ -39,12 +39,20 @@ NEW_PATHS = {
     "plugin_dir": ".flow/plugin",
     "intent_file": "docs/intent/{feature}.md",
     "specs_dir": "docs/specs",
-    "spec_pr_dirs": ["docs/intent", "docs/specs"],
+    "spec_pr_dirs": ["docs/intent", "docs/specs", "docs/design"],
     "plans_dir": "docs/plans",
     "decisions_dir": "docs/decisions",
     "templates_dir": "docs/templates",
     "code_dirs": ["src"],
-    "flow_dirs": [".flow/", ".claude/", ".github/", "docs/intent/", "docs/specs/", "scripts/"],
+    "flow_dirs": [
+        ".flow/",
+        ".claude/",
+        ".github/",
+        "docs/intent/",
+        "docs/specs/",
+        "docs/design/",
+        "scripts/",
+    ],
 }
 Run = Callable[..., int]
 
@@ -334,7 +342,7 @@ def test_spec_rules_name_the_new_document_folders(run: Run, target: Path) -> Non
     run("--stack", "python")
     text = (target / ".claude" / "project-instructions.md").read_text()
     assert "`docs/intent/<feature>.md`, `docs/specs/<feature>/spec.md` and `tasks.md`" in text
-    assert "changes only `docs/intent/` and `docs/specs/`" in text
+    assert "changes only `docs/intent/`, `docs/specs/` and `docs/design/`" in text
     assert "docs/specs/<feature>/design.md" in text
     assert "`specs/`" not in text and "design/<feature>" not in text.replace("docs/specs/", "")
     template = (target / "docs" / "templates" / "spec" / "spec.md").read_text()
