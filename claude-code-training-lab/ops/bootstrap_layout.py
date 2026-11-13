@@ -282,7 +282,11 @@ def plugin_manifest(text: str, repo: str) -> str:
 
 # Edit rules of the old layout and of the new one.
 EDIT_MOVES = {
-    "Edit(./specs/**)": ["Edit(./docs/intent/**)", "Edit(./docs/specs/**)"],
+    "Edit(./specs/**)": [
+        "Edit(./docs/intent/**)",
+        "Edit(./docs/specs/**)",
+        "Edit(./docs/design/**)",
+    ],
     "Edit(./tests/**)": [],
 }
 
