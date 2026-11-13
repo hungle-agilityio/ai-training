@@ -66,6 +66,9 @@ BROWSER_INSTALL_STEP = re.compile(
 BROWSER_REGRESSION_STEP = re.compile(
     r"^ +- name: Browser regression of the main screens.*?(?=^ +- name:|\Z)", re.S | re.M
 )
+A11Y_STEP = re.compile(
+    r"^ +- name: Accessibility of the main screens.*?(?=^ +- name:|\Z)", re.S | re.M
+)
 # Allow rules of ReviewRadar's own app; the copy keeps every other rule.
 APP_RULES = (
     "Edit(./reviews/**)",
@@ -293,7 +296,13 @@ def _transform(rel: str, data: bytes, params: Params) -> bytes:
     except UnicodeDecodeError:
         return data
     if rel.endswith("workflows/checks.yml"):
-        for step in (COVERAGE_STEP, HOOK_TESTS_STEP, BROWSER_INSTALL_STEP, BROWSER_REGRESSION_STEP):
+        for step in (
+            COVERAGE_STEP,
+            HOOK_TESTS_STEP,
+            BROWSER_INSTALL_STEP,
+            BROWSER_REGRESSION_STEP,
+            A11Y_STEP,
+        ):
             text = step.sub("", text)
     if rel == "CLAUDE.md":
         text = adapt_root_claude(text, params)

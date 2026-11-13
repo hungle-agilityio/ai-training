@@ -23,6 +23,8 @@ LOOP_SKIP = (
     "flow.toml",
     "tests",
     "regression_screens.json",
+    "vendor",
+    "a11y_check",
     "__init__.py",
     "__pycache__",
 )
