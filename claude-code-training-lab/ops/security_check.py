@@ -20,7 +20,7 @@ except ImportError:  # started from ops/: it is the first path entry
 
 DEPLOY_HOST = "reviewradar.onrender.com"
 TIMEOUT = 300
-PIP_AUDIT = "pip-audit==2.10.1"
+PIP_AUDIT = "pip-audit@2.10.1"
 SECRET_PATTERN = re.compile(
     r"gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}"
     r"|-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----|AKIA[0-9A-Z]{16}"

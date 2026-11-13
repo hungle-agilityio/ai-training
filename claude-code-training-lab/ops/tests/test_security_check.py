@@ -208,7 +208,7 @@ def test_audit_runs_pinned_pip_audit_on_the_exported_requirements(fake: Fake) ->
         assert flag in export
     requirements = export[export.index("-o") + 1]
     audit = fake.args_of("audit")
-    assert audit[0] == "uvx" and audit[1] == "pip-audit==2.10.1"
+    assert audit[0] == "uvx" and audit[1] == "pip-audit@2.10.1"
     assert audit[audit.index("-r") + 1] == requirements
     for flag in ("--no-deps", "--disable-pip", "--format"):
         assert flag in audit
