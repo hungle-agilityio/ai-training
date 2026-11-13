@@ -4,7 +4,7 @@ Online reputation management for businesses with several locations: collect cust
 
 **Status:** MVP done on demo data and online at <https://reviewradar-zo3u.onrender.com> (last release `v2026.11.12`). Data is not yet separated per business (see [Known issues](#known-issues-and-limits)).
 
-ReviewRadar is also a **Claude Code training lab**: the app is built by a two-lane agent flow, from a request on the phone to a checked live release (see [How the app is built](#how-the-app-is-built)).
+ReviewRadar is also a **Claude Code training lab**: the app is built by a two-lane agent flow, from a request in the cloud to a checked live release (see [How the app is built](#how-the-app-is-built)).
 
 ## Contents
 
@@ -114,25 +114,27 @@ Every page needs an account. Only the sign-in page (`/login/`) and the health pa
 
 ## How the app is built
 
-Work goes through **two lanes in one flow**. The **Claude Code Project** (claude.ai/code or the phone app) turns a request into ready GitHub issues. The **Claude Code CLI loop** on the Mac mini builds each issue and opens its pull request. The owner decides at a few fixed points, each a tap on a choice card.
+Work goes through **two lanes in one flow**: the **cloud** and the **local server**. In the cloud, the **Claude Code Project** (claude.ai/code) turns a request into ready GitHub issues and drives the release. On the local server, the Mac mini, the **Claude Code CLI loop** builds each issue and opens its pull request. The owner decides at a few fixed points, each a tap on a choice card in the cloud thread.
 
 ```mermaid
 flowchart LR
-  subgraph P[Claude Code Project · cloud]
+  subgraph P[Cloud · Claude Code Project]
     A[Analyse] --> G[Grill-me] --> S[Spec + prototype] --> I[Issue agent:ready]
+    D[Release: dry run + security]
+    LC[Live check]
   end
-  subgraph C[Claude Code CLI · Mac mini]
+  subgraph C[Local server · Mac mini · Claude Code CLI]
     T[Tick] --> TF[Tests first] --> B[Build] --> R["/code-review"] --> V[Verify report] --> PR[Pull request]
-  end
-  subgraph L[Release]
-    D[release.py dry run + security] --> TG[Tag + deploy branch] --> RD[Render deploys] --> LC[Live check]
+    TG[Tag + deploy branch] --> RD[Render deploys]
   end
   I --> T
   PR -->|owner approves, tick merges| D
+  D -->|owner OK| TG
+  RD --> LC
   LC -->|failed AC: new fast-lane issue| A
 ```
 
-**Lane 1, the Project** (ADR-010, ADR-011, ADR-012):
+**Lane 1, cloud: the Claude Code Project** (ADR-010, ADR-011, ADR-012):
 
 1. **Analyse:** read the code and the rules, rate the work Easy, Medium or Hard and its risk, choose the lane.
 2. **Grill-me:** every open decision becomes a choice card, so the build never has to ask.
@@ -142,7 +144,7 @@ flowchart LR
 
 The Project writes no application code; the only pull request it opens is the spec pull request.
 
-**Lane 2, the CLI loop** (ADR-008, ADR-009, ADR-014, `ops/README.md`):
+**Lane 2, local server: the Claude Code CLI loop on the Mac mini** (ADR-008, ADR-009, ADR-014, `ops/README.md`):
 
 - `ops/start-loop.sh` runs a tick every 5 minutes; each tick starts up to 3 builds, one `claude -p` per issue in its own worktree.
 - It skips issues assigned to a team member (ADR-028). A `risk:high` issue stops after the plan with `agent:plan-review` until the owner approves the plan (ADR-027).
@@ -151,7 +153,7 @@ The Project writes no application code; the only pull request it opens is the sp
 - The pull request carries the evidence. A plain comment is a change request; the owner's approval comment lets the tick merge on green CI (ADR-016). Claude builds never merge.
 - Tasks of an epic merge into `epic/<n>-<slug>`; the owner reviews the epic pull request once, with a checklist (ADR-021, ADR-022).
 
-**The owner's taps:** request · grill-me · Gate 1 (with the prototype for screens) · approve the pull request · "phát hành" (release) · OK on the release dry run.
+**The owner's decisions** (choice cards in the cloud thread): request · grill-me · Gate 1 (with the prototype for screens) · approve the pull request · "phát hành" (release) · OK on the release dry run.
 
 **Pages that show the flow** (private links, open to the owner's account):
 
