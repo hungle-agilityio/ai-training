@@ -232,6 +232,8 @@ Each ntfy post has the title `ReviewRadar` and a priority (#167). "Rings" is `ye
 | `ReviewRadar queue empty, <w> pull requests waiting` | no | nothing to start and nothing running; again only when the text changes |
 | `ReviewRadar Claude Code is not signed in (~/.claude); builds wait. Sign in with: claude auth login` | yes (urgent) | `claude auth status` says `loggedIn` is false; no build starts; once, and again after a signed-in check |
 | `ReviewRadar loop started on <host name>` | yes | `uv run python ops/agent_tick.py started`, by hand or from launchd at login; takes no lock, runs no tick; sends nothing without `NTFY_TOPIC` |
+| `ReviewRadar site is down since <HH:MM> (Vietnam time): <reason>` | yes | after two failed probes in a row, once per outage |
+| `ReviewRadar site is back after <m> minutes` | no | the first good probe after a down message |
 
 The loop's open pull requests with their status labels: <https://github.com/hungle-agilityio/ai-training/pulls?q=is%3Apr+is%3Aopen+%22work-queue%22+in%3Abody>
 
@@ -272,6 +274,16 @@ It prints `Current: <tag> <sha7>`, `Roll back to: <tag> <sha7> <subject>`, `Rend
 It refuses with exit 1 and one line on stderr, before any change: no `[live]` table; `RENDER_API_KEY` or `RENDER_SERVICE_ID` not set; `origin/deploy` missing or not on a release tag; no earlier release; a `--to` tag that is not an earlier release on `origin/deploy`; migrations since the target while `[live] persistent_database = true` (write a reversing migration on `main` and release it); a failing git command; no Render deploy of the target; a Render answer other than 2xx or none within 30 seconds.
 
 The rollback never moves `deploy` or a tag and pushes nothing, and Render's Auto-Deploy stays on (only the dashboard's Rollback button turns it off). So the next release deploys as usual: fix the problem on `main`, then release again.
+
+## Uptime
+
+`uv run python ops/uptime.py` makes one probe of the live site: a `GET` of `/healthz/` at `live.url` (60-second timeout). The site is up when the answer is 200 with the body `ok`. `ops/start-loop.sh` runs it after every tick, so every 5 minutes; a failed probe never stops the loop, and the script always exits 0. Without a `[live]` table it does nothing.
+
+After two failed probes in a row it sends one message, `ReviewRadar site is down since <HH:MM> (Vietnam time): <reason>` (`HTTP <status>`, `timeout after 60s` or `no connection`); a single failure sends nothing, because the free Render service can be slow to wake. The first good probe after that message sends `ReviewRadar site is back after <m> minutes`. Messages go to ntfy and Slack like the tick's (`NTFY_TOPIC`, `SLACK_WEBHOOK_URL`).
+
+The state is `~/.reviewradar/uptime.json`: `{"failures": <n>, "down_since": "<ISO time>" or null, "alerted": true or false}`; a missing or unreadable file counts as no failure.
+
+After this change reaches the Mac mini, restart the loop once (stop it, then start it) so the new loop line with the probe is used.
 
 ## Kept worktrees
 

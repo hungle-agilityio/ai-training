@@ -124,7 +124,7 @@ def calls_of(box: dict[str, Path]) -> list[list[str]]:
 def tick_line(folder: str) -> str:
     return (
         "caffeinate -i bash -c 'while true; do date; uv run python "
-        f"{folder}/agent_tick.py; sleep 300; done'"
+        f"{folder}/agent_tick.py; uv run python {folder}/uptime.py || true; sleep 300; done'"
     )
 
 
