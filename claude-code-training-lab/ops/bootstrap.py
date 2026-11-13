@@ -81,6 +81,7 @@ APP_ENV_KEYS = ("FLOW_COVERAGE_INCLUDE", "FLOW_COVERAGE_FAIL_UNDER")
 TESTS_DIR = "tests"
 PROJECT_INSTRUCTIONS = ".claude/project-instructions.md"
 SECURITY_RULES = ".claude/rules/security.md"
+DECISIONS_README = "docs/decisions/README.md"
 PLUGIN_FILE = re.compile(r"`\.\./plugins/agent-flow/((?:skills|hooks)/[^`]+)`")
 ROUTE_ISSUE = (
     "`python3 -I ../plugins/agent-flow/skills/create-issue/route_issue.py <body file>` "
@@ -378,6 +379,7 @@ def layout_text(rel: str, data: bytes, params: Params) -> bytes:
     if rel == ".claude/settings.json":
         text = layout.plugin_settings(adapt_settings(text, ["src"]), params.repo, params.slug)
     text = layout.one_loop_variable(text)
+    text = layout.move_prototype(text)
     if not rel.endswith(".py"):
         text = layout.move_text(text)
     text = _rename(text, params)
@@ -413,6 +415,15 @@ def build_layout_plan(params: Params, manifest: dict[str, Any]) -> Plan:
             put(new, layout_text(rel, path.read_bytes(), params), path.stat().st_mode & 0o777)
     for rel, path in [*layout.loop_files(APP_ROOT), *layout.plugin_files(root)]:
         put(rel, layout_text(rel, path.read_bytes(), params), path.stat().st_mode & 0o777)
+    index = params.target / DECISIONS_README
+    if index in planned:
+        records = {
+            item.dest.name: item.data.decode("utf-8")
+            for item in planned.values()
+            if item.dest.parent == index.parent and layout.ADR_FILE.match(item.dest.name)
+        }
+        text = layout.decisions_index(planned[index].data.decode("utf-8"), records)
+        put(DECISIONS_README, text.encode("utf-8"), planned[index].mode)
     texts = layout.generated(params.repo, params.owner, params.name, params.slug, params.stack)
     for rel, text in texts.items():
         put(rel, text.encode("utf-8"), 0o755 if rel.endswith(".sh") else 0o644)
