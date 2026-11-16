@@ -39,12 +39,16 @@ def test_a_claude_folder_path_warns_on_stderr_and_keeps_stdout(tmp_path: Path, p
     assert done.returncode == 0
     assert done.stdout.split()[1] == "agent:ready"
     assert len(done.stdout.split()) == 2
-    assert done.stderr.strip() == warning(path)
+    assert done.stderr.strip().splitlines() == [warning(path), "Depends on: none"]
 
 
 def test_each_claude_folder_path_gets_its_own_warning(tmp_path: Path) -> None:
     done = run(tmp_path, ".claude/a.md", ".claude/b.md")
-    assert done.stderr.strip().splitlines() == [warning(".claude/a.md"), warning(".claude/b.md")]
+    assert done.stderr.strip().splitlines() == [
+        warning(".claude/a.md"),
+        warning(".claude/b.md"),
+        "Depends on: none",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -62,4 +66,4 @@ def test_other_paths_give_no_warning(tmp_path: Path, path: str) -> None:
     done = run(tmp_path, path)
     assert done.returncode == 0
     assert done.stdout.split()[1] == "agent:ready"
-    assert done.stderr == ""
+    assert done.stderr == "Depends on: none\n"
