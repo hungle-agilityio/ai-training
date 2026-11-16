@@ -6,7 +6,7 @@ dependencies = [
     "Django>=5.0,<6.0",
     "gunicorn>=26",
     "whitenoise>=6",
-    "sentry-sdk[django]>=2.40",
+    "sentry-sdk[django]>=2.75.0",
 ]
 
 [dependency-groups]
