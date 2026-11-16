@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "Django>=5.0,<6.0",
-    "gunicorn>=26",
+    "gunicorn>=27.0.1",
     "whitenoise>=6",
     "sentry-sdk[django]>=2.40",
 ]
