@@ -121,7 +121,7 @@ UPDATE_FROM_MAIN = "Merge branch 'main'"
 DONE_MARKS = {"rocket", "confused"}
 GREEN_CHECKS = {"SUCCESS", "NEUTRAL", "SKIPPED"}
 COMMENT_ID = re.compile(r"(?:issuecomment-|discussion_r)(\d+)")
-DEPENDS_LINE = re.compile(r"^\W*Depends on\b(.*)$", re.IGNORECASE | re.MULTILINE)
+DEPENDS_LINE = re.compile(r"\bDepends on\b(.*)$", re.IGNORECASE | re.MULTILINE)
 FILES_HEADING = re.compile(r"^##\s+Files likely touched\s*$", re.IGNORECASE | re.MULTILINE)
 TEST_EDITS_HEADING = re.compile(
     r"^##\s+Existing tests that change\s*$", re.IGNORECASE | re.MULTILINE
@@ -1075,7 +1075,7 @@ def labelled_by_owner(tick: Tick, number: int) -> bool:
 
 
 def depends_on(body: str) -> set[int]:
-    """Every #number on each line that starts with 'Depends on'."""
+    """Every #number after 'Depends on' anywhere in a line, up to the end of that line."""
     found: set[int] = set()
     for rest in DEPENDS_LINE.findall(body):
         found |= {int(n) for n in re.findall(r"#(\d+)", rest)}
