@@ -62,6 +62,13 @@ def test_issue_target_bullet_runs_the_dependencies_check_first(needle: str) -> N
     assert needle in issue_bullet()
 
 
+def test_dependencies_check_comes_before_the_branch() -> None:
+    bullet = issue_bullet()
+    claim = claim_step()
+    assert bullet.index("**Dependencies.**") < bullet.index("git switch -c")
+    assert claim.index("After the **Dependencies.** check") < claim.index("branch `<kind>/<id>")
+
+
 # AC2: the tick treats the waiting end as a normal end
 
 
