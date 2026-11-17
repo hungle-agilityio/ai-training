@@ -335,7 +335,7 @@ def test_stopped_failure_is_retried_stacked_when_the_parent_head_moved(home: Pat
 def test_stopped_failure_waits_while_the_parent_head_is_the_same(home: Path) -> None:
     write_failed(home, parent=HEAD)
     host = tick(home, [parent_pr()], [PARENT_ISSUE, failed_child()], ON_MAIN)
-    assert started(host) == []
+    assert started(host) == ["Use the work-queue skill for issue #5 only: heal."]
 
 
 def test_retry_starts_from_main_when_the_parent_is_closed_and_main_moved(home: Path) -> None:

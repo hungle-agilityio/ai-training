@@ -169,7 +169,8 @@ def test_a_decision_stop_after_a_self_fix_is_a_decision_stop(home: Path) -> None
     assert record is not None and record["kind"] == "decision"
     assert agent_tick.retry_reason(tick, issue(9, "agent:failed")) == ""
     assert host.sent == [
-        f"t: {agent_tick.NAME} #9 needs your decision: https://github.com/{agent_tick.REPO}/issues/9"
+        f"t: {agent_tick.NAME} #9 stopped for a decision; the loop heals it next: "
+        f"https://github.com/{agent_tick.REPO}/issues/9"
     ]
 
 

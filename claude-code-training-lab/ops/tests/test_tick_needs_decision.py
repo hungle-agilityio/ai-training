@@ -52,7 +52,10 @@ def write(home: Path, **fields: Any) -> None:
     (home / "failed" / "1").write_text(json.dumps(data))
 
 
-ASKED = f"rr-test: ReviewRadar #1 needs your decision: https://github.com/{REPO}/issues/1"
+ASKED = (
+    f"rr-test: ReviewRadar #1 stopped for a decision; the loop heals it next: "
+    f"https://github.com/{REPO}/issues/1"
+)
 
 
 # AC1: the record
@@ -147,7 +150,7 @@ def test_decision_is_not_retried_when_main_moves(home: Path) -> None:
     write(home)
     host = GitHost(issues=[issue(1, "agent:failed")], git=on_main(NEW))
     agent_tick.tick_once(host, home)
-    assert started(host) == []
+    assert started(host) == ["Use the work-queue skill for issue #1 only: heal."]
 
 
 def test_retry_reason_is_empty_for_a_decision_when_the_parent_moved(home: Path) -> None:
