@@ -138,6 +138,10 @@ path = ".claude/knowledge/decisions/ADR-033-card-tap-approves-mac-mini-writes.md
 
 [[copy]]
 scope = "app"
+path = ".claude/knowledge/decisions/ADR-034-depends-and-heal.md"
+
+[[copy]]
+scope = "app"
 path = ".claude/knowledge/decisions/README.md"
 
 [[copy]]

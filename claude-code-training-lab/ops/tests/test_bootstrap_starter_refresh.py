@@ -17,7 +17,7 @@ from ops import bootstrap
 
 REPO = "acme/garden"
 SOURCE = Path(__file__).resolve().parents[2]
-ADR_NUMBERS = range(8, 34)
+ADR_NUMBERS = range(8, 35)
 INDEX_LINE = re.compile(r"^- \[(ADR-\d{3}): .+\]\((ADR-\d{3}-[^)]+\.md)\)$")
 README_LINE = (
     "The clickable prototype of the whole app, prototype.html (ADR-030);"
@@ -73,10 +73,10 @@ def decisions(target: Path) -> list[Path]:
 # M1 (AC1)
 
 
-def test_stack_output_writes_adr_008_to_adr_033(run: Run, target: Path) -> None:
+def test_stack_output_writes_adr_008_to_adr_034(run: Run, target: Path) -> None:
     assert run("--stack", "python") == 0
     names = [p.name for p in decisions(target)]
-    assert len(names) == 26
+    assert len(names) == 27
     assert [int(n[4:7]) for n in names] == list(ADR_NUMBERS)
 
 
