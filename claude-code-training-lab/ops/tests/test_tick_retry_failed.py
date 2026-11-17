@@ -137,7 +137,7 @@ def test_stopped_failure_waits_while_main_has_not_moved(home: Path) -> None:
     write(home, 1)
     host = GitHost(issues=[failed(1)], git=on_main(OLD))
     agent_tick.tick_once(host, home)
-    assert started(host) == []
+    assert started(host) == ["Use the work-queue skill for issue #1 only: heal."]
 
 
 def test_stopped_failure_is_retried_when_main_moved(home: Path) -> None:
@@ -161,14 +161,14 @@ def test_unreadable_main_does_not_retry_a_stopped_failure(home: Path) -> None:
     write(home, 1)
     host = GitHost(issues=[failed(1)], git=on_main("fatal: bad revision"))
     agent_tick.tick_once(host, home)
-    assert started(host) == []
+    assert started(host) == ["Use the work-queue skill for issue #1 only: heal."]
 
 
 def test_third_retry_is_the_last(home: Path) -> None:
     write(home, 1, kind="transient", retries=3)
     host = GitHost(issues=[failed(1)], git=on_main(NEW))
     agent_tick.tick_once(host, home)
-    assert started(host) == []
+    assert started(host) == ["Use the work-queue skill for issue #1 only: heal."]
 
 
 def test_manual_issue_is_never_retried(home: Path) -> None:
@@ -229,7 +229,7 @@ def test_failure_after_three_retries_notifies_once(home: Path) -> None:
     host = GitHost(issues=[issue(1, "agent:running")], git=on_main(OLD))
     agent_tick.tick_once(host, home)
     message = (
-        f"rr-test: ReviewRadar #1 failed after 3 retries, needs you: "
+        f"rr-test: ReviewRadar #1 failed after 3 retries; the loop heals it next: "
         f"https://github.com/{REPO}/issues/1"
     )
     assert host.sent.count(message) == 1
